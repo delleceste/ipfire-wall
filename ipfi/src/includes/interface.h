@@ -81,18 +81,18 @@ int fill_ip_interval(const char* addr, ipfire_rule* r, int direction);
 /* invoked by listener when packet loss happens.
  * It disables verbose printing, re-enabling it
  * if 'v' key is pressed */
-inline void quiet_modality(int quiet);
+void quiet_modality(int quiet);
 
 /* prints command line interface main menu */
-inline void print_menu(short filter_enabled, short resolv_services);
+void print_menu(short filter_enabled, short resolv_services);
 
 /* Converts seconds into days hours mins secs and prints */
 void print_seconds_to_dhms(unsigned int seconds);
 
 /* prints help messages about usage */
-inline void print_help(void);
+void print_help(void);
 
-inline void print_configuration_options(void);
+void print_configuration_options(void);
 
 /* parent prints kernel statistics after a stats 
  * request. */

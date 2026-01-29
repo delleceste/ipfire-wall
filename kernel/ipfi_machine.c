@@ -507,7 +507,7 @@ ipfire_filter(ipfire_info_t * packet,
 		/* divide computation by protocol type */
 		if (packet->protocol == IPPROTO_TCP)
 		{
-			if ((res = tcp_filter(packet, rule)) < 0)
+			if ((res = ipfi_tcp_filter(packet, rule)) < 0)
 				goto next_drop_rule;
 			else if (res > 0)
 				drop = 1;
@@ -579,7 +579,7 @@ next_drop_rule:
 		/* divide computation by protocol type */
 		if (packet->protocol == IPPROTO_TCP)
 		{
-			if ((res = tcp_filter(packet, rule)) < 0)
+			if ((res = ipfi_tcp_filter(packet, rule)) < 0)
 				goto next_pass_rule;
 			else if (res > 0)
 				pass = 1;
@@ -692,33 +692,23 @@ int address_match(const ipfire_info_t * packet, const ipfire_rule * r)
 {
 	int match = 0;
 	int i, addr_in_list;
-	__u32 *p_source_address, source_address;
-	__u32 *p_dest_address, dest_address;
-	
-	p_source_address = (__u32*) kmalloc(sizeof(__u32), GFP_ATOMIC);
-	
-	if(!p_source_address)
-	{
-	  IPFI_PRINTK("IPFIRE: memory alloc failure in address_match().\n");
-	  return -1;
-	}
+	__u32 source_address, p_source_address;
+	__u32 dest_address, p_dest_address;
+
 	/* source address */
 	/* Set correct source and destination address: the one corresponding
 	* to the interface in packet if MYADDR was specified, the dotted
 	* decimal one if ADDR is specified in flags */
 	if (r->nflags.src_addr == MYADDR)
 	{
-		if (get_ifaddr_by_info(packet, p_source_address) < 0)
+		if (get_ifaddr_by_info(packet, &p_source_address) < 0)
 		{
-		    kfree(p_source_address);
 		    return -1;
 		}
-		source_address = *p_source_address; /* last use of p_source_address */
+		source_address = p_source_address;
 	} 
 	else
 		source_address = r->ip.ipsrc[0];
-	/* free no more used p_source_address pointer */
-	kfree(p_source_address);
 
 	/* initialize addr_in list */
 	addr_in_list = 0;
@@ -785,28 +775,16 @@ int address_match(const ipfire_info_t * packet, const ipfire_rule * r)
 	  }
 	}
 	/* destination address */
-	p_dest_address = (__u32*) kmalloc(sizeof(__u32), GFP_ATOMIC);
-	
-	if(!p_dest_address) /* allocation failed */
-	{
-	  IPFI_PRINTK("IPFIRE: memory alloc failure in address_match() - destination address -\n");
-	  return -1;
-	}
-	/* p_dest_address correctly allocated */
 	if (r->nflags.dst_addr == MYADDR)
 	{
-		if (get_ifaddr_by_info(packet, p_dest_address) < 0)
+		if (get_ifaddr_by_info(packet, &p_dest_address) < 0)
 		{
-		  kfree(p_dest_address);
 		  return -1;
 		}
-		dest_address = *p_dest_address; /* last use of p_dest_address */
+		dest_address = p_dest_address;
 	} 
 	else
 		dest_address = r->ip.ipdst[0];
-	
-	/* free dest address pointer now */
-	kfree(p_dest_address); /* free dest address pointer */
 
 	if ((r->nflags.dst_addr > 0) && (r->parmean.damean == SINGLE))
 	{
@@ -1060,7 +1038,7 @@ int ip_layer_filter(const ipfire_info_t * packet, const ipfire_rule * r)
 	return match;
 }
 
-int tcp_filter(const ipfire_info_t * tcp_pack, const ipfire_rule * r)
+int ipfi_tcp_filter(const ipfire_info_t * tcp_pack, const ipfire_rule * r)
 {
 	int match = 0;
 	/* check tcp specific fields */
@@ -1210,10 +1188,8 @@ void fill_timer_table_fields(struct state_table *state_t)
 	long int expi;
 	expi = get_timeout_by_state(state_t->protocol, state_t->state.state);
 
-	init_timer(&state_t->timer_statelist);
+	timer_setup(&state_t->timer_statelist, handle_keep_state_timeout, 0);
 	state_t->timer_statelist.expires = jiffies + expi * HZ;
-	state_t->timer_statelist.data = (unsigned long) state_t;
-	state_t->timer_statelist.function = handle_keep_state_timeout;
 }
 
 #ifdef ENABLE_RULENAME
@@ -1221,7 +1197,7 @@ void fill_timer_table_fields(struct state_table *state_t)
 inline void fill_table_with_name(struct state_table *state_t,
 		const ipfire_info_t * packet)
 {
-	if (packet->rulename)
+	if (packet->rulename[0] != '\0')
 	{
 		strncpy(state_t->rulename, packet->rulename,
 				RULENAMELEN);
@@ -1419,9 +1395,9 @@ int add_state_table_to_list(struct state_table* newtable)
 /* This routine acquires the write lock before deleting an item
 * on the list of the state connections.
 */
-void handle_keep_state_timeout(unsigned long data)
+void handle_keep_state_timeout(struct timer_list *t)
 {
-	struct state_table *st_to_free = NULL;
+	struct state_table *st_to_free = from_timer(st_to_free, t, timer_statelist);
 
 	spin_lock_bh(&state_list_lock);
 
@@ -1431,7 +1407,6 @@ void handle_keep_state_timeout(unsigned long data)
 		spin_unlock_bh(&state_list_lock);
 		return;
 	}
-	st_to_free = (struct state_table *) data;
 
 	if(st_to_free == NULL)
 	{
@@ -1499,15 +1474,8 @@ int get_ifaddr_by_name(const char *ifname, __u32 * addr)
 	struct in_device *pin_device;
 	struct in_ifaddr* inet_ifaddr;
 
-	read_lock_bh(&dev_base_lock);
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,22)
-	pnet_device = dev_base;
-#elif LINUX_VERSION_CODE < KERNEL_VERSION(2,6,24)
-	pnet_device = first_net_device();
-#else
-	pnet_device = first_net_device(&init_net);
-#endif
-	while (pnet_device != NULL)
+	rcu_read_lock();
+	for_each_netdev_rcu(&init_net, pnet_device)
 	{
 		if ((netif_running(pnet_device))
 				&& (pnet_device->ip_ptr != NULL)
@@ -1523,18 +1491,13 @@ int get_ifaddr_by_name(const char *ifname, __u32 * addr)
 			}
 			/* ifa_local: ifa_address is the remote point in ppp */
 			*addr = (inet_ifaddr->ifa_local);
-			read_unlock_bh(&dev_base_lock);
+			rcu_read_unlock();
 			return 1;
 		}
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,22)
-		pnet_device = pnet_device->next;
-#else
-		pnet_device = next_net_device(pnet_device);
-#endif
 
 	}
 
-	read_unlock_bh(&dev_base_lock);
+	rcu_read_unlock();
 	return -1;		/* address not found! */
 }
 

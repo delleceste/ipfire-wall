@@ -8,6 +8,11 @@
 
 #define MAXLANGLINELEN 1024
 
+/* Global variable definitions */
+char **lang_strings;
+unsigned int nlines;
+char langline[MAXLANGLINELEN];
+
 /* Returns the greatest value between a and b */
 int greatest(int a, int b)
 {

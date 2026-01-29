@@ -14,10 +14,10 @@ ifneq ($(KERNELRELEASE),)
 
 #ENABLE_RULENAME:=1
 ifndef DISABLE_RULENAME
-EXTRA_CFLAGS+= -DENABLE_RULENAME=1 -Wall -O3
+ccflags-y += -DENABLE_RULENAME=1 -Wall -O3
 endif
 
-EXTRA_CFLAGS += -I$(PWD)/../include -I..
+ccflags-y += -I$(PWD)/../include -I..
 
 $(MODULE_NAME)-objs := \
 		ipfi_tcpmss.o \
@@ -43,11 +43,10 @@ PWD	:= $(shell pwd)
 
 all:
 # Prepariamo il file build.h con le informazioni su sistema e la data di compilazione
-	echo "" > includes/build.h
-	printf "/* Compilation system and compilation date.\n * Written by Makefile */\n#define _BUILD_DATE \"%s %s %s %s %s %s\"\n#define _BUILD_SYS \"%s %s %s\"\n\n" `date` `uname -sro`> includes/build.h
+	printf "/* Compilation system and compilation date.\n * Written by Makefile */\n#define _BUILD_DATE \"%s\"\n#define _BUILD_SYS \"%s\"\n\n" "`date`" "`uname -sro`" > includes/build.h
 
 
-	$(MAKE) -C $(KDIR) M=$(PWD) $(EXTRA_CFLAGS) -I.. -I$(PWD)/../include modules
+	$(MAKE) -C $(KDIR) M=$(PWD) modules
 
 clean:
 	echo "" > includes/build.h

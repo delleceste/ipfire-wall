@@ -924,7 +924,7 @@ int manage_deleting_rule(ipfire_rule * r)
 	
 }
 
-inline void print_help(void)
+void print_help(void)
 {
   FILE* fphelp = NULL;
   char homedir[PWD_FIELDS_LEN];
@@ -963,7 +963,7 @@ inline void print_help(void)
     }
 }
 
-inline void print_configuration_options(void)
+void print_configuration_options(void)
 {
   extern command opts;
   extern struct userspace_opts uops;
@@ -1437,7 +1437,7 @@ int print_rules(const ipfire_rule* v_rules, int numrules, const ipfire_rule_filt
 }
 
 
-inline void print_menu(short filter_enabled, short resolv_services)
+void print_menu(short filter_enabled, short resolv_services)
 {
   extern command opts;
   extern struct userspace_opts uops;
@@ -2690,7 +2690,7 @@ int send_command_to_listener(const char* com)
 /* invoked by listener when packet loss happens.
  * It disables verbose printing, re-enabling it
  * if 'v' key is pressed */
-inline void quiet_modality(int quiet)
+void quiet_modality(int quiet)
 {
   if(! quiet)
     {
@@ -2705,7 +2705,7 @@ inline void quiet_modality(int quiet)
 }
 
 /* enables quiet modality */
-inline void stop_printing(void)
+void stop_printing(void)
 {
   if(send_command_to_listener("quiet") < 0)
     PRED, printf(TR("stop_printing(): error sending command ") ), PNL;
@@ -3000,7 +3000,7 @@ void print_stats(struct netlink_stats* ns)
 
 /* asks user to press a key, then sends to listener
  * a command to enable printing */
-inline int prompt_return_to_menu(void)
+int prompt_return_to_menu(void)
 {
   extern struct cmdopts prog_ops;
   PNL, printf(TR("Press any key to return to main menu...")), PNL;

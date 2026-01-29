@@ -205,7 +205,7 @@ int filter_packet_to_print(const ipfire_info_t* p, const ipfire_rule_filter* f)
 
 
 /* deep copy of structure. We are not interested in alias */
-inline void copy_servent(struct ipfire_servent *dst, 
+void copy_servent(struct ipfire_servent *dst, 
 			const struct servent* src)
 {
 	dst->s_port = src->s_port;
@@ -254,7 +254,7 @@ struct ipfire_servent *alloc_and_fill_services_list(void)
  * as in etc/services in corresponding strings.
  * If no match is found, strings are empty ( "" )
  */
-inline int resolv_ports(const struct ipfire_servent* ipfise,
+int resolv_ports(const struct ipfire_servent* ipfise,
 	const unsigned short protocol, 
 	char* srcserv, char* dstserv,
 	__u16 sport, __u16 dport)

@@ -1,6 +1,8 @@
 #include <ipfire_structs.h>
 #include "includes/ipfire_userspace.h"
 #include "includes/languages.h"
+#include <arpa/inet.h>
+#include <ctype.h>
 
 /* functions treating parameters received by command line */
 void init_cmdopts(struct cmdopts* cmdo)

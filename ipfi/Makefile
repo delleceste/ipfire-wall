@@ -15,7 +15,7 @@ CFLAGS        = -pipe -O2  $(DEFINES)
 LIBCFLAGS     = $(CFLAGS) -fPIC
 INCPATH       = -Isrc/includes -I. -I. -Ig_getcharlib -I..
 LINK	      = gcc 
-LFLAGS        = -L. -lipfire_common 
+LFLAGS        =  
 LIBLFLAGS     = -shared  -Wl,-soname,libipfire_common.so
 LIBS          = 
 AR            = ar cqs
@@ -95,8 +95,8 @@ first: all
 
 all: message $(LIBTARGET) $(TARGET)
 
-$(TARGET):  $(OBJECTS)  
-	$(LINK) $(LFLAGS) -o $(TARGET) $(OBJECTS) $(OBJCOMP) $(LIBS)
+$(TARGET):  $(LIBTARGET) $(OBJECTS)  
+	$(LINK) $(LFLAGS) -o $(TARGET) $(OBJECTS) $(OBJCOMP) -L. -lipfire_common $(LIBS)
 
 commonlib: message $(LIBTARGET)
 
@@ -113,9 +113,9 @@ clean:
 	 $(DEL_FILE) $(LIBTARGET)
 
 message:
-	@echo Writing build information on src/includes/build.h ...
-	echo "" > src/includes/build.h
-	printf "/* Compilation system and compilation date.\n * Written by Makefile (userspace) */\n#define _BUILD_DATE \"%s %s %s %s %s %s\"\n#define _BUILD_SYS \"%s %s %s\"\n\n" `date`  `uname -sro` > src/includes/build.h
+	@echo "Writing build information on src/includes/build.h ..."
+	@mkdir -p obj
+	@printf "/* Compilation system and compilation date.\n * Written by Makefile (userspace) */\n#define _BUILD_DATE \"%s\"\n#define _BUILD_SYS \"%s\"\n\n" "`date`" "`uname -sro`" > src/includes/build.h
 	@echo
 
 

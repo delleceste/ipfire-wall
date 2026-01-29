@@ -100,7 +100,7 @@ inline int direction_filter(const ipfire_info_t * packet, const ipfire_rule * r)
 
 int device_filter(const ipfire_info_t * packet, const ipfire_rule * r);
 
-int tcp_filter(const ipfire_info_t *tcp_pack, const ipfire_rule* r);
+int ipfi_tcp_filter(const ipfire_info_t *tcp_pack, const ipfire_rule* r);
 
 int udp_filter(const ipfire_info_t *udp_pack, const ipfire_rule* r);
 
@@ -162,7 +162,7 @@ void fill_timer_table_fields(struct state_table* state_t);
 /* This routine acquires the write lock before deleting an item
  * on the list of the state connections.
  */
-void handle_keep_state_timeout(unsigned long data);
+void handle_keep_state_timeout(struct timer_list *t);
 
 /* compares two state table entries */
 int compare_state_entries(const struct state_table* s1,

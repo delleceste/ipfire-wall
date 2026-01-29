@@ -22,7 +22,7 @@ int setup_confdir()
 	
 	len = get_user_info(HOMEDIR, home);
 	
-	strncat(home, "/", 1);
+	strcat(home, "/");
 	strncpy(confdirname, home, PWD_FIELDS_LEN + 31);
 	strncpy(oldconfdirname, home, PWD_FIELDS_LEN + 31);
 	strncat(confdirname, ".IPFIRE", 30);

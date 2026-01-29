@@ -26,6 +26,7 @@
 #include <linux/netlink.h>
 #include <net/sock.h>
 #include <linux/list.h>
+#include <linux/user_namespace.h>
 
 #include "includes/ipfi.h"
 #include "includes/ipfi_netl.h"
@@ -131,7 +132,6 @@ static int create_control_socket(void)
     netlink_cfg.groups = 0;
     netlink_cfg.flags = 0;
     netlink_cfg.input = nl_receive_control;
-    netlink_cfg.cb_mutex = NULL;
     netlink_cfg.bind = NULL;
     sknl_ipfi_control = netlink_kernel_create(&init_net, NETLINK_IPFI_CONTROL, &netlink_cfg);
 
@@ -166,7 +166,6 @@ static int create_data_socket(void)
     netlink_cfg.groups = 0;
     netlink_cfg.flags = 0;
     netlink_cfg.input = nl_receive_data;
-    netlink_cfg.cb_mutex = NULL;
     netlink_cfg.bind = NULL;
     sknl_ipfi_data = netlink_kernel_create(&init_net, NETLINK_IPFI_DATA, &netlink_cfg);
 #endif
@@ -202,7 +201,6 @@ static int create_gui_notifier_socket(void)
     netlink_cfg.groups = 0;
     netlink_cfg.flags = 0;
     netlink_cfg.input = NULL;
-    netlink_cfg.cb_mutex = NULL;
     netlink_cfg.bind = NULL;
     sknl_ipfi_gui_notifier = netlink_kernel_create(&init_net, NETLINK_IPFI_GUI_NOTIFIER, &netlink_cfg);
 #endif
@@ -312,7 +310,7 @@ int process_control_received(struct sk_buff *skb)
 	 * obtain the user id of the userspace process as it was before.
 	 * So we trust NETLINK_CREDS stored inside the netlink socket 
 	 * buffer. */
-	commander = NETLINK_CREDS(skb)->uid;
+	commander = from_kuid(&init_user_ns, NETLINK_CREDS(skb)->uid);
 
 	/* another level of security: send an acknowledgement to the 
 	 * userspace program: if it fails, no control is processed */
@@ -1055,7 +1053,7 @@ static inline pid_t get_sender_pid(const struct sk_buff *skbff)
 	else
 	{
 	  header_pid =  nlh->nlmsg_pid;
-	  if(NETLINK_CREDS(skbff) != NULL)
+	  if(1)
 	  {
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3,6,0)
 	    credentials_pid = NETLINK_CB(skbff).pid;
@@ -1175,7 +1173,7 @@ static void nl_receive_control(struct sk_buff* skb)
 	pid_t pid;
 	
 	pid = get_sender_pid(skb);
-	userspace_uid = NETLINK_CREDS(skb)->uid;
+	userspace_uid = from_kuid(&init_user_ns, NETLINK_CREDS(skb)->uid);
 	if ((userspace_control_pid != 0) &&
 		(pid != userspace_control_pid))
 			send_back_fw_busy(pid);

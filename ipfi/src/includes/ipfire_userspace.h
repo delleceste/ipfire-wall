@@ -1,15 +1,12 @@
 #ifndef IPFIRE_USERSPACE_H
 #define IPFIRE_USERSPACE_H
 
-/* linux/netlink.h creates problems. Copied and patched from kernel includes */
-//#include "kincludes/netlink.h"
-//#include <arpa/inet.h>
+#include <netdb.h>
+#include <arpa/inet.h>
 #include "ipfire_structs.h"
-#include <linux/in.h>		/* for "__kernel_caddr_t" et al	*/
 #include <sys/socket.h> /* for sa_family_t */
 #include <sys/types.h>
 #include <linux/netlink.h>
-// #include "list.h"
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,7 +17,6 @@
 #include <pwd.h>
 #include <ctype.h> /* isdigit.. */
 #include <signal.h>
-#include <pwd.h>
 #include <time.h>
 /* for open */
 #include <sys/stat.h>
@@ -32,30 +28,6 @@
 #include "libnetl.h"
 #include "colors.h"
 
-/* Declaration of network functions. #include gives conflicts */
-int inet_pton(int af, const char *src, void *dst);
-
-const char *inet_ntop(int af, const void *src,
-                           char *dst, socklen_t cnt);
-
-// u16 htons(u16 hostshort);
-// u32 ntohl(u32 netlong);
-// u16 ntohs(u16 netshort);
-// u32 htonl(u32 hostlong);
-
-struct servent {
-              char    *s_name;        /* official service name */
-              char    **s_aliases;    /* alias list */
-              int     s_port;         /* port number */
-              char    *s_proto;       /* protocol to use */
-};
-
-
-char *inet_ntoa(struct in_addr in);
-	
-/* .. and isblank(), which should be in ctype.h .. */
-// int isblank(int c);
-	
 /* IPFIRE USERSPACE FUNCTIONS */
 
 
@@ -254,7 +226,7 @@ int get_line(char * dest);
 
 /* asks user to press a key, then sends to listener
  * a command to enable printing */
-inline int prompt_return_to_menu(void);
+int prompt_return_to_menu(void);
 
 /* get a new rule from stdin */
 int get_new_rule(ipfire_rule* r);
@@ -343,7 +315,7 @@ int check_port(int p);
  * as in etc/services in corresponding strings.
  * If no match is found, strings are empty ( "" )
  */
-inline int resolv_ports(const struct ipfire_servent* ipfise,
+int resolv_ports(const struct ipfire_servent* ipfise,
 									const unsigned short protocol, 
 									char* srcserv, char* dstserv,
 									__u16 sport, __u16 dport);
@@ -387,7 +359,7 @@ int get_nat_parameters(ipfire_rule* r, int nat_kind);
 int interaction(const struct netl_handle* nh_control);
 	
 /* functions for stopping and resuming printing */
-inline void stop_printing(void);
+void stop_printing(void);
 
 /* function sends flush request. Requires flush command 
  * to be specified, since it allows flushing all rules 
@@ -414,15 +386,15 @@ int closelog(void);
 
 /* this function checks if log is enabled 
  * and calls do_log if yes */
-inline int flog(const char* line);
+int flog(const char* line);
 /* this one writes */
-inline int do_log(const char* line);
+int do_log(const char* line);
 
 /* given a log code, prints it separating each
  * entry with a '|' character. Used for printing
  * a packet received by kernelspace. Codes 
  * are stored in "log_codes.h" */
-inline int flogpack(int code);
+int flogpack(int code);
 
 /* logs startup */
 int log_initialization(const struct tm *tm, const char* user);
@@ -474,7 +446,7 @@ int log_packet(const ipfire_info_t *pack, int loglevel);
 struct ipfire_servent *alloc_and_fill_services_list(void);
 	
 /* deep copy of structure. We are not interested in alias */
-inline void copy_servent(struct ipfire_servent *dst, 
+void copy_servent(struct ipfire_servent *dst, 
 			const struct servent* src);
 
 /* given a pointer to mallocated ipfire_servent structure, 
@@ -515,5 +487,6 @@ int seconds_to_dhms(unsigned seconds, unsigned* d, unsigned short *h,
 int setup_confdir(); /* common.c */
 
 int install_default_dir(const char *confdirname);
+int install_default_admin_rules(const char *confdirname);
 
 #endif

@@ -95,7 +95,7 @@ unsigned long long int fwd_counter = 0;
 unsigned long long int pre_counter = 0;
 unsigned long long int post_counter = 0;
 
-time_t module_load_time;
+time64_t module_load_time;
 
 /* bad checksum counter for packets received */
 unsigned badcsum_cnt_rcv = 0;
@@ -121,7 +121,7 @@ struct nf_hook_ops nfh_pre, nfh_in, nfh_out, nfh_fwd, nfh_post, nfh_defrag_pre, 
 
 int welcome(void)
 {
-	struct timeval tv_load_time;
+	struct timespec64 tv_load_time;
 	IPFI_PRINTK("        IPFIRE-WALL MODULE INITIALIZED - ");
 	IPFI_PRINTK(KERNEL_MODULE_VERSION);
 	IPFI_PRINTK("\n        Built on %s, %s", BUILD_DATE, BUILD_SYS);
@@ -129,7 +129,7 @@ int welcome(void)
 // 	IPFI_PRINTK("sizeof command: %d, sizeof ipfire_rule: %d\n",
 // 	       sizeof(command), sizeof(ipfire_rule));
 	/* set loading time into kernel stats struct */
-	do_gettimeofday(&tv_load_time);
+	ktime_get_real_ts64(&tv_load_time);
 	module_load_time = tv_load_time.tv_sec;
 	/* Set default policy and write it in kernel stats */
 	set_policy(policy);
@@ -187,13 +187,14 @@ static void __exit fini(void)
 	synchronize_net(); 
 
 	/* Stop receiving anything from the network */
-	nf_unregister_hook(&nfh_pre);
-	nf_unregister_hook(&nfh_in);
-	nf_unregister_hook(&nfh_out);
-	nf_unregister_hook(&nfh_post);
-	nf_unregister_hook(&nfh_fwd);
-    nf_unregister_hook(&nfh_defrag_out);
-    nf_unregister_hook(&nfh_defrag_pre);
+	/* Stop receiving anything from the network */
+	nf_unregister_net_hook(&init_net, &nfh_pre);
+	nf_unregister_net_hook(&init_net, &nfh_in);
+	nf_unregister_net_hook(&init_net, &nfh_out);
+	nf_unregister_net_hook(&init_net, &nfh_post);
+	nf_unregister_net_hook(&init_net, &nfh_fwd);
+    nf_unregister_net_hook(&init_net, &nfh_defrag_out);
+    nf_unregister_net_hook(&init_net, &nfh_defrag_pre);
 
 	/* will call might_sleep() and rcu_barrier() */
 	fini_machine();  
@@ -245,68 +246,65 @@ int register_hooks(void)
     /* defrag */
     nfh_defrag_pre.pf     = PF_INET;
     nfh_defrag_pre.hook       = ipfi_defrag;
-    nfh_defrag_pre.owner      = THIS_MODULE;
     nfh_defrag_pre.hooknum    = NF_INET_PRE_ROUTING;
     nfh_defrag_pre.priority   = NF_IP_PRI_CONNTRACK_DEFRAG;
-    nf_register_hook(&nfh_defrag_pre);
+    nf_register_net_hook(&init_net, &nfh_defrag_pre);
     
 	nfh_pre.pf = PF_INET;
 	nfh_pre.hooknum = NF_IP_PRE_ROUTING;
 	/* make our function last (packets will arrive defragmented..) */
 	nfh_pre.priority = NF_IP_PRI_NAT_DST;	
 	nfh_pre.hook = deliver_process_by_direction;
-	nf_register_hook(&nfh_pre);
+	nf_register_net_hook(&init_net, &nfh_pre);
 	
 	/* input */
 	nfh_in.pf = PF_INET;
 	nfh_in.hooknum = NF_IP_LOCAL_IN;
 	nfh_in.priority = NF_IP_PRI_FILTER;
 	nfh_in.hook = deliver_process_by_direction;
-	nf_register_hook(&nfh_in);
+	nf_register_net_hook(&init_net, &nfh_in);
 	
 	/* forward */
 	nfh_fwd.pf = PF_INET;
 	nfh_fwd.hooknum = NF_IP_FORWARD;
 	nfh_fwd.priority = NF_IP_PRI_FILTER;	/* make our function first */
 	nfh_fwd.hook = deliver_process_by_direction;
-	nf_register_hook(&nfh_fwd);
+	nf_register_net_hook(&init_net, &nfh_fwd);
 	
 	/* output */
 	nfh_out.pf = PF_INET;
 	nfh_out.hooknum = NF_IP_LOCAL_OUT;
 	nfh_out.priority = NF_IP_PRI_FILTER;	/* make our function first */
 	nfh_out.hook = deliver_process_by_direction;
-	nf_register_hook(&nfh_out);
+	nf_register_net_hook(&init_net, &nfh_out);
     
     /* defrag */
     nfh_defrag_out.pf     = PF_INET;
     nfh_defrag_out.hook       = ipfi_defrag;
-    nfh_defrag_out.owner      = THIS_MODULE;
     nfh_defrag_out.hooknum    = NF_INET_LOCAL_OUT;
     nfh_defrag_out.priority   = NF_IP_PRI_CONNTRACK_DEFRAG;
-    nf_register_hook(&nfh_defrag_out);
+    nf_register_net_hook(&init_net, &nfh_defrag_out);
     
 	/* post routing */
 	nfh_post.pf = PF_INET;
 	nfh_post.hooknum = NF_IP_POST_ROUTING;
 	nfh_post.priority = NF_IP_PRI_NAT_SRC;	/* make our function first */
 	nfh_post.hook = deliver_process_by_direction;
-	nf_register_hook(&nfh_post);
+	nf_register_net_hook(&init_net, &nfh_post);
     
 	return 0;
 }
 
-unsigned int deliver_process_by_direction(unsigned int hooknum,
-		struct sk_buff *skbuff,
-	  	const struct net_device *in,
-   		const struct net_device *out,
-		int (*okfn) (struct sk_buff *))
+unsigned int deliver_process_by_direction(void *priv,
+		struct sk_buff *skb,
+		const struct nf_hook_state *state)
 {	
-	struct sk_buff *skb;
+	unsigned int hooknum = state->hook;
+	const struct net_device *in = state->in;
+	const struct net_device *out = state->out;
 	unsigned int ret;
 	__be32 daddr;
-	skb = skbuff;
-
+	
 	/* raw socket . */
 	if (skb->len < sizeof(struct iphdr) ||
 	    ip_hdrlen(skb) < sizeof(struct iphdr))

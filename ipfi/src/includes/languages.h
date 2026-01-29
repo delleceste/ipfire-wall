@@ -12,9 +12,9 @@
  * here if we are building QT interface 
  */
 #ifndef QT_CORE_LIB
-char **lang_strings;
-unsigned int nlines;
-char langline[MAXLANGLINELEN];
+extern char **lang_strings;
+extern unsigned int nlines;
+extern char langline[MAXLANGLINELEN];
 #endif
 
 /* Returns the greatest value between a and b */

@@ -26,6 +26,7 @@
 #include "includes/semafori.h"
 #include "includes/mailer.h"
 #include "includes/languages.h"
+#include "includes/proc.h"
 
 void signal_handler(int signum);
 void sig1_handler(int signum);

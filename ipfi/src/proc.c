@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
+#include <unistd.h>
 
 /* returns -1 if fails, the value read on success */
 int read_rmem_default()

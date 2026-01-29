@@ -1253,7 +1253,7 @@ int closelog()
   return 1;
 }
 
-inline int flog(const char* line)
+int flog(const char* line)
 {
   extern FILE* fplog;
   extern struct userspace_opts uops;
@@ -1263,7 +1263,7 @@ inline int flog(const char* line)
     return -1;
 }
 
-inline int do_log(const char* line)
+int do_log(const char* line)
 {
   extern FILE* fplog;
   /* fprintf returns the number of characters written,
@@ -1275,7 +1275,7 @@ inline int do_log(const char* line)
  * entry with a '|' character. Used for printing
  * a packet received by kernelspace. Codes 
  * are stored in "log_codes.h" */
-inline int flogpack(int code)
+int flogpack(int code)
 {
   char string[LOGLINELEN];
   snprintf(string, LOGLINELEN, "|%d", code);

@@ -134,21 +134,9 @@ struct ipfire_options {
 int register_hooks(void);
 
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,24)
-unsigned int
-deliver_process_by_direction(unsigned int hooknum,
-			     struct sk_buff **skb,
-			     const struct net_device *in,
-			     const struct net_device *out,
-			     int (*okfn) (struct sk_buff *));
-#else
-unsigned int
-deliver_process_by_direction(unsigned int hooknum,
-	struct sk_buff *skb,
-	  const struct net_device *in,
-   	const struct net_device *out,
-   	int (*okfn) (struct sk_buff *));
-#endif		
+unsigned int deliver_process_by_direction(void *priv,
+		struct sk_buff *skb,
+		const struct nf_hook_state *state);
 
 /* ipfire functions */
 

@@ -273,8 +273,11 @@ int manip_skb(struct sk_buff *skb, __u32 saddr, __u16 sport,
 	__u32 oldaddr = 0, newaddr = 0;
 	__u16 oldport = 0, newport = 0;
 	bool check_csum = mi.direction < IPFI_OUTPUT ? true : false;
-	ipheader = (struct iphdr *)(skb->data + iphdroff);
-	l4hdroff = iphdroff + ipheader->ihl * 4;
+	ipheader = ip_hdr(skb);
+	if (ipheader == NULL)
+		return network_header_null("manip_skb()", "IP header NULL!");
+
+	l4hdroff = ipheader->ihl * 4;
 
 	if (skb == NULL)
 		return network_header_null("manip_skb()", "socket buffer NULL!");
@@ -304,7 +307,7 @@ int manip_skb(struct sk_buff *skb, __u32 saddr, __u16 sport,
 	else
 	  writable_len = l4hdroff;
 	
-	if(!skb_make_writable(skb, writable_len))
+	if(skb_ensure_writable(skb, writable_len))
 	  return -1;
 	/* reload the pointer to ip header */
 	ipheader = (void *)skb->data + iphdroff;
@@ -506,9 +509,9 @@ inline void update_snat_timer(struct snatted_table *snt)
 }
 
 /* Timeout handler for dnat entries. */
-void handle_dnatted_entry_timeout(unsigned long data)
+void handle_dnatted_entry_timeout(struct timer_list *t)
 {
-	struct dnatted_table *dnt_to_free = (struct dnatted_table *) data;
+	struct dnatted_table *dnt_to_free = from_timer(dnt_to_free, t, timer_dnattedlist);
 	/* acquire lock before freeing rule (dnat table lock) */
 	spin_lock(&dnat_list_lock);
 	del_timer(&dnt_to_free->timer_dnattedlist);
@@ -527,11 +530,9 @@ void fill_timer_dnat_entry(struct dnatted_table *dnt)
 {
 	unsigned timeo;
 	timeo = get_timeout_by_state(dnt->protocol, dnt->state);
-	init_timer(&dnt->timer_dnattedlist);
+	timer_setup(&dnt->timer_dnattedlist, handle_dnatted_entry_timeout, 0);
 
 	dnt->timer_dnattedlist.expires= jiffies + HZ * timeo;
-	dnt->timer_dnattedlist.data = (unsigned long) dnt;
-	dnt->timer_dnattedlist.function = handle_dnatted_entry_timeout;
 }
 
 int de_dnat(struct sk_buff *skb, const struct dnatted_table *dnatt)
@@ -1416,9 +1417,9 @@ void free_snat_entry_rcu_call(struct rcu_head *head)
 }
 
 
-void handle_snatted_entry_timeout(unsigned long data)
+void handle_snatted_entry_timeout(struct timer_list *t)
 {
-	struct snatted_table *snt_to_free = (struct snatted_table *) data;
+	struct snatted_table *snt_to_free = from_timer(snt_to_free, t, timer_snattedlist);
 	//      IPFI_PRINTK("IPFIRE: timer expired for dnatted entry %d...", snt_to_free->position);
 	/* Acquire lock on source nat table */
 	spin_lock_bh(&snat_list_lock);
@@ -1434,10 +1435,8 @@ void fill_timer_snat_entry(struct snatted_table *snt)
 {
 	unsigned timeo;
 	timeo = get_timeout_by_state(snt->protocol, snt->state);
-	init_timer(&snt->timer_snattedlist);
+	timer_setup(&snt->timer_snattedlist, handle_snatted_entry_timeout, 0);
 	snt->timer_snattedlist.expires = jiffies + HZ * timeo;
-	snt->timer_snattedlist.data = (unsigned long) snt;
-	snt->timer_snattedlist.function = handle_snatted_entry_timeout;
 }
 
 #ifdef ENABLE_RULENAME
@@ -1521,12 +1520,26 @@ int add_snatted_entry(ipfire_info_t * original_pack,
 __u32 get_ifaddr(const struct sk_buff * skb)
 {
 	__u32 newsaddr;
+	__be32 dst = 0;
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,31)
 	struct rtable *rt = (struct rtable *) (skb)->dst;
 #else
 	struct rtable *rt = skb_rtable(skb); /* include/linux/skbuff.h since 2.6.31 */
 #endif
-	newsaddr = inet_select_addr(skb->dev, rt->rt_gateway, RT_SCOPE_UNIVERSE);
+	struct net_device *dev = skb->dev;
+
+	if (dev == NULL) {
+		IPFI_PRINTK("IPFIRE: get_ifaddr(): skb->dev is NULL!\n");
+		return 0;
+	}
+
+	if (rt) {
+		const struct iphdr *iph = ip_hdr(skb);
+		if (iph)
+			dst = iph->daddr;
+	}
+
+	newsaddr = inet_select_addr(dev, dst, RT_SCOPE_UNIVERSE);
 	return newsaddr;
 }
 

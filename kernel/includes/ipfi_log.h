@@ -60,7 +60,7 @@ int smart_log(const ipfire_info_t* info);
 inline int add_packet_to_infolist(const ipfire_info_t* info);
 
 
-void handle_loginfo_entry_timeout(unsigned long data);
+void handle_loginfo_entry_timeout(struct timer_list *t);
 
 void free_entry_rcu_call(struct rcu_head *head);
 

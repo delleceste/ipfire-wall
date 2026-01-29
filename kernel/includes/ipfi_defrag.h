@@ -3,10 +3,8 @@
 
 int ipfi_gather_frags(struct sk_buff *skb, u_int32_t user);
 
-unsigned int ipfi_defrag(unsigned int hooknum,
+unsigned int ipfi_defrag(void *priv,
                       struct sk_buff *skb,
-                      const struct net_device *in,
-                      const struct net_device *out,
-                      int (*okfn)(struct sk_buff *));
+                      const struct nf_hook_state *state);
 
 #endif

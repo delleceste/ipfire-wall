@@ -26,14 +26,14 @@
 #include "includes/ipfi_machine.h"
 #include "includes/ipfi_ftp.h"
 
-#define FTPBUF 65536
+#define FTPBUF 256
 #define CLEANEDBUF 128
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Giacomo S. <jacum@libero.it>");
 MODULE_DESCRIPTION("Passive FTP support module");
 
-char ftp_buffer[FTPBUF];
+/* Removed thread-unsafe global: char ftp_buffer[FTPBUF]; */
 
 /* returns 1 if a new entry is added, 0 if the skb data do not
  * contain ftp 227 information about ip and port, 
@@ -48,22 +48,23 @@ struct state_table* ftp_support(struct state_table* tentry,
 		const struct sk_buff* skb, 
 		ipfire_info_t* packet_info)
 {	
-	return packet_contains_ftp_params(skb, tentry);
+	char ftp_buffer[FTPBUF];
+	return packet_contains_ftp_params(skb, tentry, ftp_buffer);
 }
 
 /* if skb data contain ftp address and port, allocate and return the new entry
  * to be added to the dynamic tables list */
 struct state_table* packet_contains_ftp_params(const struct sk_buff* skb,
-		const struct state_table* orig_entry)
+		const struct state_table* orig_entry, char *ftp_buffer)
 {
 	struct state_table* newt = NULL;
-	if(data_start_with_227(skb) > 0)
-		newt = get_params_and_alloc_newentry(orig_entry);
+	if(data_start_with_227(skb, ftp_buffer) > 0)
+		newt = get_params_and_alloc_newentry(orig_entry, ftp_buffer);
 	return newt;		
 }
 
 /* just inspect if skb contains 227 command  ("Entering passive mode") */
-int data_start_with_227(const struct sk_buff* skb)
+int data_start_with_227(const struct sk_buff* skb, char *ftp_buffer)
 {
 	unsigned int dataoff, datalen;
 	char* data_ptr;
@@ -71,14 +72,11 @@ int data_start_with_227(const struct sk_buff* skb)
 	struct iphdr* iph;
 	struct tcphdr _tcph;
 	
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,22)
-	iph = skb->nh.iph;
-#else
 	iph = ip_hdr(skb);
-#endif
 	if(iph == NULL)
 		return network_header_null("data_start_with_227() (ipfi_ftp.c)",
 				"IP header NULL");
+
 	/* a packet arrives here if protocol is TCP, see check_state() */
 	th = skb_header_pointer(skb, iph->ihl*4, sizeof(_tcph), &_tcph);
 
@@ -90,20 +88,26 @@ int data_start_with_227(const struct sk_buff* skb)
 	if (dataoff >= skb->len) 
 		return -1;
 	datalen = skb->len - dataoff;
+
+	if (datalen > FTPBUF - 1)
+		datalen = FTPBUF - 1;
+
 	data_ptr = skb_header_pointer(skb, dataoff,
-			skb->len - dataoff, ftp_buffer);
+			datalen, ftp_buffer);
 
 	if(data_ptr == NULL)
 	{
-		printk("IPFIRE: fb_ptr NULL! (ipfi_ftp.c)\n");
+		IPFI_PRINTK("IPFIRE: fb_ptr NULL! (ipfi_ftp.c)\n");
 		return -1;
 	}
 
-	memcpy(ftp_buffer, data_ptr, datalen);
-	if(datalen < FTPBUF)
-		ftp_buffer[datalen] = '\0';
+	if (data_ptr != ftp_buffer)
+		memcpy(ftp_buffer, data_ptr, datalen);
+
+	ftp_buffer[datalen] = '\0';
+
 	/* 227 ( ) A,B,C,D,p,q -> minimal string representing a 227 command*/
-	else if(datalen < 16) 
+	if(datalen < 16) 
 		return 0;
 
 	if(strncmp(ftp_buffer, "227", 3) == 0)
@@ -116,14 +120,14 @@ int data_start_with_227(const struct sk_buff* skb)
  * _Remember_ to initialize a new timer and to add the rule at the tail
  * of the list in the calling function. */
 	struct state_table* 
-get_params_and_alloc_newentry(const struct state_table* orig)
+get_params_and_alloc_newentry(const struct state_table* orig, char *ftp_buffer)
 {
 	ftp_info ftpi;
 	struct state_table *newt = NULL;
 #ifdef ENABLE_RULENAME
 	char rname[RULENAMELEN];
 #endif
-	ftpi = get_ftpaddr_and_port();
+	ftpi = get_ftpaddr_and_port(ftp_buffer);
 
 	if(ftpi.valid)
 	{
@@ -131,7 +135,7 @@ get_params_and_alloc_newentry(const struct state_table* orig)
 			kmalloc(sizeof(struct state_table), GFP_ATOMIC);
 		if(!newt)
 		{
-		  printk("failed to allocate space for the ftp state table!\n");
+		  IPFI_PRINTK("failed to allocate space for the ftp state table!\n");
 		  return NULL;
 		}
 		/* to start, copy old table into new one */
@@ -180,13 +184,13 @@ inline int check_buf(const char* ftpcmd)
 }
 
 /* takes ftp string and fills in integers representing ip and port */
-int clean_ftp_command(char* cleaned)
+int clean_ftp_command(char* cleaned, char *ftp_buffer)
 {
 	unsigned i = 0, j = 0;
 
 	if(check_buf(ftp_buffer) < 0)
 	{
-		printk("IPFIRE: bad format for 227 ftp command: \"%s\"\n", ftp_buffer);
+		IPFI_PRINTK("IPFIRE: bad format for 227 ftp command: \"%s\"\n", ftp_buffer);
 		return -1;
 	}
 
@@ -210,7 +214,7 @@ int clean_ftp_command(char* cleaned)
  * set to 1 if it is valid, 0 if something failed. The caller must
  * check against the valid flag.
  */
-ftp_info get_ftpaddr_and_port() 
+ftp_info get_ftpaddr_and_port(char *ftp_buffer) 
 {
 	ftp_info ftpi, invalid_ftpinfo;
 	char cleaned[CLEANEDBUF];
@@ -223,9 +227,9 @@ ftp_info get_ftpaddr_and_port()
 	/* validate the ftp_info aimed at containing a valid result */
 	ftpi.valid = 1; 
 	
-	if(clean_ftp_command(cleaned) < 0)
+	if(clean_ftp_command(cleaned, ftp_buffer) < 0)
 	{
-		printk("IPFIRE: error cleaning ftp buffer!\n");
+		IPFI_PRINTK("IPFIRE: error cleaning ftp buffer!\n");
 		return invalid_ftpinfo;
 	}
 

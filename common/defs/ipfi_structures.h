@@ -9,6 +9,8 @@
 #include <linux/udp.h>
 #include <linux/ip.h>
 #include <linux/icmp.h>
+#include <linux/time64.h>
+#include <linux/types.h>
 #include <linux/igmp.h>
 #include <linux/netlink.h>
 #else
@@ -584,7 +586,12 @@ struct kernel_stats
 	unsigned long long int bad_checksum_out;
 	
 	/* Time when module was loaded */
+	/* Time when module was loaded */
+#ifdef __KERNEL__
+	time64_t kmod_load_time;
+#else
 	time_t kmod_load_time;
+#endif
 	/* Default policy applied when packets do not meet any rule */
 	short int policy;
 };

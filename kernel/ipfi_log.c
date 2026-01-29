@@ -40,9 +40,9 @@ void free_entry_rcu_call(struct rcu_head *head)
     kfree(ipfl);
 }
 
-void handle_loginfo_entry_timeout(unsigned long data)
+void handle_loginfo_entry_timeout(struct timer_list *t)
 {
-	struct ipfire_loginfo *ipfilog = (struct ipfire_loginfo *) data;
+	struct ipfire_loginfo *ipfilog = from_timer(ipfilog, t, timer_loginfo);
 	/* lock list before deleting an entry */
 	spin_lock_bh(&loginfo_list_lock);
 	del_timer(&ipfilog->timer_loginfo);
@@ -73,10 +73,8 @@ inline void update_loginfo_timer(struct ipfire_loginfo *iplo)
 
 inline void fill_timer_loginfo_entry(struct ipfire_loginfo *ipfilog)
 {
-	init_timer(&ipfilog->timer_loginfo);
+	timer_setup(&ipfilog->timer_loginfo, handle_loginfo_entry_timeout, 0);
 	ipfilog->timer_loginfo.expires = jiffies + HZ * loginfo_lifetime;
-	ipfilog->timer_loginfo.data = (unsigned long) ipfilog;
-	ipfilog->timer_loginfo.function = handle_loginfo_entry_timeout;
 }
 
 /* copies a packet to info field of ipfire_loginfo, then initializes

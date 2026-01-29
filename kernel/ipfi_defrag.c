@@ -20,7 +20,7 @@ int ipfi_gather_frags(struct sk_buff *skb, u_int32_t user)
 
     local_bh_disable();
     /* Process an incoming IP datagram fragment. - net/ipv4/ip_fragment.c */
-    err = ip_defrag(skb, user);
+    err = ip_defrag(&init_net, skb, user);
     local_bh_enable();
 
     if (!err)
@@ -29,12 +29,11 @@ int ipfi_gather_frags(struct sk_buff *skb, u_int32_t user)
     return err;
 }
 
-unsigned int ipfi_defrag(unsigned int hooknum,
+unsigned int ipfi_defrag(void *priv,
                       struct sk_buff *skb,
-                      const struct net_device *in,
-                      const struct net_device *out,
-                      int (*okfn)(struct sk_buff *))
+                      const struct nf_hook_state *state)
 {
+    unsigned int hooknum = state->hook;
     /* Gather fragments. */
     /* Fragment Offset: 13-bits  used to identify where each of the fragments belong at the time of reassembly.
      * IP_MF = 0x2000, IP_OFFSET = 0x1FFF -> ored make 13 bits.

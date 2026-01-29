@@ -40,25 +40,17 @@ int optlen(const u_int8_t *opt, unsigned int offset)
 u_int32_t get_net_mtu(__u32 address)
 {
   /* generic internet flow structure */
-	struct flowi fl;
-	const struct nf_afinfo *ai;
-	struct rtable *rt = NULL;
+	struct rtable *rt;
 	u_int32_t mtu     = ~0U;
-	int err;
 	/* ipv4 only */
-	struct flowi4 *fl4 = &fl.u.ip4;
-	memset(fl4, 0, sizeof(*fl4));
-	fl4->daddr = address;
+	struct flowi4 fl4 = {
+        .daddr = address,
+    };
 	
-	rcu_read_lock();
-	ai = nf_get_afinfo(PF_INET); /* ip v4 only */
-	if (ai != NULL)
-		ai->route(&init_net, (struct dst_entry **)&rt, &fl, false);
-	rcu_read_unlock();
-
-	if (rt != NULL) {
+	rt = ip_route_output_key(&init_net, &fl4);
+	if (!IS_ERR(rt)) {
 		mtu = dst_mtu(&rt->dst);
-		dst_release(&rt->dst);
+		ip_rt_put(rt);
 	}
 	return mtu;
 }
@@ -99,9 +91,9 @@ int __tcpmss_mangle_packet(struct sk_buff *skb, short unsigned int tcpmss_option
 	u8 *opt;
 	mtu_minlen = sizeof(struct iphdr) + sizeof(struct tcphdr);
 
-	if (!skb_make_writable(skb, skb->len))
+	if (skb_ensure_writable(skb, skb->len))
 	{
-		IPFI_PRINTK("IPFI: __tcpmss_mangle_packet(): !skb_make_writable\n");
+		IPFI_PRINTK("IPFI: __tcpmss_mangle_packet(): skb_ensure_writable failed\n");
 		return -1;
 	}
 	/* reload pointers after skb_make_writable() call */
