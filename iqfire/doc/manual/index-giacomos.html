@@ -1,0 +1,273 @@
+
+<!DOCTYPE html 
+     PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="it" lang="it">
+<head>
+
+	<link rel="stylesheet" title="Light Maroon" href="giacomos.css" type="text/css" />
+	<link rel="stylesheet" title="Light ice" href="primo.css" type="text/css" />
+	
+	<title> Giacomo Strangolino</title>
+	<link rel="icon" type="image/png" href="giacomino.png" />
+	<link rel="alternate" type="application/rss+xml" title="giacomos.it news" href="http://www.giacomos.it" />
+</head>
+
+<script type="text/javascript">
+var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
+document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
+</script>
+<script type="text/javascript">
+var pageTracker = _gat._getTracker("UA-3255047-1");
+pageTracker._initData();
+pageTracker._trackPageview();
+</script>
+
+<!-- fine google analytics -->
+
+<body onLoad="document.getElementById('auguri').style.visibility = 'hidden'; ">
+
+<script language="JavaScript" type="text/javascript">
+	var previous = 0;
+	function change_info()
+	{
+		if( previous == 0)
+		{
+			oggData = new Date();
+			document.getElementById('sys_string').innerHTML= oggData.toLocaleString();
+			document.getElementById('sys_string').style.visibility = 'visible';
+			previous = 1;
+		}
+		else
+		{
+			document.getElementById('sys_string').innerHTML= 
+						"Versione browser/sistema: " + navigator.appVersion;
+			previous = 0;
+		}
+	}
+	function restore_info()
+	{
+		document.getElementById('sys_string').innerHTML= "Data - Informazioni sistema";
+	}
+	
+	function change_ipfire_message()
+	{
+		document.getElementById('ipfire').innerHTML = "Provalo subito! Scarica l'ultima versione. &Egrave; in italiano!!<a href=\"./ipfire/index.html\">IPFIRE-wall</a>";
+		document.getElementById('ipfire').style.fontSize="12pt";
+		document.getElementById('ipfire').style.color="black";
+		document.getElementById('ipfire').style.fontWeight="bold";
+	}
+	function restore_ipfire_message()
+	{
+		document.getElementById('ipfire').innerHTML = 
+					"Proteggi il tuo computer e conosci Internet con il semplice <a href=\"./ipfire/index.html\">IPFIRE-wall</a></p>";
+		document.getElementById('ipfire').style.fontSize="12pt";
+		document.getElementById('ipfire').style.color="black";
+		document.getElementById('ipfire').style.fontWeight="bold";
+	}
+</script>
+		
+		
+<div id="main_content">
+
+	
+<div id="banner">
+
+	<div id="banner_gi">
+		<h2> Giacomo </h2>
+	</div>
+	<!--
+	   <div id="sysinfo" onMouseOver="change_info();"
+		onMouseOut="restore_info();">
+		<p id="sys_string" >Data - Informazioni sistema</p>
+	</div>
+	-->
+</div> <!-- banner -->
+
+<div id="menu_laterali">
+
+	<div id="rss" class="elemento_laterale">
+	<a href="./giacomos.xml" id="rss_href" title="Ricevi sul tuo computer le novit&agrave; e tutti gli aggiornamenti sul sito!">
+	<img src="./feed-icon.gif" height="10" width="10" alt="RSS1" id="rss_img"/>
+		RSS</a>
+	</div>
+
+	<div id="menu_riassunto" class="elemento_laterale">
+		<p> Programmazione </p>
+		<p id="iqfire_coming_soon">Nearly among us!!!<br/>
+		iqFirewall, una nuova interfaccia grafica per ipfire-wall!
+		</p>
+		<p><a title="iqfirewall demo video: high quality" href="./iqfire/iqfirewall.avi">Watch a preview video!</a>
+		<a href="http://www.youtube.com/watch?v=5C9N-_IDmac">Watch it on YouTube</a>
+		<strong><a href="http://www.giacomos.it/iqfire/index.html">IqFIRE-wall docs are already online</a></strong>
+		</p>
+		<a id="new_ipfire_link" href="./ipfire/index.html" onMouseOver="window.status='Un semplice filtro di pacchetti con funzionalita\' di NAT per linux!'; return true; "> IPFIREwall</a>
+		<p id="new_ipfire">v0.98.6 In italiano!</p>
+		<a href="./ipfire/outdnat.html" onMouseOver="window.status='Leggi la novit&agrave; pi&ugrave; importante del nuovo aggiornamento disponibile'; return true">Novit&agrave; principali</a>
+		<a href="./ipfire/IPFIREwallGuidaInstallazionePrimoUtilizzo.pdf" 
+		onMouseOver="window.status='Breve guida all\'installazione e al primo utilizzo di IPFIRE-wall'; return true;" 
+		title="Installazione e primo utilizzo, file pdf">Guida a IPFIREwall</a>
+		<a href="./ipfire/presentazione.odp" 
+		onMouseOver="window.status='Scarica una presentazione di ipfire-wall in formato open document': return true;" 
+		title="Presentazione di IPFIRE-wall">Presentazione di IPFIRE</a>
+		<a href="./biblioteca.html" onMouseOver="window.status='Una piccola applicazione per gestire la propria biblioteca, con collocazione e prestiti.'; return true; "> Biblioteca </a>
+		<a href="./calendario.html" onMouseOver="window.status='Un calendario che ti avverte dei tuoi impegni senza consumare risorse e sincronizzandosi tra i tuoi PC in rete!'; return true; "> Calendario </a>
+		<a href="./scacchi.html" onMouseOver="window.status='Un gioco di scacchi in Java: puoi sfidare un avversario in rete e anche chattare con lui!'; return true; "> Scacchi </a>
+		<a href="./g_getcharlib.html" onMouseOver="window.status='Una libreria scritta in linguaggio C per chi desidera utilizzare l\'input non bufferizzato da tastiera...'; return true; ">Libreria "unbuf I/O"</a>
+		<p>Galleria immagini </p>
+		<a href="./dixi.html" onMouseOver="window.status='Il mitico gatto Dixi: immagini e un filmato!'; return true; "> Dixi </a>
+		<a href="./paris/index.html" onMouseOver="window.status='Alcune immagini della citt&agrave; di Parigi, scattate l\'autunno 2006'; return true; ">Parigi</a>
+
+		<p>Musica</p>
+		<a href="./musica.html" onMouseOver="window.status='La chitarra classica'; return true; "> Chitarra</a>
+<!-- 		<a href="./galleria_giacomo.html"> Giacomo </a> -->
+		<p>Botanica</p>
+		<a href="./alberi/alberi.html" title="alberi" onMouseOver="window.status='Alcune schede sugli alberi della regione Friuli Venezia Giulia: in costruzione...'; return true; "> Alberi del Friuli </a> 
+		
+		<a id="new_ipfire_link" href="http://www.giacomos.it/velenose/velenose.html" title="Piante Velenose" onmouseover="window.status='Alcune schede sulle specie di piante velenose del Friuli Venezia Giulia: in costruzione...'; return true; "> Piante Velenose del Friuli </a> <p id="new_ipfire">NEW!</p>
+		
+		<p>Area privata</p>
+		<a href="./privata.php" title="Area privata!" onMouseOver="window.status='Se hai uno username e una password, puoi guardare alcune immagini...'; return true; "> Entra! </a>
+
+	</div>
+	
+	<div id="google" class="elemento_laterale">
+	<p> Ricerca sul web </p>
+	<form action="http://www.google.it/search" method="get" id="google_form" >	
+	<div id="google_label_and_input">
+	<label for="google_search"> Cerca con Google </label>
+	<input type="text" name="q" id="google_search" />
+	</div>
+	<input type="submit" value="Cerca" text-align="center" />
+	</form>
+	</div>
+	
+		<div id ="ipfire" class="elemento_laterale" onMouseOver="change_ipfire_message(); "
+		onMouseOut="restore_ipfire_message(); ">
+	<p> Proteggi il tuo computer e conosci Internet con il semplice
+ 			<a href="./ipfire/index.html">IPFIRE-wall</a></p>
+	</div>
+
+	<div id="recensione_iglu" class="elemento_laterale">
+		<p>
+			IPFIRE-wall: leggi le recensioni in vari Linux User Group in Italia.. e altro!
+		</p>
+		<a href="http://iglu.cc.uniud.it/modules.php?op=modload&name=News&file=article&sid=24&mode=thread&order=0&thold=0" 
+			  title="Leggi la recensione sul LUG di udine - Associazione Cultura Informatica">Udine</a>
+		<a href="http://www.alproject.org/news-free-software/sicurezza/ipfire-wall.html" 
+			  title="Leggi la recensione sul LUG di Aquileia - ALP (Aquileia Linux Project)">Aquileia</a>
+		<a href="http://www.camelug.org/?q=node/143" 
+			  title="Leggi la recensione sul LUG di San Benedetto del Tronto - Camelug">San Benedetto del Tronto</a>
+		
+	</div>
+	
+	<!-- div id ="counter" class="counter">
+	<p>counter:<br/></p>
+		<?php include("./counter/counter.php");  ?>
+	</div -->
+	
+</div> <!-- Menu laterali -->
+
+
+
+<div id="frame_temporanei">
+
+	<div id="linuxday2006" class="elemento_laterale_linux_day">
+		<p>
+		Conferenze ai <strong>Linux Day</strong> presso l'Universit&agrave;
+		degli Studi di Udine
+		</p>
+		<ul>
+		<li><a href="./ipfire/presentazione.odp" 
+			  title="Scarica la presentazione di IPFIRE-wall in formato open document">Presentazione di IPFIRE-wall (ottobre 2006)</a></li>
+
+		<li><a href="./linuxDay2007/linuxDay-Iptables-2007.pdf" 
+			  title="Scarica la presentazione di netfilter/iptables in formato pdf">Presentazione dell'infrastruttura Netfilter/iptables</a></li>
+		<li><a href="./linuxDay2007/iptq.c" title="Un programma C esempio per l'utilizzo della libreria libipq">Programma C esempio di utilizzo della libreria <strong>
+		libipq</strong> di netfilter</a></li>
+		<li><a href="./linuxDay2007/LinuxDay.JPG">Un'immagine ricordo del linux day 2007</a></li>
+
+		</ul>
+	</div>
+
+
+<!--	<div id ="gif_natale" class="elemento_laterale"
+		onMouseOver="document.getElementById('auguri').style.visibility = 'visible'; "
+		onMouseOut="document.getElementById('auguri').style.visibility = 'hidden'; ">
+		<img id="xmas" src="./christmas_snow_globe.gif" alt="Natale" title="gif-natale" />
+	</div>
+	
+	<div id ="auguri" class="elemento_laterale" >
+	<p> Buon Natale e Felice anno Nuovo! </p>
+	</div>
+	
+-->	
+
+</div> <!-- Frame temporanei -->
+
+<div id="contenuto">
+	<img src="./faccia.jpg" alt="Giacomo" title="Giacomo" />
+	<p> Giacomo Strangolino.
+		 <br/><a href="mailto:delleceste@gmail.com">email</a> 
+	</p>
+	<h4>
+		 Percorso degli studi.
+	</h4> 
+		<p align="justify"> Ho conseguito il diploma di Liceo scientifico all'istituto
+		 <a href="http://www.liceocopernico.it" 
+		 title="Vai alla home page del liceo scientifico Niccol&ograve; Copernico">
+		 Niccol&ograve; Copernico</a> di Udine nel 1997 e mi sono laureato in ingegneria
+		 elettronica delle telecomunicazioni nel luglio 2004
+		 presso l'<a href="http://www.uniud.it"
+		 title="Home page dell'Universit&agrave; degli Studi di Udine">Universit&agrave;
+		 degli studi</a>
+		 della medesima citt&agrave;. Ivi sto concludendo un Master in IT organizzato dal 
+		 <a href="http://www.dimi.uniud.it" 
+		 title="Dipartimento di Matematica e Informatica, Universit&agrave; di Udine">
+		 Dipartimento di Matematica e Informatica</a> mentre 
+		da ottobre 2005 lavoro al <a href="http://www.elettra.trieste.it">Sincrotrone di Trieste</a>. </p>
+	<h4 id="interessi_personali">
+		 Interessi personali.
+	</h4>
+		<p> Musica, chitarra, botanica, karate, programmazione, sistemi O.S. </p>
+	<h4 id="programmi">
+		Programmi sviluppati recentemente (e disponibili per il download!):
+	</h4>
+		<ul>
+			<li> <a href="./biblioteca.html" >biblioteca</a>: organizza e colloca i 
+			tuoi libri o la tua musica!</li>
+			<li> <a href="./calendario.html" >calendario</a>: non dimenticare i 
+			tuoi appuntamenti!</li>
+			<li> <a href="./scacchi.html" > scacchi</a>: gioca e chatta con un
+			amico in rete!</li>
+			<li> <a href="./g_getcharlib.html" > Libreria per l'unbuffered input da terminale</a>... per programmare...</li>
+			<li> <a href="./ipfire/index.html" >IPFIRE-WALL</a>: protegge il tuo 
+			computer e ti insegna il funzionamento della rete! Ora lo trovi anche in italiano!
+			(La documentazione &egrave; in inglese, <a href="./ipfire/whyenglish.html">perch&eacute;?</a>)
+			<br/><a href="./ipfire/rulefields_it.html">Leggi una presentazione 
+			di IPFIRE-wall in italiano e apprendi di cosa si tratta!!</a></li>
+		</ul>
+	<h4 id="immagini"> Immagini </h4>
+		<ul>
+		<li>Galleria di immagini del gatto <a href="./dixi.html">dixi</a>.</li>
+		<li>Immagini di <a href="./paris/index.html" title="Alcune immagini della citt&agrave; di Parigi, scattate l'autunno 2006">Parigi</a>.</li>
+		</ul>
+	<h4 id="notizie">Altro</h4>
+		<ul>
+			<li><a href="./bioit.html">Notizie biografiche</a>.</li>
+			<li><a href="./bioen.html">Biographical sketch</a>.</li>
+		</ul>
+	<h4 id="footnotes">Nota</h4>
+	<p> Il sito utilizza i fogli di stile perci&ograve; Internet Explorer non consente ancora una 
+		visualizzazione ottimale dei contenuti. 
+		I browser <a href="http://www.mozilla.org">Mozilla</a> e <a href="http://www.mozilla.org/products/firefox/">
+		Firefox</a> supportano i fogli di stile e consentono una riproduzione corretta delle pagine web.
+	</p>
+</div>
+
+
+</div>
+
+</body>
+</html>  

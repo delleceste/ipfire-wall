@@ -1,0 +1,35 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<link rel="stylesheet" href="info.css" type="text/css" /> 
+<head>
+	<title></title>	
+</head>
+
+			
+<body>
+
+<h3>Urgent flag</h3>
+
+<div id="content">
+
+<p>
+
+The <em>Urgent Pointer</em> flag, is used to identify incoming data as <strong>urgent</strong>. Such incoming segments do not have to wait until the previous segments are consumed by the receiving end but are sent directly and processed immediately. 
+
+
+</p>
+
+<p>
+The urgent pointer field indicates there is an offset in bytes, from the sequence number, where receiver should find urgent data. This choice allows interruption delivery to application layer without involving TCP protocol in the reason of interruption itself.
+<br/>
+See <a href="http://www.giacomos.it/ipfire/rulefields.html" title="http://www.giacomos.it/ipfire/rulefields.html">TCP specific options</a>
+in <em>ipfire-wall</em>'s documentation.
+</p>
+
+
+</div> <!-- id="content" -->	
+
+</body>
+
+</html>

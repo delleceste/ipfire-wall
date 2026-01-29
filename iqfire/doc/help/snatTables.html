@@ -1,0 +1,122 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<link rel="stylesheet" href="info.css" type="text/css" /> 
+<head>
+	<title></title>	
+</head>
+
+			
+<body>
+
+<h3>Active source NAT entries</h3>
+
+<div id="content">
+
+<p>
+
+In this page the <em>active kernel source network translation and masquerade</em> tables are 
+shown in a list.
+Each entry represents a table allocated into the kernel memory.
+
+</p>
+
+<h4>Entry explanation</h4>
+
+<p>
+  Each entry contains the following information, ordered by columns:
+  <ul>
+    <li><strong>direction</strong>: the direction of the packets to which the rule is applied;<li>
+    <li><strong>protocol</strong>: the network protocol (TCP, UDP, ICMP, IGMP);</li>
+    <li><strong>addresses and ports</strong>: the couples of source/destination addresses and ports;</li>
+    <li><strong>the new source address</strong>: the source address indicated in the <em>third</em> 
+      column is replaced by this address, to each packet matching the table item;</li>
+    <li><strong>the new source port</strong>: the source port indicated in the fourth 
+      column is replaced by this port, to each packet matching the table item;</li>
+    <li><strong>output interface</strong>: the output network interface
+      through which the packet is flowing;</li>
+    <li><strong>state</strong>: the connection state, valid in case of TCP connections (a pseudo state
+     of NEW/STREAM is assigned to the UDP connections, too);</li>
+   <li><strong>timeout</strong>: each table lives in the kernel memory for a certain amount of time,
+    depending on its state. For example, TCP established connections can live up to three days, while
+    connections in the SETUP phase live only for three minutes;<li>
+  <li><strong>item number</strong>: this field has no particular meaning, it just counts the entries.</li>
+  
+  </ul>
+</p>
+
+<h4>Item summary on the <em>info panel</em></h4>
+
+<p>
+  Moving the mouse over the items displayed in this page will produce a 
+  <em>summary</em> of each entry on the <em>info panel</em>.
+  To concentrate on a specific item, just select it with the left mouse button.
+  The corresponding summary will then be fixed until you select another item with the
+  left button.
+  <br/>
+  <em>ip addresses</em> and <em>ports</em> will appear <em>underlined</em> as <cite>hypertextual 
+  links</cite>. Clicking on those <em>links</em> will make the firewall <em>resolve</em> ip addresses
+  and port numbers into the corresponding <cite>names</cite> and <cite>services</cite>, respectively
+  (when possible).
+  If the <em>info panel</em> is not shown, just click <a href="action://showinfopanel">here</a> to
+  view it.
+</p>
+
+
+
+<h4>Entries' memory usage</h4>
+
+<p>
+  Each entry occupies a certain amount of memory, for instance:
+  <ul>
+    <li>state tables are <strong>156 bytes</strong> large;</li>
+    <li>destination NAT tables are sized <strong>168 bytes</strong>;</li>
+    <li>source  NAT tables are sized <strong>164 bytes</strong>;</li>
+    <li>kernel/userspace information tables are <strong>192 bytes</strong> large;</li>
+  </ul>
+  
+  You can calculate the kernel memory used by the tables multiplying each value above 
+  for the number of entries.<br/>
+  <em>iqfirewall</em> does this for you by tracking memory usage over time in the 
+   <a href="action://showkernelstats" title="Show kernel memory usage statistics">kernel 
+    memory usage</a> window. You might want to have a look at that page.
+</p>
+
+<h3>Options</h3>
+
+<h4>Refreshing the list</h4>
+
+<p>You can either manually refresh the list by clicking on the <em>Refresh</em> button
+below or select the <em>Auto refresh</em> check box and set a <em>Refresh Interval</em> in
+seconds in the <em>Spin box</em> below the item list.
+
+<strong>Note</strong>: auto refresh is disabled when the window is hidden, to optimize
+cpu usage, so you can safely enable it and update the list only when this widget is visible.
+
+<strong>Note</strong>: if the number of entries is high, this operation requires strong 
+cpu capabilities.
+
+<strong>Note</strong>: in a high load environment, consider increasing 
+
+<ul>
+  <li>/proc/sys/net/core/rmem_default</li>
+  <li>/proc/sys/net/core/rmem_max</li>
+</ul>
+
+  values, in the <em>Advanced</em> tab in the <em>Edit->Preferences</em> section (option
+  available to root only).
+</p>
+
+<h4>Filtering the view</h4>
+
+<p>
+  It is possible to filter the view to show only a subset of items in the list.
+  The selection is done by the settings provided in the upper <em>Filter view</em> 
+  section.
+</p>
+
+</div> <!-- id="content" -->	
+
+</body>
+
+</html>

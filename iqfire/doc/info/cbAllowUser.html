@@ -1,0 +1,69 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<link rel="stylesheet" href="info.css" type="text/css" /> 
+<head>
+	<title></title>	
+</head>
+
+			
+<body>
+
+<h3>Normal users can configure the firewall</h3>
+
+<div id="content">
+
+<p>
+
+A key feature of <em>ipfire-wall/iqfire-wall</em> is the possibility to allow 
+any unprivileged user of the machine to configure the firewall.
+
+</p>
+
+<h3>Properties</h3>
+
+<ul>
+	<li>The <strong>root</strong>'s policies are loaded <strong>before</strong> the rules 
+		of the unprivileged user. This means that the normal users' rules are 
+		evaluated <strong>after</strong> the root's ones, and so have a <strong>
+		lower priority</strong>;</li>
+	<li>a normal user <strong>cannot delete nor modify root's policies</strong>.</li>
+	
+	
+</ul>
+
+<p>
+	As a natural consequence, <em>if the administrator permits a connection, a normal user 
+	can decide, for his own safety reason, to block it</em>, but <em>if root blocks a 
+	connection, a normal user cannot allow it</em> because the firewall <strong>first 
+	scans and apply the explicit denial rules and then the permission ones</strong>.
+</p>
+
+<p>
+	Notwithstanding these important secure approach, the administrator is able to
+	 avoid a normal user personalizing the firewall with his own rules.
+</p>	
+
+<p>
+	On the other hand, if the computer is for personal/familiar use, there ideally be 
+	just a few administrator's rules and many normal user defined policies.
+</p>
+
+<p>
+	An idea could be to adopt the <em>default installation configuration</em>, which contains 
+	a basic permission ruleset for an average user which navigates the web, reads the email, 
+	eventually connects to an <em>ssh server</em>, and to add by normal user account all the rest.
+<p>
+
+<p>
+	Another interesting scenario could be represented by a parent that, as root, configures a safe 
+	network environment and lets his children use and safely configure <em>iqfire-wall</em>,
+	while learning <em>linux internetworking</em>.
+</p>
+
+
+</div> <!-- id="content" -->	
+
+</body>
+
+</html>

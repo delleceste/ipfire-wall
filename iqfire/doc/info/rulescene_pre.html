@@ -1,0 +1,60 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<link rel="stylesheet" href="info_ruleView.css" type="text/css" /> 
+<head>
+	<title></title>
+	
+	
+	
+</head>
+			
+<head>
+	<title></title>	
+</head>
+			
+<body>
+
+<h3>The pre routing block</h3>
+
+<div id="content">
+
+<p>
+The packets coming from anywhere hit first of all the <strong>pre routing</strong> stage.
+There the <em>routing decisions</em> are taken, and each packet is
+inspected, particularly its <strong>destination IP address field</strong>.
+On the basis of its destination, the packet is delivered <strong>locally</strong>,
+to an application runnin on the machine (<strong>input block</strong>) or 
+<strong>forwarded</strong> to another computer in the network, through the
+<strong>forward</strong> block.
+</p>
+<p>
+Since the most important aspect taken into account here is the <strong>destination</strong>
+of a packet, here you are provided some tools to <strong>change the destination</strong> of the packet, both in terms of <strong>IP address</strong> and in terms or <strong>service</strong> (<strong>destination port</strong>).
+<br/>
+This means:
+<ul>
+<li>adding a <a href="action://adddnat">destination NAT rule</a>.</li>
+
+</ul>
+</p>
+
+<p>
+<h4>Notes</h4>
+<ul>
+<li>Here one cannot <strong>filter</strong> a packet, i.e. cannot decide
+ to <em>drop</em> or <em>accept it</em>.</li>
+<li>The actions taken here are privilege of the <strong>administrator only</strong>.</li>
+</ul>
+
+
+<strong>Filtering</strong> can take place only in the <strong>input</strong>, 
+<strong>output</strong> and <strong>forward</strong> stages.
+</p>
+
+
+</div> <!-- id="content" -->	
+
+</body>
+
+</html>

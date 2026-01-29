@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE html 
+     PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="it" lang="it"><head>
+	<link rel="stylesheet" href="schede.css" type="text/css" />
+	<title> 7. Transparent proxying example: mail virus scanning.  </title>
+</head>
+
+<body>
+<!--  - - - - - - - - - -   	TITOLO 		- - - - - - - - - - - - - -->
+<div id="title" > <p> IPFIRE<em id="page" >wall </em> </p> 
+</div>
+
+<div id="back">
+	
+	<div id="back_index" >
+		<a href="../fireindex.html" > Index</a>
+	</div>
+	
+	<div id="home_giacomo" >
+		<a href="../index.html" > Homepage di Giacomo. </a>
+	</div>
+	
+	<div id="Scenarios_index" >
+		<a href="../scenarios.html" > Scenarios index. </a>
+	</div>
+</div>	
+
+<div id="content" >
+
+<div id="titoloscen"> 
+<h3> Scenario 7. <br/> 
+		Transparent proxying example: mail virus scanning. </h3>
+</div>
+
+<div id="fig1">
+	<img src="pngs/7-transproxy.png"  
+			alt="Transparent proxy" 
+ 			title="Transparent proxying" /> </img>
+	</div>
+	
+
+
+<div id="scena"> 
+	<p>
+		
+	 	Host 192.168.0.2 wants to receive email from a pop3 server, at address 193.70.193.80.
+	 	It does not know about a mail scanner on network gateway, and does not want to bother 
+	 	about it. This way, all hosts in a private network can download their mail in tranquility, without
+	 	having scanning or antivirus software installed. <br/>
+	 	So, a connection to 193.70.193.80 is started: the packet arrives to the network gateway, to
+	 	reach external pop3 server. On the gateway IPFIRE ruleset, there is an indication to change 
+	 	destination port 110 (pop3) into port 8110, and destination address from real server address
+	 	193.70.193.80 to gateway input interface 192.168.0.1. On 192.168.0.1, port 8110 listens the
+	 	email scanner: when receiving a connection, it doesn't know real server address automatically,
+	 	because the destination address of the packet sent by the email client on host 192.168.0.2
+	 	has been changed by nat. <br/>
+	 	At this point, proxy scanner calls <em>getsockopt</em> function (see
+ 		<a href="../getsockopt.html"> getsockopt() interface</a> for further details) retrieves 
+		from IPFIRE <em>translation tables</em> the original server address and connects to it.
+		Then mail is retreved and delivered to 192.168.0.2, which safely receives messages.. and
+		transparently! <br/>
+		In the picture below you can see IPFIRE console output, while in the last picture you can 
+		observe what the email scanner sees from its point of view.
+	</p>
+</div>
+
+<div id="ipfire_output">
+
+<a href="jpegs/7-fire.gif" > <img src="jpegs/7-fire-little.gif" 
+			alt="Ipfire output, scenario 7" 
+ 			title="Ipfire output, DNAT scenario 7" /> </a>
+
+<p> Transparent proxying on network gateway. </p>
+</div>
+
+<div id="p3scan_output">
+
+<a href="jpegs/p3scan.gif" > <img src="jpegs/p3scan-little.gif" 
+			alt="P3scan" 
+ 			title="P3scan output" /> </a>
+
+<p> Transparent proxying on network gateway: p3scan email virus scanner with logging enabled. </p>
+</div>
+
+</div> <!-- content -->
+
+
+<div id="w3c" >
+	<p id="validation">
+ 	     <a href="http://validator.w3.org/check?uri=referer"><img
+   	       src="http://www.w3.org/Icons/valid-xhtml10"
+    	      alt="Valid XHTML 1.0!" height="31" width="88" /></a>
+	</p>
+</div>	
+      
+    
+<div id="foot_jumps" >  
+ 	<a href="#title" title="top_of_page"> 
+		Top of page</a>  <br />
+	<a href="../fireindex.html" title="foot_back_to_index"> 
+		Back to index</a>
+	<br/>
+	<a href="./scen8.html" title="foot_next"> 
+		Next page (Scenario 8)</a> <br/>
+	<a href="./scen6.html" title="foot_prev"> 
+		Previous page (Scenario 6)</a>
+</div>
+	
+</body>
+</html>

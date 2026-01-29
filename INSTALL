@@ -1,0 +1,34 @@
+Read documentation at
+
+http://www.giacomos.it/iqfire/installation.html
+
+http://www.giacomos.it/iqfire/index.html
+
+INSTALLATION, briefly:
+
+generic systems:
+
+execute ./install.sh clean
+
+
+debian or ubuntu/kubuntu distributions:
+
+execute ./install.sh clean debian
+
+
+From the local directory
+
+DISCLAIMER:
+
+ipfire-wall and its graphical interface iqfirewall come with no warranty.
+
+(C) 2005 2009 Giacomo Strangolino 
+
+License GPL v3
+
+mail: delleceste@gmail.com
+
+Project hosted on, forum, wiki, bugs:
+
+http://sourceforge.net/projects/ipfire-wall
+

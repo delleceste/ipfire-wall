@@ -1,0 +1,58 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<link rel="stylesheet" href="info.css" type="text/css" /> 
+<head>
+	<title></title>	
+</head>
+
+			
+<body>
+
+<h3>Create a permission rule from the selected items</h3>
+
+<div id="content">
+
+<p>
+
+For each item selected, a <em>new permission rule</em> is added to the firewall.
+
+</p>
+
+<p>
+  The rule is built on the basis of the information represented inside the item:
+  <ul>
+    <li>direction (input or output);</li>
+  <li>protocol (TCP, UDP, ICMP, IGMP);</li>
+  <li>source and destination <em>IP addresses</em>;</li>
+  <li>source and destination <em>ports</em>;</li>
+  <li>network interface name;</li>
+  <li>the name of the rule you provide (or the default one, not advised!);</li>
+  <li>the possibility to be <em>notified by a popup</em> when a rule is applied
+      by the firewall to a packet that corresponds to it.</li>
+  </ul>
+</p>
+
+<h3>Modifying the contents of a rule</h3>
+<p>
+  Remember that you can modify the contents of the items in this window to
+  create a more generic rule or a rule with different behaviour.
+</p>
+
+<p>
+  Keep also in mind that normally <em>the source port is ignored</em> when the firewall
+adds a rule from the entries listed in this popup. If you want the rule to check against 
+the source port, manually provide it - if you know what this implies.
+</p>
+
+<h3>Color</h3>
+<p>
+  The items selected and marked as <strong>Allow</strong> will be 
+  bold represented and will assume a <strong>dark green</strong> color.
+</p>
+
+</div> <!-- id="content" -->	
+
+</body>
+
+</html>

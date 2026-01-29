@@ -1,0 +1,58 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<link rel="stylesheet" href="info.css" type="text/css" /> 
+<head>
+	<title></title>	
+</head>
+
+			
+<body>
+
+<h3>Maximum number of NAT tables in the kernel</h3>
+
+<div id="content">
+
+<p>
+
+When a packet is subjected to <em>Network address (and/or port) translation</em>, an associated 
+<em>NAT table</em> is created inside the <em>ipfire-wall</em> kernel, to track the connection 
+and apply the NAT to all the other packets pertaining to the same connection flow.
+
+</p>
+
+
+<p>
+
+It is possible to tune the <strong>maximum number</strong> of <em>NAT table entries</em>, so that 
+their numerousness does not grow over that limit. This was done thinking about a possible <em>
+denial of service</em> attack, in which an attacker could fill up the kernel memory with  
+useless NAT tables.
+
+</p>
+
+<p>
+	Tune this value to the estimated amount of NAT traffic you expect for your linux 
+	NAT/firewall, keeping in mind that when the limit is reached <strong>NAT stops 
+	being applied</strong> until the timer of some other entry in the NAT table list 
+	expires and frees the associated memory.
+</p>
+
+<h3>Lifetime of NAT entries</h3>
+<p>
+	The lifetime of <em>NAT</em> entries depends on the <em>state of the connection</em> and 
+	so it is managed internally by the kernel.
+	On the <em>command line interface</em> <strong>ipfire</strong>, it is possible to list 
+	the kernel NAT tables by pressing the keys <strong>F4</strong> to view the 
+	 <strong>source NAT</strong> entries and <strong>F6</strong> to observe the 
+	<strong>destination NAT</strong> entries. At the moment, this is considered an 
+	advanced feature and so it is not included in the <em>iqfire</em> graphical
+	 user interface.
+</p>
+
+
+</div> <!-- id="content" -->	
+
+</body>
+
+</html>

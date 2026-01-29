@@ -1,0 +1,51 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<link rel="stylesheet" href="info_ruleView.css" type="text/css" /> 
+<head>
+	<title></title>
+	
+	
+	
+</head>
+			
+<head>
+	<title></title>	
+</head>
+			
+<body>
+
+<h3>The post routing block</h3>
+
+<div id="content">
+
+<p>
+All the packets leaving the machine, both those locally generated in the <strong>output</strong> chain and those <strong>forwarded</strong> pass through the <strong>post routing</strong> stage.
+There they will have all the necessary information to leave the host and reach 
+another computer on the network.
+</p>
+<p>
+In this phase, the packet can be <strong>modified</strong> to make it 
+appear as leaving from <strong>another</strong> host, that is, <a href="action://addsnat">source natting</a> it.
+<br/>
+
+</p>
+<p>
+
+<h4>Notes</h4>
+<ul>
+<li>Here one cannot <strong>filter</strong> a packet, i.e. cannot decide
+ to <em>drop</em> or <em>accept it</em>.</li>
+<li>The actions taken here are privilege of the <strong>administrator only</strong>.</li>
+
+</ul>
+
+<strong>Filtering</strong> can take place only in the <strong>input</strong>, 
+<strong>output</strong> and <strong>forward</strong> stages.
+</p>
+
+</div> <!-- id="content" -->	
+
+</body>
+
+</html>

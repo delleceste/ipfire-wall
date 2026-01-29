@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Encoding=UTF-8
+Name=iqFirewall in administration mode
+Comment=Launch iqfire-wall as root (administration)
+GenericName=Network Firewall
+Exec=kdesu iqfire
+Terminal=false
+X-MultipleArgs=false
+Type=Application
+Icon=/usr/share/iqfire/icons/ipfire-root.png
+Categories=Application;Network;
+StartupNotify=true

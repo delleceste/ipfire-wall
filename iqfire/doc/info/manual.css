@@ -1,0 +1,86 @@
+
+html
+{
+	background-color:rgb(255,251,242);
+	margin:5px;
+	padding:1px;
+	font-size:12pt;
+}
+
+
+body
+{
+	background-color:rgb(255,251,242);
+	margin:5px;
+	padding:1px;
+}
+
+h3
+{
+  font-size:18pt;
+  font-weight:bold;
+  margin-bottom:20px;
+  margin-top:25px;
+}
+
+
+p
+{
+	text-align:justify;
+	font-size:11pt;
+	font-family:tahoma,verdana,sans-serif;
+}
+
+
+
+li, ul
+{
+	text-align:justify;
+	font-size:10pt;
+	font-family:tahoma,verdana,sans-serif;
+}
+
+ul
+{
+	margin:5px;
+	padding:3px;
+}
+
+img
+{
+	float:right;
+	color:black;
+}
+
+.footnote
+{
+	float:bottom;
+	font-size:8pt;
+	font-family:tahoma,verdana,sans-serif;
+}
+
+.policy
+{
+	text-decoration:underline;
+}
+
+/* link vistitati o non ancora visitati */
+a:link
+{
+	color:rgb(10%,10%,20%);
+}
+
+a:visited
+{
+	color:rgb(15%,15%,25%);
+}
+
+.accept
+{
+	color:green;
+}
+
+.blocked
+{
+	color:red;
+}

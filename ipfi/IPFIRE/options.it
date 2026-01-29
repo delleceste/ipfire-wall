@@ -1,0 +1,82 @@
+# GLOBAL OPTIONS FOR IPFIRE-wall
+# THIS FILE MUST BE EDITED BY HAND FOR NOW.
+ 
+# Administrative options apply only to root.
+# Unprivileged users can modify only a restricted set of options
+# (see documentation in doc/ directory).
+
+# Options must be of the type:
+# OPTION=YES
+# or
+# OPTION=NO
+# VALUES FOR LOGLEVEL OR LOGUSER: 0 1 TO 7
+# Other options or values are ignored.
+# A commented option is equivalent to 
+# OPTION=NO
+
+# Options recognized:
+# NAT
+# MASQUERADE
+# STATEFUL
+# LOGLEVEL
+# LOGUSER
+# ... see documentation in doc/ directory
+
+#ROOT OPTIONS:
+
+#NAT=YES
+#MASQUERADE=YES
+STATEFUL=YES
+LOGLEVEL=1
+
+# Timeouts for kernel tables, in seconds.
+# 60 = 1 min
+# 180 = 3 min
+# 300 = 5 min
+# 600 = 10 min
+# 1800 = half an hour
+# 3600 = one hour
+# 10800 = three hours
+# 86400 = one day
+# 129600 = one day and a half
+# 172800 = two days
+# 259200 = three days 
+# 864000 = ten days
+# 1296000 = 15 days - Maximum allowed 
+# (see doc or ipfi_netl.h in kernel sources)
+#
+# See documentation for security issues 
+# and right usage of these timeouts.
+#
+# - - - - - - - - - - - - - - - - - - - - - - -
+STATE_TABLES_LIFETIME=300
+DNAT_TABLES_LIFETIME=180
+SNAT_TABLES_LIFETIME=60
+LOGINFO_LIFETIME=20
+#
+# When an entry limit is reached, no more
+# stateful connections are allowed. Consider
+# adjusting these values according to your
+# traffic load and the memory you want to
+# reserve for these tables (see docs...)
+MAX_LOGINFO_ENTRIES=400
+MAX_NAT_ENTRIES=120
+MAX_STATE_ENTRIES=400
+# - - - - - - - - - - - - - - - - - - - - - - -
+
+#USER OPTIONS:
+
+RESOLVE_SERVICES=YES
+LANGUAGE_FILENAME=it
+
+# ENJOY!
+
+# FREE SOFTWARE!
+
+(C) Giacomo Strangolino - 2005
+      delleceste@gmail.com or
+      jacum@libero.it
+      
+      * visit www.giacomos.it/ipfire for latest news 
+        and up to date documentation!
+      

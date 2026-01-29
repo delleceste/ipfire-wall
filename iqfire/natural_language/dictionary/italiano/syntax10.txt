@@ -1,0 +1,67 @@
+# Intervallo di indirizzi ip sorgente:
+#
+# NOTA: parole chiave necessarie: sorgente
+# NOTA: parole chiave non ambigue: intervallo, interno, compres[a|e] tra oppure fra
+#
+# intervallo - sorgente
+# DOC intervallo di indirizzi ip  sorgente indirizzo1-indirizzoN::esprime un intervallo di indirizzi ip   <strong>sorgente</strong> nel quale avverra` la valutazione della regola
+intervallo[\sa-zA-Z'\:]*sorgent(?:e|i)::intervallo[\sa-zA-Z'\:]*sorgent(?:e|i)[\sa-zA-Z'\:]*$_REGEXP{IP_ADDRESS}[\s\-\selai']+$_REGEXP{IP_ADDRESS}::SIP $1-$2::intervallo di indirizzi ip sorgente indirizzo1-indirizzoN{ENDRULE}
+
+# sorgente - intervallo
+# DOC indirizzo sorgente all'interno dell'intervallo p1-pN::esprime un intervallo di indirizzi ip   <strong>sorgente</strong> nel quale avverra` la valutazione della regola
+(?:indirizz[\sa-zA-Z'\:]*)?sorgent(?:e|i)[\sa-zA-Z'\:]*intervallo::(?:indirizz[\sa-zA-Z'\:]*)?sorgent(?:e|i)[\sa-zA-Z'\:]*intervallo[\sa-zA-Z'\:]*$_REGEXP{IP_ADDRESS}[\s\-\selai']+$_REGEXP{IP_ADDRESS}::SIP $1-$2::intervallo di indirizzi ip sorgente indirizzo1-indirizzoN{ENDRULE}
+
+# interno - sorgente
+# DOC interno dell'intervallo di indirizzi ip  sorgente indirizzo1-indirizzoN::esprime un intervallo di indirizzi ip  <strong>sorgente</strong>  nel quale avverra` la valutazione della regola
+intern[\sa-zA-Z'\:]*sorgent(?:e|i)::intern[\sa-zA-Z'\:]*sorgent(?:e|i)[\sa-zA-Z'\:]*$_REGEXP{IP_ADDRESS}[\s\-\selai']+$_REGEXP{IP_ADDRESS}::SIP $1-$2::all'interno delle indirizzi ip sorgenti indirizzo1 e indirizzoN{ENDRULE}
+
+# sorgente - interno
+# DOC indirizzo sorgente all'interno dell'intervallo tra P1 e Pn::esprime un intervallo di indirizzi ip  <strong>sorgente</strong>  nel quale avverra` la valutazione della regola
+(?:indirizz[\sa-zA-Z'\:]*)?sorgent[\sa-zA-Z'\:]*intern::(?:indirizz[\sa-zA-Z'\:]*)?sorgent[\sa-zA-Z'\:]*intern[\sa-zA-Z'\:]*$_REGEXP{IP_ADDRESS}[\s\-\selai']+$_REGEXP{IP_ADDRESS}::SIP $1-$2::indirizzo sorgente interna all'intervallo tra p1 e pN{ENDRULE}
+
+# compresi tra o compresi fra
+# DOC sorgente compresi tra  indirizzo1 e indirizzoN::esprime un intervallo di indirizzi ip  <strong>sorgente</strong> compresi tra indirizzo1 e indirizzoN
+(?:indirizz[\sa-zA-Z'\:]*)?sorgent(?:e|i)[\sa-zA-Z'\:]*compres(?:o|i)\s+(?:f|t)ra::(?:indirizz[\sa-zA-Z'\:]*)?sorgent(?:e|i)[\sa-zA-Z'\:]*compres(?:o|i)\s+(?:f|t)ra[\sa-zA-Z'\:]*$_REGEXP{IP_ADDRESS}[\s\-\selai']+$_REGEXP{IP_ADDRESS}::SIP $1-$2::compresi tra indirizzo1 e indirizzoN{ENDRULE}
+#
+# 
+# NOTA: la seguente non contiene parole non ambigue: per riconoscere un intervallo e` necessario un trattino tra le due indirizzi ip, mentre non sono ammese altre lettere
+# 
+# DOC indirizzo sorgente p1-pN::delimita un intervallo all'interno del quale l'indirizzo sorgente del pacchetto deve rientrare. Viene ammesso solo il segno meno in questa forma sintetica
+(?:indirizz[\sa-zA-Z'\:]*)?sorgent::(?:indirizz[\sa-zA-Z'\:]*)?sorgent[\sa-zA-Z'\:]*$_REGEXP{IP_ADDRESS}\-$_REGEXP{IP_ADDRESS}::SIP $1-$2::dentro l'intervallo di indirizzi ip sorgente indirizzo1-indirizzoN{ENDRULE}
+#
+#
+
+#
+#
+# Intervallo di indirizzi ip destinazione:
+#
+# NOTA: parole chiave necessarie: destinazione
+# NOTA: parole chiave non ambigue: intervallo, interno, compres[a|e] tra oppure fra
+#
+# intervallo - destinazione
+# DOC intervallo di indirizzi ip  destinazione indirizzo1-indirizzoN::esprime un intervallo di indirizzi ip   <strong>destinazione</strong> nel quale avverra` la valutazione della regola
+intervallo[\sa-zA-Z'\:]*destinazion(?:e|i)::intervallo[\sa-zA-Z'\:]*destinazion(?:e|i)[\sa-zA-Z'\:]*$_REGEXP{IP_ADDRESS}[\s\-\selai']+$_REGEXP{IP_ADDRESS}::DIP $1-$2::intervallo di indirizzi ip destinazione indirizzo1-indirizzoN{ENDRULE}
+
+# destinazione - intervallo
+# DOC indirizzo destinazione all'interno dell'intervallo p1-pN::esprime un intervallo di indirizzi ip   <strong>destinazione</strong> nel quale avverra` la valutazione della regola
+(?:indirizz[\sa-zA-Z'\:]*)?destinazion(?:e|i)[\sa-zA-Z'\:]*intervallo::(?:indirizz[\sa-zA-Z'\:]*)?destinazion(?:e|i)[\sa-zA-Z'\:]*intervallo[\sa-zA-Z'\:]*$_REGEXP{IP_ADDRESS}[\s\-\selai']+$_REGEXP{IP_ADDRESS}::DIP $1-$2::intervallo di indirizzi ip destinazione indirizzo1-indirizzoN{ENDRULE}
+
+# interno - destinazione
+# DOC interno dell'intervallo di indirizzi ip  destinazione indirizzo1-indirizzoN::esprime un intervallo di indirizzi ip  <strong>destinazione</strong>  nel quale avverra` la valutazione della regola
+intern[\sa-zA-Z'\:]*destinazion(?:e|i)::intern[\sa-zA-Z'\:]*destinazion(?:e|i)[\sa-zA-Z'\:]*$_REGEXP{IP_ADDRESS}[\s\-\selai']+$_REGEXP{IP_ADDRESS}::DIP $1-$2::all'interno delle indirizzi ip destinazioni indirizzo1 e indirizzoN{ENDRULE}
+
+# destinazione - interno
+# DOC indirizzo destinazione all'interno dell'intervallo tra P1 e Pn::esprime un intervallo di indirizzi ip  <strong>destinazione</strong>  nel quale avverra` la valutazione della regola
+(?:indirizz[\sa-zA-Z'\:]*)?destinazion[\sa-zA-Z'\:]*intern::(?:indirizz[\sa-zA-Z'\:]*)?destinazion[\sa-zA-Z'\:]*intern[\sa-zA-Z'\:]*$_REGEXP{IP_ADDRESS}[\s\-\selai']+$_REGEXP{IP_ADDRESS}::DIP $1-$2::indirizzo destinazione interna all'intervallo tra p1 e pN{ENDRULE}
+
+# compresi tra o compresi fra
+# DOC destinazione compresi tra  indirizzo1 e indirizzoN::esprime un intervallo di indirizzi ip  <strong>destinazione</strong> compresi tra indirizzo1 e indirizzoN
+(?:indirizz[\sa-zA-Z'\:]*)?destinazion(?:e|i)[\sa-zA-Z'\:]*compres(?:o|i)\s+(?:f|t)ra::(?:indirizz[\sa-zA-Z'\:]*)?destinazion(?:e|i)[\sa-zA-Z'\:]*compres(?:o|i)\s+(?:f|t)ra[\sa-zA-Z'\:]*$_REGEXP{IP_ADDRESS}[\s\-\selai']+$_REGEXP{IP_ADDRESS}::DIP $1-$2::compresi tra indirizzo1 e indirizzoN{ENDRULE}
+#
+# 
+# NOTA: la seguente non contiene parole non ambigue: per riconoscere un intervallo e` necessario un trattino tra le due indirizzi ip, mentre non sono ammese altre lettere
+# 
+# DOC indirizzo destinazione p1-pN::delimita un intervallo all'interno del quale l'indirizzo destinazione del pacchetto deve rientrare. Viene ammesso solo il segno meno in questa forma sintetica
+(?:indirizz[\sa-zA-Z'\:]*)?destinazion::(?:indirizz[\sa-zA-Z'\:]*)?destinazion[\sa-zA-Z'\:]*$_REGEXP{IP_ADDRESS}\-$_REGEXP{IP_ADDRESS}::DIP $1-$2::dentro l'intervallo di indirizzi ip destinazione indirizzo1-indirizzoN{ENDRULE}
+#
+#

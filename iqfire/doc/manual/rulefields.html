@@ -1,0 +1,274 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE html 
+     PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="it" lang="it"><head>
+	<link rel="stylesheet" href="schede.css" type="text/css" />
+	<title> IPFIRE - RULE FIELDS EXPLAINED - TCP/IP OVERVIEW </title>
+</head>
+
+<body>
+<!--  - - - - - - - - - -   	TITOLO 		- - - - - - - - - - - - - -->
+<div id="title" > <p> IPFIRE<em id="page" >wall </em> </p> 
+</div>
+
+<div id="back">
+	
+	<div id="back_index" >
+		<a href="manual.html" > Index </a>
+	</div>
+	
+	<div id="rulefields_in_ita" >
+		<a href="rulefields_it.html" >Versione della pagina in Italiano! </a>
+	</div>
+</div>	
+
+<div id="content" >
+
+<div id="tcp_ip_general"> 
+	<h3> Linux networking and routing overview </h3>
+	<p>
+		 Network packets walk through linux kernel following two main chains and
+		traversing some specific points.
+		An <em> incoming </em> packet must be inspected by the kernel to know its
+		destination: it could be <em>locally</em> destined or could have to be 
+		<em> forwarded</em> to another internet node. Anyway, a packet which arrives
+		at the network card reaches the so called <em> pre routing </em> hook.
+		At this point a routing decision is made and the packet can reach one of the two possible
+		hooks: the <em> input </em> or <em> forward </em> one. If a packet has to
+		be delivered to a local application, it will hit the input hook, if it's to be routed to another
+		machine, it  will go through the forward one. <br/>
+		On the other hand, a packet going out might be locally generated or forwarded.
+		Both the local packets and those to be forwarded hit the <em> post routing </em> hook, 
+		passing first through the <em> output </em> one in the first case, or coming from the
+		<em> forward </em> hook in the second. <br/>
+		In IPFIRE-wall, the <em> direction </em> of a packet to be filtered or network/port
+		translated <em> must always be specified</em>.
+		Directions can be INPUT (in), OUTPUT (out), FORWARD (fwd), PRE-ROUTING (pre)
+		or POST-ROUTING (post).
+		<br/> <em> Filtering is done in INPUT, OUTPUT or FORWARD directions, while the
+			translation is usually done in the PRE (destination nat) or POST directions (snat
+			-not tested!- or MASQUERADING). Destination NAT can be done in OUTPUT
+			direction too.
+			</em>
+	</p>
+	<h3> IPFIRE rules and TCP/IP protocol. </h3>
+	<p> <em>IPFIRE</em>wall can be told to filter or translate the network packets
+ 		taking care of many packet fields each of those having a meaning related to internet
+ 		protocol, called the TCP/IP (Transmission Control Protocol / Internet Protocol).
+ 		In this page we will give a little explanation of the packet fields and their meanings,
+ 		leaving to the reader the chance to deepen the argument on the specialized books.
+		</p>
+	<h4> Identification of a machine inside the network.</h4>
+	<p>
+		To identify a machine in a computer network, we need an address, just like
+		when we want to send a postcard to a friend of ours we have to know
+		his address. Identified our friend's house,
+		we need to know the letterbox on which to leave the
+		postcard as well. The aim of identifying a particular machine on a network is 
+		carried out by the Internet Protocol, the one of identifying the service in which 
+		we are interested in is achieved by means of the Transmission Control Protocol (TCP).
+	</p>
+	
+	 <h4>Connection reliability.</h4>
+	<p>
+		The Internet communication can be reliable or not: some kinds of messages need to 
+		arrive at the destination in the same order they have been sent, and it is important
+		that no packet is lost on the way. It's the case of the web traffic, of the commercial transactions,
+		of the secure shell sessions... This kind of communication is carried out by the TCP protocol.
+		It takes care of setting up a new connection and verifying that every packet reaches the end 
+		communication point in the right order.
+		Sometimes it is instead convenient that the message exchange is faster and in such cases
+		it is not fundamental
+		that the packet order is respected or that some packets get lost. For such communications,
+		the User Datagram Protocol (UDP) can be used, and it is faster and lighter, but connectionless:
+		a packet is sent on the network and no guarantee is given on its arrival at the right destination.
+		This kind of protocol is used for instance when we need to in resolve Internet names into addresses 
+		(i.e. the <em>Domain Name Service</em>) or in audio/viedo streams, where it is better not to receive a packet 
+		of the stream (which would mean some noise) instead of waiting for a lost packet to be retrasmitted 
+		(that would cause
+		interruptions during playback).
+		Another protocol often used in the network communication is the <em> ICMP</em>, Internet
+		Control Message Protocol, which is adopted for control messages. An example of a program
+		which makes use of the ICMP is <em>ping</em>. Some firewalls also respond with ICMP messages
+		when they want to communicate some error code or the unavailability of some service.
+		<br/>
+		IPFIRE supports <em>TCP</em>, <em>UDP</em> and <em> ICMP</em> protocols
+		only. It is a good idea to specify the kind of protocol of each rule when creating a new one.
+		Then an Internet address can be specified for source and destination. Internet addresses
+		can be expressed in the classical ipv4 dotted decimal form, such as <br/> 192.168.0.1 
+ 		<br/> or 
+		158.110.28.25. <br/> 
+		IPFIREwall acceptsa also intervals of addresses: intervals can be expressed in the form <br/>
+		 192.168.1.0 - 192.168.1.254 or <br/>
+		192.168.1.0/23 or 192.168.1.0/255.255.254.0. <br/>
+		All the forms above are well accepted and assume the same meaning.
+		<br/>
+		Internet addresses can be expressed also in a negative form, prepending a <em>!</em>
+		mark before an address or interval (not well tested..).
+		If we send a packet from our machine with address 212.255.12.120 to 158.110.28.25, the
+		packet will have the first as source address and the second as destination.
+		The response to this packet will have the address fields <em>inverted</em>.<br/>
+		For this reason, if we specify a permission rule towards 158.110.28.25, we should 
+		put a rule to allow packets <em>from</em> 158.110.28.25, that is with such address
+		as the source. <br/>
+		This double rule for a single communication flow can be avoided specifying that the rule itself
+		has to be 
+		<a href="./stateful.html"> stateful</a>. 
+		As well as the addresses and the protocol kind, two other fields can be setup: the Type of Service 
+		(<em>TOS</em>) and the Total length. The first field concerns the type of desired service
+		in which speed or reliability can result privileged, one at the expence of the other. The total length
+		specifies the length of the whole IP datagram (max 65535 bytes).
+ 		See specialized literature for further information.
+	</p>
+	<h4> Identifying a service on a host. </h4>
+	<p>
+		Each service is identified in the TCP and UDP protocols by a number called <em>port</em>. Each application
+		on a host <em>listens</em> for a connection on a specific port. When a machine has 
+		been reached by a remote packet by means of its address, information carried in packet
+		must be delivered to the right application. A port is an integer between 0 and 65535 (a 
+		16 bit unsigned integer), and, as goes for the addresses, there is a <em>source</em>
+ 		and a <em>destination</em> port. When we are interested in a remote service, we specify
+ 		a port to which to connect. Such port is the destination one. The source port is normally chosen
+		by the operating
+ 		system at the beginning of a new communication. <br/>
+ 		For example, the web service is associated to the tcp port number 80, 
+		the Domain Name Resolution (DNS) with the udp port number
+ 		53.
+ 		Thus, blocking the TCP destination port 80 means blocking the access of the workstation to the world wide web.
+ 		The ports are treated by IPFIRE as the addresses, with the exception for the fact that the intervals cannot
+ 		be specified in the negative form, that is !6699 or 1025-10000 are alright, but the syntax !1025-10000 is 
+ 		not recognized.
+ 		<br/>
+ 		See the file <em>/etc/services</em> for a list of port numbers and their associated meanings.<br/>
+ 		IPFIRE user interface can resolve the port numbers into the service names as well, if <em>-services</em>
+ 		is given on command line or if <em>b</em> si pressed or again if <em>
+		RESOLVE_SERVICES</em> is specified in the configuration file. 
+		A high performance in the service name resolution is assured by a list dynamically
+ 		allocated in the main memory. See the chapters above for further details.
+ 	</p>
+ 	
+ </div> <!-- tcpip_general -->
+ 	
+ 		
+<div id="tcpflags">
+	<h4> TCP specific options. </h4>
+ 	<p>
+ 		Being a connection oriented service, the TCP protocol stores in its packets the information
+ 		about the connection state in some flags. They can be specified in a firewall rule, to
+		add a match pattern upon them.
+ 		A list of flags follows, together with a short explanation of their meaning and a possible
+ 		usage in a firewall context.
+ 	</p>
+	<dl>
+	<dt> SYN</dt>
+	<dd> SYN flag is used to create new connections.<br/>
+		When a host wants to initiate a new connection, it sends a packet with this flag 
+		set to active (flags are single bit fields, so they can assume 0 or 1 as possible values) and
+		with the ACK flag set to 0. The response to an accepted connection is instead 
+		characterized by both SYN and ACK flags set to 1. In practise, SYN is used to denote
+		messages of type <em> connection request</em> or <em>connection accepted</em>.
+		An interesting scenario is the one in which rules are made up of stateful ones to allow output 
+		traffic (generated by the local machine) and 
+		a denial rule is setup for the packets with the SYN flag set. In this situation, it would be possible to have
+		all attempts to create new connections towards our machine logged in red color, while
+		accepting all the traffic (in both directions) generated and leaving our node.
+ 	</dd>
+ 	<br/>
+ 	<dt> ACK </dt>
+ 	<dd> In addition to the function described above, the ACK flag indicates that the field
+			<em>acknowledgement number</em> in TCP segment is valid. If ACK is
+ 			0, such field is ignored. </dd>
+ 	<br/>
+ 	<dt> PSH </dt>
+ 	<dd> PSH (Push) flag indicates data of <em>push</em> type. In this way, the receiver is asked to
+ 		deliver the packet to the application at the arrival moment, without first saving it in a temporary 
+ 		buffer while waiting for this to be filed in. Buffer saving would be otherwise probable for 
+ 		efficiency reasons.
+ 	 </dd>
+ 	 <br/>
+ 	 <dt> RST </dt>
+ 	 <dd> RST (Reset) flag is used to reinitialize a connection become unstable for a host fault 
+ 	 	or for some other trouble. It is used to refuse an invalid segment or a new connection.
+ 	 	If a reset is received, it means that somewhere a problem happened. 
+		</dd>
+ 	 <br/>
+ 	 <dt> FIN</dt>
+ 	 <dd> FIN flag is set active to close a connection and specifies that the sender has no more data 
+ 	 	to transmit. 
+		</dd>
+ 	 <br/>
+ 	<dt> URG  </dt>
+ 	<dd> URG, urgent pointer field, indicates there is an offset, in bytes, from the sequence
+ 		number, where receiver should find urgent data. This choice allows interruption delivery
+ 		to application leyer without involving TCP protocol in the reason of interruption itself.
+		</dd>
+ 	<br/>
+ 	</dl>
+ </div>
+ 
+ <div id="other_rulefields">
+ 
+ 	<h3> Other rule fields of interest. </h3>
+ 	
+ 	<h4> Network device </h4>
+ 	<p>
+ 		IPFIREwall can filter packets also depending on the interface they are arriving or
+ 		they are leaving from. In the INPUT or PRE-ROUTING or FORWARD direction an <em>input</em> 
+ 		device can be specified, while in OUTPUT, POST ROUTING and again FORWARD directions
+ 		an <em>output</em> device can be specified. If no device is indicated in a rule, then 
+ 		kernel won't check device name against that rule. 		
+ 	</p>
+ 	
+ 	<h4> Give a name to a rule </h4>
+ 	<p> 
+ 		At the moment of inserting a new rule in the firewall, it is possible to give it a simple
+ 		name, which will be printed out when a match with a packet occurs. This is useful
+ 		for the user to remember the rules that are being applied without having to inspect all the network
+ 		information provided by the logging function.
+ 		<br/> Support for rule names must be compiled in both in <em>kernel</em> and in 
+		<em> user </em> modules. See compiling instructions for <a href="ubuild.html"> 
+		userspace program</a> and for <a href="kbuild.html"> kernel modules</a> to know
+		how to do this.<br/>
+		If you are installing IPFIREwall <cite>as is</cite>, there is no need to worry about
+		the activation of the rule naming: it is enabled by default.
+ 	</p>
+ 
+ </div>
+ 
+<div id="bibliografia" >
+	<p> <strong> BIBLIOGRAPHY</strong>.	
+		<br/>
+		Andrew S. Tanenbaum  <cite> Reti di Computer (Computer Networks)</cite>,
+			Third Edition.
+	</p>
+</div>	
+	
+</div> <!-- content -->
+
+<div id="w3c" >
+	<p id="validation">
+ 	     <a href="http://validator.w3.org/check?uri=referer"><img
+   	       src="http://www.w3.org/Icons/valid-xhtml10"
+    	      alt="Valid XHTML 1.0!" height="31" width="88" /></a>
+	</p>
+</div>	
+    
+<div id="foot_jumps" >  
+ 	<a href="#title" title="top_of_page"> 
+		Top of page		
+	</a>  <br />
+	<a href="./fireindex.html" title="foot_back_to_index"> 
+		Back to index		
+	</a>
+	<br/>
+	<a href="./stateful.html" title="foot_next"> 
+		Next page (Stateful rules).		
+	</a> <br/>
+	<a href="./admin.html" title="foot_prev"> 
+		Previous page (Administration rights).		
+	</a>
+</div>
+	
+</body>
+</html>

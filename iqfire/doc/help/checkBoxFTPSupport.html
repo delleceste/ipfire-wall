@@ -1,0 +1,41 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<link rel="stylesheet" href="help.css" type="text/css" /> 
+<head>
+	<title></title>
+	
+	
+	
+</head>
+			
+<head>
+	<title></title>	
+</head>
+			
+<body>
+
+<h3>Passive FTP support</h3>
+
+<div id="content">
+
+<p>
+	To enable the <strong>passive FTP support</strong> for this rule, 
+	you must check this box.
+	
+</p>
+
+<p>
+	For each packet matching this rule, a <strong>new dynamic one</strong> is
+	created to allow the <strong>passive</strong> ftp connection <strong>related</strong> to the flow permitted by this rule.
+	Usually, this rule concerns the <strong>ftp control</strong> service,
+	with <strong>destination port 21</strong>: each ftp control session
+	starts a <strong>related ftp data</strong> connection, with different port numbers
+	 negotiated in the <strong>payload data</strong> of the control session itself.
+</p>
+
+</div> <!-- id="content" -->	
+
+</body>
+
+</html>

@@ -1,0 +1,50 @@
+#
+#                DIREZIONI
+# 
+# DOC traffico in uscita::traffico in uscita
+traffico[\sa-zA-Z'\:]*(?:uscita|output|out)::traffico[\sa-zA-Z'\:]*(?:uscita|output|out)::OUTPUT::traffico in uscita{ENDRULE}
+#
+# DOC traffico in ingresso::traffico in ingresso
+traffico[\sa-zA-Z'\:]*(?:ingresso|input|entrata)::traffico[\sa-zA-Z'\:]*(?:ingresso|input|entrata)::INPUT::traffico in ingresso{ENDRULE}
+
+traffico::traffico:: ::traffico: parola generica oppure <em>traffico in ingresso</em> o <em>traffico in uscita</em>{ENDRULE}
+
+#
+# 1. tra IP1 e IP2
+\btra\b::tra\s+$_REGEXP{GENERIC_IP}\s+e\s+$_REGEXP{GENERIC_IP}::FWD SIP $1 DIP $2::tra richiede argomento + e{ENDRULE}
+#
+# DOC ingresso::indica direzione di input
+ingresso::ingresso::INPUT::traffico in ingresso{ENDRULE}
+
+# DOC uscita::indica direzione di output
+uscita::uscita::OUTPUT::traffico in uscita{ENDRULE}
+output::output::OUTPUT::traffico in output, in uscita{ENDRULE}
+
+entrata::entrata::INPUT::traffico in ingresso, traffico in entrata{ENDRULE}
+input::input::INPUT::traffico in input, traffico in ingresso{ENDRULE}
+
+# ip generico
+# DOC all'indirizzo a.b.c.d::indica indirizzo di destinazione. &Egrave; consigliato specificare esplicitamente la parola chiave <cite>destinazione</cite>
+(?:a|all'|al|verso)[\sa-zA-Z'\:]*$_REGEXP{GENERIC_IP}::(?:a|all'|al|verso)[\sa-zA-Z'\:]*$_REGEXP{GENERIC_IP}::IP $1::all'indirizzo ip generico: ambiguo: meglio usare indirizzo ip sorgente/destinazione{ENDRULE}
+
+# DOC dall'indirizzo a.b.c.d::indica indirizzo di provenienza (sorgente). &Egrave; consigliato specificare esplicitamente la parola chiave <cite>sorgente</cite>
+(?:da|dall|dal|proveniente\s+da)\s+[\sa-zA-Z'\:]*$_REGEXP{GENERIC_IP}::(?:da|dall|dal|proveniente\s+da)\s+[\sa-zA-Z'\:]*$_REGEXP{GENERIC_IP}::IP $1::(proveniente) dall'indirizzo a.b.c.d::meglio specificare sorgente/destinazione{ENDRULE}
+
+#
+
+# porta generica
+\b(?:a|alla|all'|al|verso)\s+[\sa-zA-Z'\:]*(?:port)[\sa-zA-Z'\:]*$_REGEXP{GENERIC_PORT}::\b(?:a|alla|all'|al|verso)\s+[\sa-zA-Z'\:]*(?:port)[\sa-zA-Z'\:]*$_REGEXP{GENERIC_PORT}::PORT $1::porta generica: ambigua, meglio usare porta sorgente/destinazione{ENDRULE}
+\b(?:da|dalla|dall'|proveniente)\s+[\sa-zA-Z'\:]*(?:port)[\sa-zA-Z'\:]*$_REGEXP{GENERIC_PORT}::\b(?:da|dalla|dall'|proveniente\s+da)\s+[\sa-zA-Z'\:]*(?:port)[\sa-zA-Z'\:]*$_REGEXP{GENERIC_PORT}::PORT $1::porta intesa come sorgente{ENDRULE}
+
+# NOTIFICHE
+# DOC notifica::indica al firewall di notificare quando una regola viene applicata a un pacchetto.<br/>&Egrave; necessario che sia abilitato il popup di notifica nel men&ugrave; Edit->Preferences
+# DOC avverti/avvertimi::indica al firewall di notificare quando una regola viene applicata a un pacchetto.<br/>&Egrave; necessario che sia abilitato il popup di notifica nel men&ugrave; Edit->Preferences
+# DOC segnala::indica al firewall di notificare quando una regola viene applicata a un pacchetto.<br/>&Egrave; necessario che sia abilitato il popup di notifica nel men&ugrave; Edit->Preferences
+(?:notifica|avverti|dimmi|segnala)::(?:notifica|avverti|dimmi|segnala)::NOTIFY::segnala quando viene applicata la regola{ENDRULE}
+
+# DOC non notificare/segnalare/avvertire::indica esplicitamente al firewall di non notificare quando una regola viene applicata
+non\s+(?:notificare|avvertire|dire|dirmi|segnalare)::non\s+(?:notificare|avvertire|dire|dirmi|segnalare)::DONT_NOTIFY::non avvertire quando la regola viene applicata{ENDRULE}
+
+
+
+

@@ -1,0 +1,59 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<link rel="stylesheet" href="info.css" type="text/css" /> 
+<head>
+	<title></title>	
+</head>
+
+			
+<body>
+
+<h3>Default policy: allow</h3>
+
+<div id="content">
+
+<p>
+
+Each packet inspected by the firewall is examined in search of a <em>permission or denial</strong> 
+rule  matching its fields (ip addresses, ports, protocol..).
+<br/>
+If a match is found, the verdict corresponding to the rule is applied, otherwise the 
+<em>default verdict must be applied</em>.
+
+</p>
+
+<p>
+	Here you can decide which default policy is to be applied to the packets that do not
+ 		match any rule in the firewall: <em>block</em> or <em>accept</em>.
+</p>
+
+<p>
+	The suggested default policy is to <strong>deny</strong> all the packets that 
+	do not match an <strong>explicit rule</strong>. This setting represent also 
+	a good starting point to <em>safely configure</em> the firewall: at the beginning 
+	all the traffic is blocked and little by little you allow the connections you want 
+	to.
+</p>
+<p>
+	The <strong>popup that notifies the packets not matching any rule</strong>, 
+	available right clicking on the <em>system tray icon</em> and choosing<br/> 
+	<strong>Popups...->Unknown Connections</strong><br/>, can help speeding up the 
+	selection of the desired and undesired connections through the firewall.
+</p>
+
+<p>
+	This configuration operates on the <strong>/proc</strong> entry 
+	<br/><cite>/proc/IPFIRE/policy</cite>.
+	Read <a href="http://www.giacomos.it/ipfire/proc.html" 
+		title="Open the web page http://www.giacomos.it/ipfire/proc.html">/proc interface for reading and changing default firewall policy</a> 
+	from the web documentation of <em>ipfire-wall</em> if you are interested in more 
+	details.
+</p>
+
+
+</div> <!-- id="content" -->	
+
+</body>
+
+</html>

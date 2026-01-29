@@ -1,0 +1,14 @@
+[Desktop Entry]
+Encoding=UTF-8
+Name=ipfire-wall (console version)
+Comment=Network Firewall - Command line interface
+GenericName=Network Firewall
+Exec=/usr/bin/ipfire
+Terminal=true
+X-MultipleArgs=false
+Type=Application
+Icon=/usr/share/ipfire/icons/ipfire-console.png
+Categories=Application;Network;
+#MimeType=text/html;text/xml;application/xhtml+xml;application/xml;application/vnd.mozilla.xul+xml;application/rss+xml;application/rdf+xml;image/gif;image/jpeg;image/png
+#StartupWMClass=Firefox-bin
+StartupNotify=true

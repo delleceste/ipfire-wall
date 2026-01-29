@@ -1,0 +1,70 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<link rel="stylesheet" href="info.css" type="text/css" /> 
+<head>
+	<title></title>	
+</head>
+
+			
+<body>
+
+<h3>Firewall <em>state machine</em></h3>
+
+<div id="content">
+
+<p>
+
+The firewall implements, at the kernel level, a simple state machine.
+The state machine tracks each new connection from its beginning (the 
+<em>setup</em> state, when the communication is negotiated in the TCP 
+protocol), to its conclusion, when both parts negotiate the termination of 
+the link.
+
+
+</p>
+
+
+<h3>Consequences of the enabling of the state machine</h3>
+<p>
+	A first benefit of the state machine is that, for each permission rule
+	you want to insert in your firewall, <em>it is enough to introduce only 
+	one rule to allow the traffic in both directions</em>.<br/>
+	This means that, should you allow the communication from your host A to
+	the host B, if A initiates the connection it is sufficient to enable the 
+	<em>output</em> traffic from A to B. <br/>
+	Without a state machine, this would not be the only necessary policy: 
+	together with the one allowing output traffic <em>towards B<em> you would 
+	<em>need a second rule allowing the B to A responses</em>.
+</p>
+
+<p>
+	Another positive consequence of the <em>state machine</em> concerns a safety issue.
+	Allowing the traffic <em>from A towards B</em>, ensures that if A initiates the connection 
+	towards B, the firewall will allow responses from B to A, thus guaranteeing the 
+	<em>bi-directional </em>
+	flow of the traffic. 
+	On the other hand, <em>if B tries to <strong>initialize</strong>
+	 a connection towards A</em>, it 
+	will fail, because there is no explicit permission rule <em>from B to A</em>.
+</p>
+
+<p>
+	In summary, being enabled the state machine and being inserted the <em>permission 
+	output policy from A to B</em>, guarantees the correct data flow <em>when A 
+	sets up a new connection towards B</em>, and at the same time <em>protects 
+	connection attempts from B to A</em>.
+	
+</p>
+
+<p>
+	Further information can be found in the <em>web</em> in this 
+	<a href="http://www.giacomos.it/ipfire/stateful.html" title="http://www.giacomos.it/ipfire/stateful.html">ipfire-wall web page</a>.
+</p>
+
+
+</div> <!-- id="content" -->	
+
+</body>
+
+</html>

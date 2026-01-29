@@ -1,0 +1,260 @@
+# Regole di sintassi caricate dalla classe Grammar
+#
+# Conformazione del file:
+#
+# 1. ogni regola va chiusa dal token {ENDRULE} e puo` essere distribuita su piu` righe
+# 2. ogni regola possiede 4 campi: 
+# 2a. parola a cui va applicata la regola;
+# 2b. regola vera e propria: conterra` la parola stessa nel contesto piu` ampio
+#     della regola, che puo` essere fatta di altre parole e regular expression.
+#     Le regular expression possono essere scritte direttamente nella regola oppure
+#     possono essere ripescate dal file regexps.txt specificando$_REGEXP{PAROLA_CHIAVE}
+#     dove PAROLA_CHIAVE e` presa da regexps.txt.
+#  3. traduzione in termini di Machine Word, in modo del tutto analogo a quanto 
+#     avviene in names.txt e verbs.txt. Il carattere '$' sostituisce il contenuto
+#     delle eventuali regexp indicate, nell'ordine.
+#  4. Un messaggio d'errore che aiuti l'utente quando sbaglia.
+#
+#  Il primo esempio sotto riportato dice che la parola `tra' non puo` essere 
+#  lasciata sola nel testo, ma, come in italiano avviene, si dice "tra QUALCOSA e
+#  QUALCOS'ALTRO. Nell'esempio, riferito al tra nel contesto degli indirizzi ip,
+#  la regola obbliga l'utente a scrivere qualcosa del tipo 
+#  "tra 192.168.0.1 e 192.168.0.10". La frase verra` mappata in 
+#  "IN 192.168.0.1-192.168.0.10" (linguaggio Machine Word).
+#  Se l'utente non segue la regola, verra` avvertito con il messaggio "tra richiede ..."
+#
+#
+# DIREZIONI in syntax20
+
+#
+# Sorgente generica
+# DOC proveniente da/dal/dall'(ip o porta)::indica un campo sorgente, ad esempio un indirizzo ip o porta sorgenti.<br/>Non &egrave; necessario specificare la direzione: si assume quella di ingresso.<br/>Esempio: blocca i pacchetti provenienti da 10.0.0.1 e 10.0.0.3
+provenient(?:i|e){1,1}\s+(?:da)+::provenient(?:i|e){1,1}\s+(?:da)+::INPUT SOURCE{ENDRULE}
+
+
+# ip sorgente
+# DOC indirizzo ip sorgente::seguito da un indirizzo ip valido, ad esempio 10.0.0.12, indica l'indirizzo ip del mittente del pacchetto.
+(?:indirizzo|indirizzi)*(?:ip)*\s+sorgent(?:e|i)\s+::(?:indirizzo|indirizzi)*(?:ip)*\s+sorgent(?:e|i)\s+$_REGEXP{GENERIC_IP}::SIP($1)::indirizzo ip sorgente xxx.yyy.zzz.www{ENDRULE}
+#
+# DOC indirizzo ip sorgente diverso da x.y.z.w::indica che l'indirizzo ip di ciascun pacchetto deve essere diverso da quello specificato
+# DOC indirizzo ip sorgente diverso da x.y.z.w, a.b.c.d e e.f.g.h::indica che l'indirizzo ip di ciascun pacchetto deve essere diverso da quelli specificati nella lista
+(?:indirizzo|indirizzi)*(?:ip)*\s*sorgente[\sa-zA-Z'\:]*(?:different|divers)[oi](?:\s+da)?\s+::(?:indirizzo|indirizzi)*(?:ip)*\s*sorgent[\sa-zA-Z'\:]*(?:different|divers)[oi](?:\s+da)?\s+$_REGEXP{GENERIC_IP}::SIP !$1::indirizzo ip sorgente diverso da xxx.yyy.zzz.www{ENDRULE}
+# 
+# ip destinazione
+(?:indirizzo|indirizzi)*(?:ip)*\s+destinazione\s+::(?:indirizzo|indirizzi)*(?:ip)*\s+destinazione\s+$_REGEXP{GENERIC_IP}::DIP($1)::indirizzo ip destinazione xxx.yyy.zzz.www{ENDRULE}
+
+# parola chiave su: esempio apri la porta 22 su 10.0.0.1
+# DOC su/sulla macchina a.b.c.d::indica indirizzo destinazione, ad esempio <cite>apri la porta 22 sulla macchina 10.0.0.22</cite>
+(?:\bsu\b)|(?:\b(?:su|sulla|sul|sull')\s*)(?:macchina|workstation|computer|pc|personal\s+computer|host|nodo|elemento)::(?:\bsu\b)|(?:\b(?:su|sulla|sul|sull')\s*)(?:macchina|workstation|computer|pc|personal\s+computer|host|nodo|elemento)\s+$_REGEXP{GENERIC_IP}::DIP $1::sulla macchina o sul computer a.b.c.d{ENDRULE}
+
+
+# DOC verso l'indirizzo destinazione x.y.z.w ::seguito da un indirizzo ip valido, indica l'indirizzo destinazione
+verso::verso::DEST::verso ip o intervallo{ENDRULE}
+
+#DOC pacchetti diretti a/verso la porta/l'indirizzo destinazione::seguito da un indirizzo ip o porta validi, indica destinazione
+#DOC traffico diretto a/verso la porta/l'indirizzo destinazione::seguito da un indirizzo ip o porta validi, indica destinazione
+#DOC flusso diretto a/verso la porta/l'indirizzo destinazione::seguito da un indirizzo ip o porta validi, indica destinazione
+(?:traffico|pacchetti|pacchetto|flusso|flussi)?dirett(?:o|i)\s+(?:verso|a|al|alle|agli)?\s+::(?:traffico|pacchetti|pacchetto|flusso|flussi)?dirett(?:o|i)\s+(?:verso)?\s+::DEST::(traffico) diretto verso la porta/l'indirizzo destinazione{ENDRULE}
+
+#DOC pacchetti provenienti da IP/PORTA::indica pacchetti provenienti da una sorgente, ad esempio traffico proveniente dall'indirizzo ip sorgente a.b.c.d
+#DOC traffico proveniente da IP/PORTA::indica pacchetti provenienti da una sorgente, ad esempio traffico proveniente dall'indirizzo ip sorgente a.b.c.d
+#DOC flusso proveniente da IP/PORTA::indica pacchetti provenienti da una sorgente, ad esempio traffico proveniente dall'indirizzo ip sorgente a.b.c.d
+(?:traffico|pacchetti|pacchetto|flusso|flussi)?provenient(?:e|i)\s+da::(?:traffico|pacchetti|pacchetto|flusso|flussi)?provenient(?:e|i)\s+da::SOURCE::traffico/pacchetti proveniente/i dall'indirizzo/porta sorgente{ENDRULE}
+
+#
+# DOC indirizzo ip destinazione diverso da x.y.z.w::indica che l'indirizzo ip destinazione di ciascun pacchetto deve essere diverso da quello specificato
+# DOC indirizzo ip destinazione diverso da x.y.z.w, a.b.c.d e e.f.g.h::indica che l'indirizzo ip destinazione di ciascun pacchetto deve essere diverso da quelli specificati nella lista
+(?:indirizzo)*(?:ip)*\s*destinazione[\sa-zA-Z'\:]*(?:different|divers)[oi](?:\s+da)?\s+::(?:indirizzo)*(?:ip)*\s*destinazione[\sa-zA-Z'\:]*(?:different|divers)[oi](?:\s+da)?\s+$_REGEXP{GENERIC_IP}::DIP !$1::indirizzo ip sorgente diverso da xxx.yyy.zzz.www{ENDRULE}
+# 
+# input ip
+# DOC dall'indirizzo ip x.y.z.k::indica un indirizzo ip sorgente avente valore x.y.z.k, ad esempio 192.168.0.11
+dall::dall[\sa-zA-Z'\:]*$_REGEXP{GENERIC_IP}::SIP $1::dall'[indirizzo]IP{ENDRULE}
+
+# equivalente porta in syntax5.txt
+
+#
+#da[\sa-zA-Z'\:]*port::da[\sa-zA-Z'\:]*port[\sa-zA-Z'\:]*$_REGEXP{PORT_REGEXP}::SPORT $1::dalla porta sorgente P1{ENDRULE}
+(?:da|dal|dall')::(?:da|dal|dall')[\sa-zA-Z'\:]*$_REGEXP{GENERIC_IP}\s+a[\sa-zA-Z'\:]*$_REGEXP{GENERIC_IP}::SIP $1 DIP $2::dall'indirizzo ip (sorgente) a.b.c.d all'indirizzo r.s.t.u{ENDRULE}
+(?:da|dal|dall')::(?:da|dal|dall')[\sa-zA-Z'\:]*$_REGEXP{GENERIC_IP}::SIP $1::da IP (da intendersi come IP sorgente){ENDRULE}
+
+#(?:trasmissione|inoltro)::(?:trasmissione|inoltro)\s+[\w\s]*da\s+$_REGEXP{GENERIC_IP}\s+a\s*$_REGEXP{GENERIC_IP}::FWD SIP $1 DIP $2::trasmetti da.. a{ENDRULE}
+#(?:trasmetti|inoltra)::(?:trasmetti|inoltra)\s+[\w\s']*da\s+$_REGEXP{GENERIC_IP}\s+a\s*$_REGEXP{GENERIC_IP}::ALLOW FWD SIP $1 DIP $2::trasmetti da.. a{ENDRULE}
+#trasmissione::trasmissione\s+[\w\s]*tra\s+$_REGEXP{GENERIC_IP}\s+e\s*$_REGEXP{GENERIC_IP}::FWD SIP $1 DIP $2::trasmetti da.. a{ENDRULE}
+
+# FORWARD
+
+# DOC trasmetti/inoltra il traffico dall'indirizzo a.b.c.d a x.y.z.w::indica una azione di forward, per permettere che il traffico sia inoltrato da un indirizzo ip ad un altro, oppure da un intervallo ad un altro, o da una lista ad un'altra.<br/>&Egrave; necessario specificare esplicitamente le parole chiave <strong>sorgente</strong> e <strong>destinazione</strong>
+$_REGEXP{FWD_REGEXP}[\sa-zA-Z'\:]*da[\sa-zA-Z'\:]*::$_REGEXP{FWD_REGEXP}[\sa-zA-Z'\:]*da[\sa-zA-Z'\:]*$_REGEXP{GENERIC_IP}[\sa-zA-Z'\:]*(?:a|all'|al|verso)\s*[\sa-zA-Z'\:]*$_REGEXP{GENERIC_IP}::ALLOW FWD SIP $2 DIP $3::trasmetti il traffico dall'indirizzo 10.0.0.1 all'indirizzo 10.0.0.2{ENDRULE}
+#
+# DOC trasmetti/inoltra il traffico dall'intervallo di indirizzi a.b.c.d - e.f.g.h all'indirizzo x.y.z.w::permette l'inoltro da un intervallo di indirizzi verso un altro indirizzo
+$_REGEXP{FWD_REGEXP}[\sa-zA-Z'\:]*da[\sa-zA-Z'\:]*intervallo[\sa-zA-Z'\:]*::$_REGEXP{FWD_REGEXP}[\sa-zA-Z'\:]*da[\sa-zA-Z'\:]*intervallo[\sa-zA-Z'\:]*$_REGEXP{GENERIC_IP}[-\s+]{1}$_REGEXP{GENERIC_IP}[\sa-zA-Z'\:]*(?:a|all'|al|verso)\s*[\sa-zA-Z'\:]*$_REGEXP{GENERIC_IP}::ALLOW FWD SIP $2-$3 DIP $4::inoltra il traffico dall'intervallo di indirizzi a.b.c.d - e.f.g.h all'indirizzo x.y.z.w{ENDRULE}
+#
+# DOC consenti l'inoltro dall'indirizzo z.x.w.y verso l'intervallo a.b.c.d-e.f.g.h::consente il forward da un indirizzo <strong>sorgente</strong> verso un <strong>intervallo</strong> di indirizzi <strong>destinazione</strong>
+$_REGEXP{FWD_REGEXP}[\sa-zA-Z'\:]*da[\sa-zA-Z'\:]*$_REGEXP{GENERIC_IP}[\sa-zA-Z'\:]*(?:a|all'|al|verso)\s*[\sa-zA-Z'\:]*intervallo::$_REGEXP{FWD_REGEXP}[\sa-zA-Z'\:]*da[\sa-zA-Z'\:]*$_REGEXP{GENERIC_IP}[\sa-zA-Z'\:]*(?:a|all'|al|verso)\s*[\sa-zA-Z'\:]*intervallo[\sa-zA-Z'\:]*$_REGEXP{GENERIC_IP}[-\s+]{1}$_REGEXP{GENERIC_IP}::ALLOW FWD{ENDRULE}
+
+# DOC non trasmettere/inoltrare il traffico dall'indirizzo a.b.c.d a x.y.z.w::indica una azione di forward, per negare che il traffico sia inoltrato da un indirizzo ip ad un altro, oppure da un intervallo ad un altro, o da una lista ad un'altra.<br/>&Egrave; necessario specificare esplicitamente le parole chiave <strong>sorgente</strong> e <strong>destinazione</strong>
+$_REGEXP{DENY_FWD_REGEXP}[\sa-zA-Z'\:]*da[\sa-zA-Z'\:]*::$_REGEXP{FWD_REGEXP}[\sa-zA-Z'\:]*da[\sa-zA-Z'\:]*$_REGEXP{GENERIC_IP}[\sa-zA-Z'\:]*(?:a|all'|al|verso)\s*[\sa-zA-Z'\:]*$_REGEXP{GENERIC_IP}::ALLOW FWD SIP $2 DIP $3::trasmetti il traffico dall'indirizzo 10.0.0.1 all'indirizzo 10.0.0.2{ENDRULE}
+#
+# DOC non trasmettere/inoltrare il traffico dall'intervallo di indirizzi a.b.c.d - e.f.g.h all'indirizzo x.y.z.w::nega l'inoltro da un intervallo di indirizzi verso un altro indirizzo
+$_REGEXP{DENY_FWD_REGEXP}[\sa-zA-Z'\:]*da[\sa-zA-Z'\:]*intervallo[\sa-zA-Z'\:]*::$_REGEXP{FWD_REGEXP}[\sa-zA-Z'\:]*da[\sa-zA-Z'\:]*intervallo[\sa-zA-Z'\:]*$_REGEXP{GENERIC_IP}[-\s+]{1}$_REGEXP{GENERIC_IP}[\sa-zA-Z'\:]*(?:a|all'|al|verso)\s*[\sa-zA-Z'\:]*$_REGEXP{GENERIC_IP}::ALLOW FWD SIP $2-$3 DIP $4::inoltra il traffico dall'intervallo di indirizzi a.b.c.d - e.f.g.h all'indirizzo x.y.z.w{ENDRULE}
+#
+# DOC non consentire l'inoltro dall'indirizzo z.x.w.y verso l'intervallo a.b.c.d-e.f.g.h::nega il forward da un indirizzo <strong>sorgente</strong> verso un <strong>intervallo</strong> di indirizzi <strong>destinazione</strong>
+$_REGEXP{DENY_FWD_REGEXP}[\sa-zA-Z'\:]*da[\sa-zA-Z'\:]*$_REGEXP{GENERIC_IP}[\sa-zA-Z'\:]*(?:a|all'|al|verso)\s*[\sa-zA-Z'\:]*intervallo::$_REGEXP{FWD_REGEXP}[\sa-zA-Z'\:]*da[\sa-zA-Z'\:]*$_REGEXP{GENERIC_IP}[\sa-zA-Z'\:]*(?:a|all'|al|verso)\s*[\sa-zA-Z'\:]*intervallo[\sa-zA-Z'\:]*$_REGEXP{GENERIC_IP}[-\s+]{1}$_REGEXP{GENERIC_IP}::ALLOW FWD{ENDRULE}
+
+$_REGEXP{DENY_FWD_REGEXP}::$_REGEXP{DENY_FWD_REGEXP}::DENY FWD::non trasmettere{ENDRULE}
+$_REGEXP{DENY_FWD_REGEXP}::$_REGEXP{DENY_FWD_REGEXP}::DENY FWD::non trasmettere{ENDRULE}
+
+
+$_REGEXP{FWD_REGEXP}::$_REGEXP{FWD_REGEXP}::ALLOW FWD::trasmettere{ENDRULE}
+$_REGEXP{FWD_REGEXP}::$_REGEXP{FWD_REGEXP}::ALLOW FWD::trasmettere{ENDRULE}
+
+# qualsiasi qualsivoglia ogni tutte le
+# DOC qualsiasi/qualsivoglia indirizzo/porta sorgente/destinazione::comanda esplicitamente al firewall di applicare la regola <em>ignorando</em> il campo indicato{ENDRULE}
+# DOC ogni indirizzo/porta sorgente/destinazione::comanda esplicitamente al firewall di applicare la regola <em>ignorando</em> il campo indicato{ENDRULE}
+# DOC tutte/tutti gli indirizzo/porta sorgente/destinazione::comanda esplicitamente al firewall di applicare la regola <em>ignorando</em> il campo indicato{ENDRULE}
+#
+$_REGEXP{ANY_REGEXP}\s+(?:porta|porte|indirizzo|indirizzi)\s+(sorgente|destinazione)::$_REGEXP{ANY_REGEXP}\s+(?:porta|porte|indirizzo|indirizzi)\s+(sorgente|destinazione):: ::qualsiasi indirizzo/porta sorgente/destinazione{ENDRULE}
+(?:porta|porte|indirizzo|indirizzi)\s+(sorgente|destinazione)\s+$_REGEXP{ANY_REGEXP}::(?:porta|porte|indirizzo|indirizzi)\s+(sorgente|destinazione)\s+$_REGEXP{ANY_REGEXP}:: ::indirizzo/porta sorgente/destinazine qualsiasi{ENDRULE}
+
+
+# 
+# DOC 
+
+# 
+#
+#
+#
+
+# Fuori da intervallo di indirizzi ip sorgente
+#
+# NOTA: parole chiave necessarie: sorgente
+# NOTA: parole chiave non ambigue: fuori, non + intervallo, non + interno, estern(amente), non compresi
+# NOTA: le chiavi (parte prima del separatore '::') deve essere in generale piu` lunga della parte intervallo sopra
+
+# fuori - sorgente
+# DOC intervallo di indirizzi ip sorgente indirizzo1-indirizzoN::esprime un intervallo di indirizzi ip <strong>all'infuori del quale</strong> avverr&agrave; la valutazione
+fuori[\sa-zA-Z'\:]*(?:intervallo)?[\sa-zA-Z'\:]*sorgent(?:e|i)[\sa-zA-Z'\:]*::fuori[\sa-zA-Z'\:]*(?:intervallo)?[\sa-zA-Z'\:]*sorgent(?:e|i)[\sa-zA-Z'\:]*$_REGEXP{IP_ADDRESS}[\s\-\selai']+$_REGEXP{IP_ADDRESS}::SIP !$1-$2::intervallo di indirizzi ip sorgente indirizzo1-indirizzoN{ENDRULE}
+
+# sorgente - fuori
+# DOC indirizzo sorgente fuori dall'intervallo compreso tra indirizzo1 e indirizzoN::esprime un intervallo di indirizzi ip  <strong>all'infuori del quale</strong> avverr&agrave; la valutazione
+(?:indirizz[\sa-zA-Z'\:]*)?sorgent[\sa-zA-Z'\:]*fuori::(?:indirizz[\sa-zA-Z'\:]*)?sorgent[\sa-zA-Z'\:]*fuori[\sa-zA-Z'\:]*$_REGEXP{IP_ADDRESS}[\s\-\selai']+$_REGEXP{IP_ADDRESS}::SIP !$1-$2::indirizzo sorgente fuori dall'intervallo compreso tra indirizzo1 e indirizzoN{ENDRULE}
+
+# non + interno - sorgente
+# DOC non all'interno dell'intervallo di indirizzi ip sorgente  indirizzo1-indirizzoN::esprime un intervallo di indirizzi ip  <strong>all'infuori del quale</strong> avverr&agrave; la valutazione
+non[\sa-zA-Z'\:]*intern[\sa-zA-Z'\:]*sorgent(?:e|i)::non[\sa-zA-Z'\:]*intern[\sa-zA-Z'\:]*sorgent(?:e|i)[\sa-zA-Z'\:]*$_REGEXP{IP_ADDRESS}[\s\-\selai']+$_REGEXP{IP_ADDRESS}::SIP !$1-$2::non all'interno dell'intervallo di indirizzi ip sorgente compresi tra p1 e pN{ENDRULE}
+
+# sorgente - non + interno
+# DOC indirizzo sorgente non all'interno dell'intervallo indirizzo1-indirizzoN::esprime un intervallo di indirizzi ip  <strong>all'infuori del quale</strong> avverr&agrave; la valutazione
+(?:indirizz[\sa-zA-Z'\:]*)?sorgent[\sa-zA-Z'\:]*non[\sa-zA-Z'\:]*intern::(?:indirizz[\sa-zA-Z'\:]*)?sorgent[\sa-zA-Z'\:]*non[\sa-zA-Z'\:]*intern[\sa-zA-Z'\:]*$_REGEXP{IP_ADDRESS}[\s\-\selai']+$_REGEXP{IP_ADDRESS}::SIP !$1-$2::indirizzo sorgente non all'interno dell'intervallo indirizzo1-indirizzoN{ENDRULE}
+
+# sorgente - non compresi
+# DOC indirizzi ip sorgenti non compresi tra indirizzo1 e indirizzoN::esprime un intervallo di indirizzi ip sorgenti <strong>all'infuori del quale</strong> avverr&agrave; la valutazione
+(?:indirizz(?:a|e)\s+)?sorgent(?:e|i)\s+non\s+compres::(?:indirizzi ip\s+)?sorgent(?:e|i)\s+non\s+compres[\sa-zA-Z'\:]*$_REGEXP{IP_ADDRESS}[\s\-\selai']+$_REGEXP{IP_ADDRESS}::SIP !$1-$2::indirizzo sorgente non compreso tra indirizzo1 e indirizzoN{ENDRULE}
+
+# estern[amente] - sorgente
+# DOC esterno all'intervallo di indirizzi ip sorgente indirizzo1-indirizzoN::esprime un intervallo di indirizzi ip <strong>all'infuori del quale</strong> avverr&agrave; la valutazione
+# DOC all'esterno dell'intervallo di indirizzi ip sorgente indirizzo1-indirizzoN::esprime un intervallo di indirizzi ip IP <strong>all'infuori del quale</strong> avverr&agrave; la valutazione
+estern[\sa-zA-Z'\:]*(?:intervallo)?[\sa-zA-Z'\:]*sorgent(?:e|i)[\sa-zA-Z'\:]*::estern[\sa-zA-Z'\:]*sorgent(?:e|i)[\sa-zA-Z'\:]*$_REGEXP{IP_ADDRESS}[\s\-\selai']+$_REGEXP{IP_ADDRESS}::SIP !$1-$2::all'esterno dell'intervallo di indirizzi ip sorgenti A-B oppure esterno all'intervallo di indirizzi ip sorgente A - B{ENDRULE}
+
+# sorgente - estern[amente] 
+# DOC indirizzo sorgente esterna all'intervallo tra indirizzo1 e l'indirizzoN::esprime un intervallo di indirizzi ip <strong>all'infuori del quale</strong> avverr&agrave; la valutazione
+(?:indirizz[\sa-zA-Z'\:]*)?sorgent(?:e|i)[\sa-zA-Z'\:]*estern::(?:indirizz[\sa-zA-Z'\:]*)?sorgent(?:e|i)[\sa-zA-Z'\:]*estern[\sa-zA-Z'\:]*$_REGEXP{IP_ADDRESS}[\s\-\selai']+$_REGEXP{IP_ADDRESS}::SIP !$1-$2::indirizzo sorgente esterna all'intervallo tra la N e la M{ENDRULE}
+
+# non intervallo - sorgente
+# DOC non nell'intervallo di indirizzi ip sorgente indirizzo1-indirizzoN::esprime un intervallo di indirizzi ip sorgente <strong>all'infuori del quale</strong> avverr&agrave; la valutazione
+non[\sa-zA-Z'\:]*intervallo[\sa-zA-Z'\:]*sorgent(?:e|i)::non[\sa-zA-Z'\:]*intervallo[\sa-zA-Z'\:]*sorgent(?:e|i)[\s+]$_REGEXP{IP_ADDRESS}[\s\-\selai']+$_REGEXP{IP_ADDRESS}::SIP !$1-$2::non all'interno dell'intervallo di indirizzi ip sorgente indirizzo1 indirizzo2{ENDRULE}
+
+# sorgente - non intervallo
+# DOC indirizzo sorgente non nell'intervallo tra p1 e pN::esprime un intervallo di indirizzi ip sorgente <strong>all'infuori del quale</strong> avverr&agrave; la valutazione
+(?:indirizz[\sa-zA-Z'\:]*)?sorgent(?:e|i)[\sa-zA-Z'\:]*non[\sa-zA-Z'\:]*intervallo::(?:indirizz[\sa-zA-Z'\:]*)?sorgent(?:e|i)[\sa-zA-Z'\:]*non[\sa-zA-Z'\:]*intervallo[\sa-zA-Z'\:]*$_REGEXP{IP_ADDRESS}[\s\-\selai']+$_REGEXP{IP_ADDRESS}::SIP !$1-$2::indirizzo sorgente non nell'intervallo tra p1 e pN{ENDRULE}
+
+#
+
+# Fuori da intervallo di indirizzi ip destinazione
+#
+# NOTA: parole chiave necessarie: destinazione
+# NOTA: parole chiave non ambigue: fuori, non + intervallo, non + interno, estern(amente), non compresi
+# 
+
+# fuori - destinazione
+# DOC intervallo di indirizzi ip destinazione indirizzo1-indirizzoN::esprime un intervallo di indirizzi ip <strong>all'infuori del quale</strong> avverr&agrave; la valutazione
+fuori[\sa-zA-Z'\:]*(?:intervallo)?[\sa-zA-Z'\:]*destinazion(?:e|i)\s+::fuori[\sa-zA-Z'\:]*(?:intervallo)?[\sa-zA-Z'\:]*destinazion(?:e|i)[\sa-zA-Z'\:]*$_REGEXP{IP_ADDRESS}[\s\-\selai']+$_REGEXP{IP_ADDRESS}::DIP !$1-$2::intervallo di indirizzi ip destinazione indirizzo1-indirizzoN{ENDRULE}
+
+# destinazione - fuori
+# DOC indirizzo destinazione fuori dall'intervallo compreso tra indirizzo1 e indirizzoN::esprime un intervallo di indirizzi ip  <strong>all'infuori del quale</strong> avverr&agrave; la valutazione
+(?:indirizz[\sa-zA-Z'\:]*)?destinazion[\sa-zA-Z'\:]*fuori::(?:indirizz[\sa-zA-Z'\:]*)?destinazion[\sa-zA-Z'\:]*fuori[\sa-zA-Z'\:]*$_REGEXP{IP_ADDRESS}[\s\-\selai']+$_REGEXP{IP_ADDRESS}::DIP !$1-$2::indirizzo destinazione fuori dall'intervallo compreso tra indirizzo1 e indirizzoN{ENDRULE}
+
+# non + interno - destinazione
+# DOC non all'interno dell'intervallo di indirizzi ip destinazione  indirizzo1-indirizzoN::esprime un intervallo di indirizzi ip  <strong>all'infuori del quale</strong> avverr&agrave; la valutazione
+non[\sa-zA-Z'\:]*intern[\sa-zA-Z'\:]*destinazion(?:e|i)::non[\sa-zA-Z'\:]*intern[\sa-zA-Z'\:]*destinazion(?:e|i)[\sa-zA-Z'\:]*$_REGEXP{IP_ADDRESS}[\s\-\selai']+$_REGEXP{IP_ADDRESS}::DIP !$1-$2::non all'interno dell'intervallo di indirizzi ip destinazione compresi tra p1 e pN{ENDRULE}
+
+# destinazione - non + interno
+# DOC indirizzo destinazione non all'interno dell'intervallo indirizzo1-indirizzoN::esprime un intervallo di indirizzi ip  <strong>all'infuori del quale</strong> avverr&agrave; la valutazione
+(?:indirizz[\sa-zA-Z'\:]*)?destinazion[\sa-zA-Z'\:]*non[\sa-zA-Z'\:]*intern::(?:indirizz[\sa-zA-Z'\:]*)?destinazion[\sa-zA-Z'\:]*non[\sa-zA-Z'\:]*intern[\sa-zA-Z'\:]*$_REGEXP{IP_ADDRESS}[\s\-\selai']+$_REGEXP{IP_ADDRESS}::DIP !$1-$2::indirizzo destinazione non all'interno dell'intervallo indirizzo1-indirizzoN{ENDRULE}
+
+# destinazione - non compresi
+# DOC indirizzi ip destinazioni non compresi tra indirizzo1 e indirizzoN::esprime un intervallo di indirizzi ip destinazioni <strong>all'infuori del quale</strong> avverr&agrave; la valutazione
+(?:indirizz(?:a|e)\s+)?destinazion(?:e|i)\s+non\s+compres::(?:indirizzi ip\s+)?destinazion(?:e|i)\s+non\s+compres[\sa-zA-Z'\:]*$_REGEXP{IP_ADDRESS}[\s\-\selai']+$_REGEXP{IP_ADDRESS}::DIP !$1-$2::indirizzo destinazione non compreso tra indirizzo1 e indirizzoN{ENDRULE}
+
+# estern[amente] - destinazione
+# DOC esterno all'intervallo di indirizzi ip destinazione indirizzo1-indirizzoN::esprime un intervallo di indirizzi ip <strong>all'infuori del quale</strong> avverr&agrave; la valutazione
+# DOC all'esterno dell'intervallo di indirizzi ip destinazione indirizzo1-indirizzoN::esprime un intervallo di indirizzi ip IP <strong>all'infuori del quale</strong> avverr&agrave; la valutazione
+estern[\sa-zA-Z'\:]*destinazion(?:e|i)::estern[\sa-zA-Z'\:]*destinazion(?:e|i)[\sa-zA-Z'\:]*$_REGEXP{IP_ADDRESS}[\s\-\selai']+$_REGEXP{IP_ADDRESS}::DIP !$1-$2::all'esterno dell'intervallo di indirizzi ip destinazioni A-B oppure esterno all'intervallo di indirizzi ip destinazione A - B{ENDRULE}
+
+# destinazione - estern[amente] 
+# DOC indirizzo destinazione esterna all'intervallo tra indirizzo1 e l'indirizzoN::esprime un intervallo di indirizzi ip <strong>all'infuori del quale</strong> avverr&agrave; la valutazione
+(?:indirizz[\sa-zA-Z'\:]*)?destinazion[\sa-zA-Z'\:]*estern::(?:indirizz(?:a|e))?[\sa-zA-Z'\:]*destinazion[\sa-zA-Z'\:]*estern[\sa-zA-Z'\:]*$_REGEXP{IP_ADDRESS}[\s\-\selai']+$_REGEXP{IP_ADDRESS}::DIP !$1-$2::indirizzo destinazione esterna all'intervallo tra la N e la M{ENDRULE}
+
+# non intervallo - destinazione
+# DOC non nell'intervallo di indirizzi ip destinazione indirizzo1-indirizzoN::esprime un intervallo di indirizzi ip destinazione <strong>all'infuori del quale</strong> avverr&agrave; la valutazione
+non[\sa-zA-Z'\:]*intervallo[\sa-zA-Z'\:]*destinazion(?:e|i)::non[\sa-zA-Z'\:]*intervallo[\sa-zA-Z'\:]*destinazion(?:e|i)[\s+]$_REGEXP{IP_ADDRESS}[\s\-\selai']+$_REGEXP{IP_ADDRESS}::DIP !$1-$2::non all'interno dell'intervallo di indirizzi ip destinazione indirizzo1 indirizzo2{ENDRULE}
+
+# destinazione - non intervallo
+# DOC indirizzo destinazione non nell'intervallo tra p1 e pN::esprime un intervallo di indirizzi ip destinazione <strong>all'infuori del quale</strong> avverr&agrave; la valutazione
+(?:indirizz[\sa-zA-Z'\:]*)?destinazion(?:e|i)[\sa-zA-Z'\:]*non[\sa-zA-Z'\:]*intervallo::(?:indirizz[\sa-zA-Z'\:]*)?destinazion(?:e|i)[\sa-zA-Z'\:]*non[\sa-zA-Z'\:]*intervallo[\sa-zA-Z'\:]*$_REGEXP{IP_ADDRESS}[\s\-\selai']+$_REGEXP{IP_ADDRESS}::DIP !$1-$2::indirizzo destinazione non nell'intervallo tra p1 e pN{ENDRULE}
+
+#
+#
+#
+# Liste di IP
+# DOC lista di indirizzi ip a.b.c.d, e.f.g.h, i.l.m.n::esprime una lista di indirizzi ip
+lista::lista\s+(?:\b\w*\b\s+)*$_REGEXP{IP_ADDRESS}::IP$1::lista di indirizzi ip separati da virgola o spazi{ENDRULE}
+#
+# DOC all'interno della lista di indirizzi a.b.c.d, e.f.g.h, i.l.m.n::esprime una lista di indirizzi ip
+#
+#                                        VEDERE QUI
+#
+# (?:all'interno|nella|della|in|internamente)\s+(?:\b\w*\b\s+)*lista::all'interno\s+(?:\b\w*\b\s+)*lista\s+(?:\b\w*\b\s+)*(?:\d):: ::lista:non ancora definito{ENDRULE}
+#
+#		INTERFACCE DI RETE
+#
+# DOC interfaccia/dispositivo/scheda di rete di ingresso/uscita/entrata/input::definisce il nome del dispositivo di rete a cui viene applicata la regola per i pacchetti in <strong>ingresso</strong> alla macchina
+(?:interfaccia|dispositivo|scheda){1,1}\s+(?:di rete)*\s*(?:di|d'|\s+)+(?:ingresso|input|entrata|arrivo){1,1}\s+::(?:interfaccia|dispositivo|scheda){1,1}\s+(?:di rete)*\s*(?:di|d'|\s+)+(?:ingresso|input|entrata|arrivo){1,1}\s+$_REGEXP{IF_REGEXP}::INIF $1::interfaccia/dispositivo/scheda di arrivo/ingresso/input/entrata NOME interfaccia (es:ppp0 eth0 wlan0 ra0){ENDRULE}
+#
+# DOC interfaccia/dispositivo/scheda di rete di uscita/output::definisce il nome del dispositivo di rete a cui viene applicata la regola per i pacchetti in <strong>uscita</strong> dalla macchina
+(?:interfaccia|dispositivo|scheda){1,1}\s+(?:di rete)*\s*(?:di|d'|\s+)+(?:uscita|output|partenza){1,1}\s+::(?:interfaccia|dispositivo|scheda){1,1}\s+(?:di rete)*\s*(?:di|d'|\s+)+(?:uscita|output|partenza){1,1}\s+$_REGEXP{IF_REGEXP}::OUTIF $1::interfaccia/dispositivo/scheda di uscita/partenza/output NOME interfaccia (es:ppp0 eth0 wlan0 ra0){ENDRULE}
+(?:interfaccia)*.*(?:ingresso|input|entrata|arrivo){1,1}::(?:interfaccia)*.*(?:ingresso|input|entrata|arrivo){1,1}\s+$_REGEXP{IF_REGEXP}::INIF $1::interfaccia di arrivo/ingresso/input/entrata NOME interfaccia (es:ppp0 eth0 wlan0 ra0){ENDRULE}
+(?:interfaccia)*.*(?:uscita|output|partenza){1,1}::(?:interfaccia)*.*(?:uscita|output|partenza){1,1}\s+$_REGEXP{IF_REGEXP}::OUTIF $1::interfaccia di uscita/partenza/output NOME interfaccia (es:ppp0 eth0 wlan0 ra0){ENDRULE}
+$_REGEXP{IF_REGEXP}::$_REGEXP{IF_REGEXP}::IFACE $1::interface name{ENDRULE}
+
+
+#
+#                                    Liste di IP
+# COMMENTATE PER ORA: vedere se si puo' farne a meno!
+#
+# 2 IP
+#(?:(?:de)|(?:a))(?:gli)*[\s+indirizzi\s+]*(?:ip)*[\s]+::(?:(?:de)|(?:a))(?:gli)*[\s+indirizzi\s+]*(?:ip)*[\s]+$_REGEXP{IP_ADDRESS}::IP $1::degli o agli ip lista da 1 a 2 ip separata da spazio oppure virgola o congiunzione e{ENDRULE}
+#
+# 3 indirizzi IP
+##(?:(?:de)|(?:a))(?:gli)*[\s+indirizzi\s+]*(?:ip)*[\s]+$_REGEXP{IP_ADDRESS}::(?:(?:de)|(?:a))(?:gli)*[\s+indirizzi\s+]*(?:ip)*[\s]+$_REGEXP{IP_ADDRESS}[e,\s]+$_REGEXP{IP_ADDRESS}[e,\s]+$_REGEXP{IP_ADDRESS}::IPLIST($1,$2,$3)::degli o agli ip lista da 1 a 3 ip separata da spazio oppure virgola o congiunzione e{ENDRULE}
+#
+# 4 indirizzi IP
+##(?:(?:de)|(?:a))(?:gli)*[\s+indirizzi\s+]*(?:ip)*[\s]+$_REGEXP{IP_ADDRESS}::(?:(?:de)|(?:a))(?:gli)*[\s+indirizzi\s+]*(?:ip)*[\s]+$_REGEXP{IP_ADDRESS}[e,\s]+$_REGEXP{IP_ADDRESS}[e,\s]+$_REGEXP{IP_ADDRESS}[e,\s]+$_REGEXP{IP_ADDRESS}::IPLIST($1,$2,$3,$4)::degli o agli ip lista da 1 a 4 ip separata da spazio oppure virgola o congiunzione e{ENDRULE}
+#
+#
+# 5 indirizzi IP
+##(?:(?:de)|(?:a))(?:gli)*[\s+indirizzi\s+]*(?:ip)*[\s]+$_REGEXP{IP_ADDRESS}::(?:(?:de)|(?:a))(?:gli)*[\s+indirizzi\s+]*(?:ip)*[\s]+$_REGEXP{IP_ADDRESS}[e,\s]+$_REGEXP{IP_ADDRESS}[e,\s]+$_REGEXP{IP_ADDRESS}[e,\s]+$_REGEXP{IP_ADDRESS}[e,\s]+$_REGEXP{IP_ADDRESS}::IPLIST($1,$2,$3,$4,$5)::degli o agli ip lista da 1 a 5 ip separata da spazio oppure virgola o congiunzione e{ENDRULE}
+
+#
+# ===================== NAT ================================
+$_REGEXP{IP_ADDRESS}\s+(?:(?:in)|(?:nel)|(?:nell'[\w\s]*))\s+$_REGEXP{IP_ADDRESS}::$_REGEXP{IP_ADDRESS}\s+(?:(?:in)|(?:nel)|(?:nell'[\w\s]*))\s+$_REGEXP{IP_ADDRESS}::IP $1 NEWIP $2::mappa IP in IP{ENDRULE}

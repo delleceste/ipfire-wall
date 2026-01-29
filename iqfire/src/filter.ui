@@ -1,0 +1,869 @@
+<ui version="4.0" >
+ <class>FilterWidget</class>
+ <widget class="QWidget" name="FilterWidget" >
+  <property name="geometry" >
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>425</width>
+    <height>386</height>
+   </rect>
+  </property>
+  <property name="sizePolicy" >
+   <sizepolicy vsizetype="Minimum" hsizetype="Preferred" >
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
+  </property>
+  <property name="minimumSize" >
+   <size>
+    <width>370</width>
+    <height>380</height>
+   </size>
+  </property>
+  <property name="windowTitle" >
+   <string>Setup the filter</string>
+  </property>
+  <layout class="QVBoxLayout" >
+   <property name="leftMargin" >
+    <number>5</number>
+   </property>
+   <property name="topMargin" >
+    <number>4</number>
+   </property>
+   <property name="rightMargin" >
+    <number>5</number>
+   </property>
+   <property name="bottomMargin" >
+    <number>4</number>
+   </property>
+   <item>
+    <widget class="QLabel" name="labelHeader" >
+     <property name="text" >
+      <string>Setup the filter filling in the desired fields:</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QGridLayout" >
+     <property name="leftMargin" >
+      <number>0</number>
+     </property>
+     <property name="topMargin" >
+      <number>0</number>
+     </property>
+     <property name="rightMargin" >
+      <number>0</number>
+     </property>
+     <property name="bottomMargin" >
+      <number>0</number>
+     </property>
+     <property name="horizontalSpacing" >
+      <number>6</number>
+     </property>
+     <property name="verticalSpacing" >
+      <number>6</number>
+     </property>
+     <item row="1" column="2" >
+      <widget class="IQFComboBox" name="comboBoxProtocol" >
+       <item>
+        <property name="text" >
+         <string>ANY</string>
+        </property>
+       </item>
+       <item>
+        <property name="text" >
+         <string>TCP</string>
+        </property>
+       </item>
+       <item>
+        <property name="text" >
+         <string>UDP</string>
+        </property>
+       </item>
+       <item>
+        <property name="text" >
+         <string>ICMP</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+     <item rowspan="2" row="0" column="0" >
+      <widget class="QGroupBox" name="groupBoxPolicy" >
+       <property name="sizePolicy" >
+        <sizepolicy vsizetype="Minimum" hsizetype="Preferred" >
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="minimumSize" >
+        <size>
+         <width>0</width>
+         <height>80</height>
+        </size>
+       </property>
+       <property name="title" >
+        <string>Policy</string>
+       </property>
+       <layout class="QGridLayout" >
+        <property name="leftMargin" >
+         <number>4</number>
+        </property>
+        <property name="topMargin" >
+         <number>4</number>
+        </property>
+        <property name="rightMargin" >
+         <number>4</number>
+        </property>
+        <property name="bottomMargin" >
+         <number>4</number>
+        </property>
+        <property name="horizontalSpacing" >
+         <number>6</number>
+        </property>
+        <property name="verticalSpacing" >
+         <number>6</number>
+        </property>
+        <item row="0" column="0" >
+         <widget class="IQFRadioButton" name="radioButtonAnyPolicy" >
+          <property name="text" >
+           <string>Any</string>
+          </property>
+          <property name="checked" >
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1" >
+         <widget class="IQFRadioButton" name="radioButtonDenial" >
+          <property name="text" >
+           <string>Denial</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0" >
+         <widget class="IQFRadioButton" name="radioButtonImplicit" >
+          <property name="text" >
+           <string>Implicit</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1" >
+         <widget class="IQFRadioButton" name="radioButtonPermission" >
+          <property name="text" >
+           <string>Permission</string>
+          </property>
+          <property name="checked" >
+           <bool>false</bool>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item row="0" column="2" >
+      <widget class="IQFComboBox" name="comboBoxDirection" >
+       <item>
+        <property name="text" >
+         <string>ANY</string>
+        </property>
+       </item>
+       <item>
+        <property name="text" >
+         <string>INPUT</string>
+        </property>
+       </item>
+       <item>
+        <property name="text" >
+         <string>OUTPUT</string>
+        </property>
+       </item>
+       <item>
+        <property name="text" >
+         <string>FORWARD</string>
+        </property>
+       </item>
+       <item>
+        <property name="text" >
+         <string>PRE ROUTING</string>
+        </property>
+       </item>
+       <item>
+        <property name="text" >
+         <string>POST ROUTING</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+     <item row="1" column="1" >
+      <widget class="QLabel" name="labelProtocol" >
+       <property name="text" >
+        <string>Protocol:</string>
+       </property>
+       <property name="alignment" >
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1" >
+      <widget class="QLabel" name="labelDirection" >
+       <property name="text" >
+        <string>Direction:</string>
+       </property>
+       <property name="alignment" >
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QStackedWidget" name="stackedWidgetMain" >
+     <property name="minimumSize" >
+      <size>
+       <width>16</width>
+       <height>214</height>
+      </size>
+     </property>
+     <property name="currentIndex" >
+      <number>0</number>
+     </property>
+     <widget class="QWidget" name="page" >
+      <layout class="QVBoxLayout" >
+       <property name="spacing" >
+        <number>6</number>
+       </property>
+       <property name="leftMargin" >
+        <number>9</number>
+       </property>
+       <property name="topMargin" >
+        <number>9</number>
+       </property>
+       <property name="rightMargin" >
+        <number>9</number>
+       </property>
+       <property name="bottomMargin" >
+        <number>9</number>
+       </property>
+       <item>
+        <widget class="QGroupBox" name="groupBoxInterfaces" >
+         <property name="sizePolicy" >
+          <sizepolicy vsizetype="Minimum" hsizetype="Preferred" >
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="title" >
+          <string>Network Interfaces</string>
+         </property>
+         <layout class="QHBoxLayout" >
+          <property name="spacing" >
+           <number>6</number>
+          </property>
+          <property name="leftMargin" >
+           <number>5</number>
+          </property>
+          <property name="topMargin" >
+           <number>0</number>
+          </property>
+          <property name="rightMargin" >
+           <number>5</number>
+          </property>
+          <property name="bottomMargin" >
+           <number>0</number>
+          </property>
+          <item>
+           <widget class="IQFComboBox" name="comboBox_4" >
+            <item>
+             <property name="text" >
+              <string>ANY</string>
+             </property>
+            </item>
+            <item>
+             <property name="text" >
+              <string>INPUT OR OUTPUT</string>
+             </property>
+            </item>
+            <item>
+             <property name="text" >
+              <string>INPUT</string>
+             </property>
+            </item>
+            <item>
+             <property name="text" >
+              <string>OUTPUT</string>
+             </property>
+            </item>
+            <item>
+             <property name="text" >
+              <string>INPUT AND OUTPUT</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+          <item>
+           <widget class="QStackedWidget" name="stackedWidgetIF" >
+            <property name="currentIndex" >
+             <number>0</number>
+            </property>
+            <widget class="QWidget" name="page_7" >
+             <layout class="QHBoxLayout" >
+              <property name="spacing" >
+               <number>6</number>
+              </property>
+              <property name="leftMargin" >
+               <number>9</number>
+              </property>
+              <property name="topMargin" >
+               <number>9</number>
+              </property>
+              <property name="rightMargin" >
+               <number>9</number>
+              </property>
+              <property name="bottomMargin" >
+               <number>9</number>
+              </property>
+              <item>
+               <widget class="IQFLineEdit" name="lineEditIF" />
+              </item>
+              <item>
+               <spacer>
+                <property name="orientation" >
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" >
+                 <size>
+                  <width>121</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+             </layout>
+            </widget>
+            <widget class="QWidget" name="page_8" >
+             <layout class="QHBoxLayout" >
+              <property name="spacing" >
+               <number>6</number>
+              </property>
+              <property name="leftMargin" >
+               <number>9</number>
+              </property>
+              <property name="topMargin" >
+               <number>9</number>
+              </property>
+              <property name="rightMargin" >
+               <number>9</number>
+              </property>
+              <property name="bottomMargin" >
+               <number>9</number>
+              </property>
+              <item>
+               <widget class="IQFLineEdit" name="lineEditIFIn" />
+              </item>
+              <item>
+               <widget class="IQFLineEdit" name="lineEditIFOut" />
+              </item>
+             </layout>
+            </widget>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="groupBoxIPAddress" >
+         <property name="sizePolicy" >
+          <sizepolicy vsizetype="Minimum" hsizetype="Preferred" >
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="title" >
+          <string>IP Addresses</string>
+         </property>
+         <layout class="QHBoxLayout" >
+          <property name="spacing" >
+           <number>6</number>
+          </property>
+          <property name="leftMargin" >
+           <number>5</number>
+          </property>
+          <property name="topMargin" >
+           <number>0</number>
+          </property>
+          <property name="rightMargin" >
+           <number>5</number>
+          </property>
+          <property name="bottomMargin" >
+           <number>0</number>
+          </property>
+          <item>
+           <widget class="IQFComboBox" name="comboBoxIP_2" >
+            <item>
+             <property name="text" >
+              <string>ANY</string>
+             </property>
+            </item>
+            <item>
+             <property name="text" >
+              <string>SOURCE OR DEST</string>
+             </property>
+            </item>
+            <item>
+             <property name="text" >
+              <string>SOURCE</string>
+             </property>
+            </item>
+            <item>
+             <property name="text" >
+              <string>DESTINATION</string>
+             </property>
+            </item>
+            <item>
+             <property name="text" >
+              <string>SOURCE AND DEST</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+          <item>
+           <widget class="QStackedWidget" name="stackedWidgetIP" >
+            <property name="currentIndex" >
+             <number>0</number>
+            </property>
+            <widget class="QWidget" name="page_3" >
+             <layout class="QHBoxLayout" >
+              <property name="spacing" >
+               <number>6</number>
+              </property>
+              <property name="leftMargin" >
+               <number>9</number>
+              </property>
+              <property name="topMargin" >
+               <number>9</number>
+              </property>
+              <property name="rightMargin" >
+               <number>9</number>
+              </property>
+              <property name="bottomMargin" >
+               <number>9</number>
+              </property>
+              <item>
+               <widget class="IQFLineEdit" name="lineEditIP" />
+              </item>
+              <item>
+               <spacer>
+                <property name="orientation" >
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" >
+                 <size>
+                  <width>121</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+             </layout>
+            </widget>
+            <widget class="QWidget" name="page_4" >
+             <layout class="QHBoxLayout" >
+              <property name="spacing" >
+               <number>6</number>
+              </property>
+              <property name="leftMargin" >
+               <number>9</number>
+              </property>
+              <property name="topMargin" >
+               <number>9</number>
+              </property>
+              <property name="rightMargin" >
+               <number>9</number>
+              </property>
+              <property name="bottomMargin" >
+               <number>9</number>
+              </property>
+              <item>
+               <widget class="IQFLineEdit" name="lineEditIPS" />
+              </item>
+              <item>
+               <widget class="IQFLineEdit" name="lineEditIPD" />
+              </item>
+             </layout>
+            </widget>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="groupBoxPorts" >
+         <property name="sizePolicy" >
+          <sizepolicy vsizetype="Minimum" hsizetype="Preferred" >
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="title" >
+          <string>Ports</string>
+         </property>
+         <layout class="QHBoxLayout" >
+          <property name="spacing" >
+           <number>6</number>
+          </property>
+          <property name="leftMargin" >
+           <number>5</number>
+          </property>
+          <property name="topMargin" >
+           <number>0</number>
+          </property>
+          <property name="rightMargin" >
+           <number>5</number>
+          </property>
+          <property name="bottomMargin" >
+           <number>0</number>
+          </property>
+          <item>
+           <widget class="IQFComboBox" name="comboBoxPort" >
+            <item>
+             <property name="text" >
+              <string>ANY</string>
+             </property>
+            </item>
+            <item>
+             <property name="text" >
+              <string>SOURCE OR DEST</string>
+             </property>
+            </item>
+            <item>
+             <property name="text" >
+              <string>SOURCE</string>
+             </property>
+            </item>
+            <item>
+             <property name="text" >
+              <string>DESTINATION</string>
+             </property>
+            </item>
+            <item>
+             <property name="text" >
+              <string>SOURCE AND DEST</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+          <item>
+           <widget class="QStackedWidget" name="stackedWidgetPorts" >
+            <property name="currentIndex" >
+             <number>0</number>
+            </property>
+            <widget class="QWidget" name="page_5" >
+             <layout class="QHBoxLayout" >
+              <property name="spacing" >
+               <number>6</number>
+              </property>
+              <property name="leftMargin" >
+               <number>9</number>
+              </property>
+              <property name="topMargin" >
+               <number>9</number>
+              </property>
+              <property name="rightMargin" >
+               <number>9</number>
+              </property>
+              <property name="bottomMargin" >
+               <number>9</number>
+              </property>
+              <item>
+               <widget class="IQFSpinBox" name="spinBoxFilterPort" >
+                <property name="maximum" >
+                 <number>65535</number>
+                </property>
+                <property name="value" >
+                 <number>1024</number>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <spacer>
+                <property name="orientation" >
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" >
+                 <size>
+                  <width>121</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+             </layout>
+            </widget>
+            <widget class="QWidget" name="page_6" >
+             <layout class="QHBoxLayout" >
+              <property name="spacing" >
+               <number>6</number>
+              </property>
+              <property name="leftMargin" >
+               <number>9</number>
+              </property>
+              <property name="topMargin" >
+               <number>9</number>
+              </property>
+              <property name="rightMargin" >
+               <number>9</number>
+              </property>
+              <property name="bottomMargin" >
+               <number>9</number>
+              </property>
+              <item>
+               <widget class="IQFSpinBox" name="spinBoxPort1" >
+                <property name="maximum" >
+                 <number>65535</number>
+                </property>
+                <property name="value" >
+                 <number>1024</number>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="IQFSpinBox" name="spinBoxPort2" >
+                <property name="maximum" >
+                 <number>65535</number>
+                </property>
+                <property name="value" >
+                 <number>1024</number>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="page_2" >
+      <layout class="QVBoxLayout" >
+       <property name="spacing" >
+        <number>6</number>
+       </property>
+       <property name="leftMargin" >
+        <number>9</number>
+       </property>
+       <property name="topMargin" >
+        <number>9</number>
+       </property>
+       <property name="rightMargin" >
+        <number>9</number>
+       </property>
+       <property name="bottomMargin" >
+        <number>9</number>
+       </property>
+       <item>
+        <widget class="QGroupBox" name="groupBoxState" >
+         <property name="title" >
+          <string>State-related settings</string>
+         </property>
+         <layout class="QGridLayout" >
+          <property name="leftMargin" >
+           <number>9</number>
+          </property>
+          <property name="topMargin" >
+           <number>9</number>
+          </property>
+          <property name="rightMargin" >
+           <number>9</number>
+          </property>
+          <property name="bottomMargin" >
+           <number>9</number>
+          </property>
+          <property name="horizontalSpacing" >
+           <number>6</number>
+          </property>
+          <property name="verticalSpacing" >
+           <number>6</number>
+          </property>
+          <item row="3" column="2" >
+           <widget class="IQFCheckBox" name="cbClosed" >
+            <property name="text" >
+             <string>Closed</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="2" >
+           <widget class="IQFCheckBox" name="cbLastAck" >
+            <property name="text" >
+             <string>Last Ack</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="1" >
+           <widget class="IQFCheckBox" name="cbTimeWait" >
+            <property name="text" >
+             <string>Time wait</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="1" >
+           <widget class="IQFCheckBox" name="cbClWait" >
+            <property name="text" >
+             <string>Close wait</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1" >
+           <widget class="IQFCheckBox" name="cbFin" >
+            <property name="text" >
+             <string>Fin wait</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="0" >
+           <widget class="IQFCheckBox" name="cbEstablished" >
+            <property name="text" >
+             <string>Established</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="0" >
+           <widget class="IQFCheckBox" name="cbSetupOk" >
+            <property name="text" >
+             <string>Setup Ok</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0" >
+           <widget class="IQFCheckBox" name="cbSetup" >
+            <property name="cursor" >
+             <cursorShape>BlankCursor</cursorShape>
+            </property>
+            <property name="text" >
+             <string>Setup</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0" >
+           <widget class="IQFCheckBox" name="cbState" >
+            <property name="text" >
+             <string>All</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="0" >
+           <widget class="IQFCheckBox" name="cbStateless" >
+            <property name="text" >
+             <string>Stateless</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1" colspan="2" >
+           <spacer>
+            <property name="orientation" >
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" >
+             <size>
+              <width>181</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item row="1" column="1" colspan="2" >
+           <spacer>
+            <property name="orientation" >
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" >
+             <size>
+              <width>181</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item row="4" column="2" >
+           <spacer>
+            <property name="orientation" >
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" >
+             <size>
+              <width>81</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+         </layout>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" >
+     <item>
+      <spacer>
+       <property name="orientation" >
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" >
+        <size>
+         <width>251</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="IQFPushButton" name="pushButtonState" >
+       <property name="text" >
+        <string>More</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>IQFLineEdit</class>
+   <extends>QLineEdit</extends>
+   <header>iqfwidgets.h</header>
+  </customwidget>
+  <customwidget>
+   <class>IQFComboBox</class>
+   <extends>QComboBox</extends>
+   <header>iqfwidgets.h</header>
+  </customwidget>
+  <customwidget>
+   <class>IQFCheckBox</class>
+   <extends>QCheckBox</extends>
+   <header>iqfwidgets.h</header>
+  </customwidget>
+  <customwidget>
+   <class>IQFSpinBox</class>
+   <extends>QSpinBox</extends>
+   <header>iqfwidgets.h</header>
+  </customwidget>
+  <customwidget>
+   <class>IQFPushButton</class>
+   <extends>QPushButton</extends>
+   <header>iqfwidgets.h</header>
+  </customwidget>
+  <customwidget>
+   <class>IQFRadioButton</class>
+   <extends>QRadioButton</extends>
+   <header>iqfwidgets.h</header>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>

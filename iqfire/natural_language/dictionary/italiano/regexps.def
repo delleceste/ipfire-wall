@@ -1,0 +1,21 @@
+# regexps.def: definitions of regular expressions.
+# File format: regular expression::NAME{ENDREGEXP}
+# regular expression is the regular expression that will be substituted by the library
+# when reading the regular expressions file regexps.txt in the place of NAME.
+# {ENDREGEXP} is the delimiter that closes the definition.
+
+# PORT Be sure that each port number begins in a new word (\b boundary at the beginning and at the end
+(?:\b[0-6][0-5][0-5][0-3][0-5]\b)|(?:\b[0-5][0-9][0-9][0-9][0-9]\b)|(?:\b[0-9][0-9][0-9][0-9]\b)|(?:\b[0-9][0-9][0-9]\b)|(?:\b[0-9][0-9]\b)|(?:\b[0-9]\b)::PORT_REGEXP{ENDREGEXP}
+
+# IP ADDRESS 
+#?:(?:(?:(?:ll')|(?:l')){0,1}(?:(?:indirizzo)|(?:indirizzi)|(?:indirizzo ip)|(?:ip)|(?:indirizzo internet)|(?:indirizzi internet)){0,1}(?:\s)*){0,1}){0,1}((?:(?:[2][0-5][0-5])|(?:[2][0-4][0-9])|(?:[1][0-9][0-9])|(?:[1-9][0-9])|(?:[0-9]))[\.]{1}(?:(?:[2][0-5][0-5])|(?:[2][0-4][0-9])|(?:[1][0-9][0-9])|(?:[1-9][0-9])|(?:[0-9]))[\.]{1}(?:(?:[2][0-5][0-5])|(?:[2][0-4][0-9])|(?:[1][0-9][0-9])|(?:[1-9][0-9])|(?:[0-9]))[\.]{1}(?:(?:[2][0-5][0-5])|(?:[2][0-4][0-9])|(?:[1][0-9][0-9])|(?:[1-9][0-9])|(?:[0-9]))::IP_REGEXP{ENDREGEXP}
+(?:(?:[2][0-5][0-5])|(?:[2][0-4][0-9])|(?:[1][0-9][0-9])|(?:[1-9][0-9])|(?:[0-9]))[\.]{1}(?:(?:[2][0-5][0-5])|(?:[2][0-4][0-9])|(?:[1][0-9][0-9])|(?:[1-9][0-9])|(?:[0-9]))[\.]{1}(?:(?:[2][0-5][0-5])|(?:[2][0-4][0-9])|(?:[1][0-9][0-9])|(?:[1-9][0-9])|(?:[0-9]))[\.]{1}(?:(?:[2][0-5][0-5])|(?:[2][0-4][0-9])|(?:[1][0-9][0-9])|(?:[1-9][0-9])|(?:[0-9]))::IP_REGEXP{ENDREGEXP}
+
+# NETWORK INTERFACE
+(?:\b[A-Za-z]{2,15}[0-9]{1,2}\b)::IF_REGEXP{ENDREGEXP}
+
+# FORWARD
+(?:trasm|inoltr|consent)[\sa-zA-Z']*(inoltro|trasmissione)::FWD{ENDREGEXP}
+
+# ANY
+(?:ogni|qualsiasi|tutte\s+le|qualsivoglia|qualunque|tutti\s+gli)::ANY{ENDREGEXP}

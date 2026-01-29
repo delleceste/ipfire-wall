@@ -1,0 +1,45 @@
+#!/bin/bash
+set -eu
+
+SRCDIR=/usr/src/ipfire-wall
+
+ok()
+{
+	echo -e  "\e[1;32m* \e[0mSuccessfully removed ipfire-wall"
+}
+
+fail() 
+{
+	echo -e  "\n\e[1;31mFailed building and installing ipfire-wall \e[1;31m:(\e[0m"
+	exit 1
+}
+
+if [ "$1" = remove ] || [ "$1" = upgrade ]; then
+
+echo -e "\e[1;32m* \e[0m iqfire-wall uninstallation in an ubuntu environment."
+echo -e "\e[1;32m* This package will \e[1;32;4mremove\e[0m ipfire-wall/iqfire-wall from your system."
+
+(cd $SRCDIR && ./install.sh uninstall noask && ok ) || fail 
+
+# remove directories which might be modified: dpkg would refuse to remove them
+echo -e -n "\e[1;32m*\e[0m cleaning directory \""$SRCDIR"\""
+( rm -rf $SRCDIR/* -rf && ok ) || fail
+
+echo -e ""
+echo -e "\e[1;32m* \e[0m-------------------------------------------------------------------------------"
+echo -e "\e[1;32m* \e[0mWikipedia at http://ipfire-wall.wiki.sourceforge.net/"
+echo -e "\e[1;32m* \e[0mDiscussion forums at http://sourceforge.net/forum/?group_id=149121"
+echo -e "\e[1;32m* \e[0mProject home page on the developer web site: http://www.giacomos.it/iqfire/index.html"
+echo -e "  and http://www.giacomos.it/ipfire/index.html"
+echo -e "\e[1;32m* \e[0mubuntu/kubuntu specific installation guide at http://www.giacomos.it/iqfire/ubuntu.html"
+echo -e "\e[1;32m* \e[0m-------------------------------------------------------------------------------"
+echo -e "\n"
+
+
+echo -e  "\e[1;32m*\e[0m Successfully removed ipfirewall and all its components."
+echo ""
+echo -e  "\e[1;35;4mINFO\e[0m Manually remove the users' home configuration directories"
+echo -e  "  (called \".IPFIRE\") or any icons you might have created."
+
+fi
+

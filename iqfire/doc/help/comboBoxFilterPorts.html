@@ -1,0 +1,55 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<link rel="stylesheet" href="info.css" type="text/css" /> 
+<head>
+	<title></title>	
+</head>
+
+<body>
+			
+<h3>Filter on the  port</h3>
+
+<div id="content">
+
+<p>
+
+Click on the combo box and choose among the options:
+
+<ul>
+	<li>not to filter the packet on the  port (<strong>ANY</strong>).
+	This means that the filter rule will not consider at all the 
+	port number;</li>
+	<li>filter on the basis of the  port, be it source or destination: with this 
+	option it is enough that the port provided matches any between the <em>source
+ 	port or the destination port</em>(<strong>SOURCE OR
+		DESTINATION</strong>);</li>
+ 	<li>filter on the basis of the <strong>source</strong> port
+		(<strong>SOURCE</strong>);</li>
+ 	<li>filter on the basis of the <strong>destination</strong> port
+	(<strong>DESTINATION</strong>);</li>
+ 	<li>filter on the basis of <strong>both</strong> 
+	the <strong>destination</strong> port <strong>and</strong> source 
+	port (<strong>SOURCE AND
+		DESTINATION</strong>). In this case, two line edits
+ 		will appear on the right 
+	of this combo box to let you fill in the two ports you want to filter on.</li>
+</ul>
+
+</p>
+
+<p>
+	Remember that you will have to provide a complete and correct 
+	 port, which is an integer number from 0 to 65535.
+	Partial matches are not allowed because
+	 the filtering is done on the numeric port, not on its string representation.
+	 This means that a filter defined as <strong>SOURCE</strong>, <strong>60</strong> 
+	 will match a packet with the source port equal to 60, but will not match 
+	 a packet with a source port set to 6000 or 601.
+</p>
+
+</div> <!-- id="content" -->	
+
+</body>
+
+</html>

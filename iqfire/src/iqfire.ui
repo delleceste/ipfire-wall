@@ -1,0 +1,1975 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>IQFIREmainwin</class>
+ <widget class="QMainWindow" name="IQFIREmainwin">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>752</width>
+    <height>547</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>iQfirewall</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QHBoxLayout">
+    <property name="margin">
+     <number>4</number>
+    </property>
+    <item>
+     <widget class="IQFSplitter" name="splitterMain">
+      <property name="orientation">
+       <enum>Qt::Horizontal</enum>
+      </property>
+      <widget class="IQFStackedWidget" name="stackedWidgetMain">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>200</width>
+         <height>16</height>
+        </size>
+       </property>
+       <property name="frameShape">
+        <enum>QFrame::NoFrame</enum>
+       </property>
+       <property name="lineWidth">
+        <number>0</number>
+       </property>
+       <property name="currentIndex">
+        <number>0</number>
+       </property>
+       <widget class="QWidget" name="pageConsole">
+        <layout class="QGridLayout">
+         <property name="margin">
+          <number>0</number>
+         </property>
+        </layout>
+       </widget>
+       <widget class="QWidget" name="pageNotifiedPackets">
+        <layout class="QGridLayout">
+         <item row="0" column="0" colspan="3">
+          <widget class="QLabel" name="label">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="text">
+            <string>Notified connections:</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0" colspan="3">
+          <widget class="IQFNotifiedPackets" name="treeWidgetMatchedPackets">
+           <property name="alternatingRowColors">
+            <bool>true</bool>
+           </property>
+           <property name="selectionMode">
+            <enum>QAbstractItemView::ExtendedSelection</enum>
+           </property>
+           <property name="columnCount">
+            <number>10</number>
+           </property>
+           <column>
+            <property name="text">
+             <string>Received on date/time</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>Rule name [pos]</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>Direction</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>Proto</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>IN dev.</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>Source IP addr.</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>SRC Port</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>OUT dev.</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>Destination IP</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>Dest. port</string>
+            </property>
+           </column>
+          </widget>
+         </item>
+         <item row="2" column="0">
+          <spacer>
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>321</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item row="2" column="1">
+          <widget class="IQFPushButton" name="pushButtonRemoveSelected">
+           <property name="text">
+            <string>Remove Selected</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="2">
+          <widget class="IQFPushButton" name="pushButtonClearNotified">
+           <property name="text">
+            <string>Clear</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+       <widget class="QWidget" name="pageConsoleSettings">
+        <layout class="QGridLayout">
+         <property name="margin">
+          <number>4</number>
+         </property>
+         <item row="0" column="0">
+          <widget class="IQFCheckBox" name="checkBoxSilent">
+           <property name="statusTip">
+            <string>If checked, stops printing on the console (deactivates kernel/user communication, improving efficiency)</string>
+           </property>
+           <property name="whatsThis">
+            <string>This disables kernel/user communication and improves efficiency.</string>
+           </property>
+           <property name="text">
+            <string>Silent modality</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="IQFCheckBox" name="checkBoxLogState">
+           <property name="statusTip">
+            <string>If checked, only the packets different in state will be shown (test)</string>
+           </property>
+           <property name="text">
+            <string>Log based on connection state</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="2" colspan="2">
+          <widget class="IQFCheckBox" name="checkBoxServices">
+           <property name="statusTip">
+            <string>If checked, the port numbers are mapped into the corresponding service name</string>
+           </property>
+           <property name="text">
+            <string>Resolve services</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0" colspan="4">
+          <widget class="QGroupBox" name="groupBoxFilter">
+           <property name="statusTip">
+            <string>Setup a filter for the console</string>
+           </property>
+           <property name="title">
+            <string>Setup the filter view</string>
+           </property>
+           <layout class="QGridLayout">
+            <property name="margin">
+             <number>4</number>
+            </property>
+            <item row="0" column="0">
+             <layout class="QVBoxLayout">
+              <item>
+               <layout class="QGridLayout">
+                <item row="0" column="0" rowspan="2">
+                 <widget class="QGroupBox" name="groupBoxPolicy">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
+                  <property name="title">
+                   <string>Policy</string>
+                  </property>
+                  <layout class="QGridLayout">
+                   <property name="margin">
+                    <number>4</number>
+                   </property>
+                   <property name="spacing">
+                    <number>6</number>
+                   </property>
+                   <item row="0" column="0">
+                    <widget class="IQFRadioButton" name="radioButtonAnyPolicy">
+                     <property name="text">
+                      <string>Any</string>
+                     </property>
+                     <property name="checked">
+                      <bool>true</bool>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="1" column="1">
+                    <widget class="IQFRadioButton" name="radioButtonDenial">
+                     <property name="text">
+                      <string>Dropped</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="1" column="0">
+                    <widget class="IQFRadioButton" name="radioButtonImplicit">
+                     <property name="text">
+                      <string>Implicit</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="0" column="1">
+                    <widget class="IQFRadioButton" name="radioButtonPermission">
+                     <property name="text">
+                      <string>Accepted</string>
+                     </property>
+                     <property name="checked">
+                      <bool>false</bool>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QLabel" name="labelDirection">
+                  <property name="text">
+                   <string>Direction:</string>
+                  </property>
+                  <property name="alignment">
+                   <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="2">
+                 <widget class="IQFComboBox" name="comboBoxDirection">
+                  <item>
+                   <property name="text">
+                    <string>ANY</string>
+                   </property>
+                  </item>
+                  <item>
+                   <property name="text">
+                    <string>INPUT</string>
+                   </property>
+                  </item>
+                  <item>
+                   <property name="text">
+                    <string>OUTPUT</string>
+                   </property>
+                  </item>
+                  <item>
+                   <property name="text">
+                    <string>FORWARD</string>
+                   </property>
+                  </item>
+                  <item>
+                   <property name="text">
+                    <string>PRE ROUTING</string>
+                   </property>
+                  </item>
+                  <item>
+                   <property name="text">
+                    <string>POST ROUTING</string>
+                   </property>
+                  </item>
+                 </widget>
+                </item>
+                <item row="1" column="1">
+                 <widget class="QLabel" name="labelProtocol">
+                  <property name="text">
+                   <string>Protocol:</string>
+                  </property>
+                  <property name="alignment">
+                   <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="2">
+                 <widget class="IQFComboBox" name="comboBoxProtocol">
+                  <item>
+                   <property name="text">
+                    <string>ANY</string>
+                   </property>
+                  </item>
+                  <item>
+                   <property name="text">
+                    <string>TCP</string>
+                   </property>
+                  </item>
+                  <item>
+                   <property name="text">
+                    <string>UDP</string>
+                   </property>
+                  </item>
+                  <item>
+                   <property name="text">
+                    <string>ICMP</string>
+                   </property>
+                  </item>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item>
+               <widget class="QStackedWidget" name="stackedWidgetFilter">
+                <property name="currentIndex">
+                 <number>0</number>
+                </property>
+                <widget class="QWidget" name="page">
+                 <layout class="QVBoxLayout">
+                  <property name="spacing">
+                   <number>6</number>
+                  </property>
+                  <property name="margin">
+                   <number>9</number>
+                  </property>
+                  <item>
+                   <widget class="QGroupBox" name="groupBoxInterfaces">
+                    <property name="sizePolicy">
+                     <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
+                      <horstretch>0</horstretch>
+                      <verstretch>0</verstretch>
+                     </sizepolicy>
+                    </property>
+                    <property name="title">
+                     <string>Network Interfaces</string>
+                    </property>
+                    <layout class="QHBoxLayout">
+                     <property name="spacing">
+                      <number>6</number>
+                     </property>
+                     <property name="leftMargin">
+                      <number>5</number>
+                     </property>
+                     <property name="topMargin">
+                      <number>0</number>
+                     </property>
+                     <property name="rightMargin">
+                      <number>5</number>
+                     </property>
+                     <property name="bottomMargin">
+                      <number>0</number>
+                     </property>
+                     <item>
+                      <widget class="IQFComboBox" name="comboBoxFilterIF">
+                       <item>
+                        <property name="text">
+                         <string>ANY</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>INPUT OR OUTPUT</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>INPUT</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>OUTPUT</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>INPUT AND OUTPUT</string>
+                        </property>
+                       </item>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QStackedWidget" name="stackedWidgetIF">
+                       <property name="sizePolicy">
+                        <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+                         <horstretch>0</horstretch>
+                         <verstretch>0</verstretch>
+                        </sizepolicy>
+                       </property>
+                       <property name="currentIndex">
+                        <number>0</number>
+                       </property>
+                       <widget class="QWidget" name="page_7">
+                        <layout class="QHBoxLayout">
+                         <property name="spacing">
+                          <number>6</number>
+                         </property>
+                         <property name="margin">
+                          <number>9</number>
+                         </property>
+                         <item>
+                          <widget class="IQFLineEdit" name="lineEditIF">
+                           <property name="enabled">
+                            <bool>false</bool>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <spacer>
+                           <property name="orientation">
+                            <enum>Qt::Horizontal</enum>
+                           </property>
+                           <property name="sizeHint" stdset="0">
+                            <size>
+                             <width>121</width>
+                             <height>20</height>
+                            </size>
+                           </property>
+                          </spacer>
+                         </item>
+                        </layout>
+                       </widget>
+                       <widget class="QWidget" name="page_8">
+                        <layout class="QHBoxLayout">
+                         <property name="spacing">
+                          <number>6</number>
+                         </property>
+                         <property name="margin">
+                          <number>9</number>
+                         </property>
+                         <item>
+                          <widget class="IQFLineEdit" name="lineEditIFIn"/>
+                         </item>
+                         <item>
+                          <widget class="IQFLineEdit" name="lineEditIFOut"/>
+                         </item>
+                        </layout>
+                       </widget>
+                      </widget>
+                     </item>
+                    </layout>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QGroupBox" name="groupBoxIPAddress">
+                    <property name="sizePolicy">
+                     <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
+                      <horstretch>0</horstretch>
+                      <verstretch>0</verstretch>
+                     </sizepolicy>
+                    </property>
+                    <property name="title">
+                     <string>IP Addresses</string>
+                    </property>
+                    <layout class="QHBoxLayout">
+                     <property name="spacing">
+                      <number>6</number>
+                     </property>
+                     <property name="leftMargin">
+                      <number>5</number>
+                     </property>
+                     <property name="topMargin">
+                      <number>0</number>
+                     </property>
+                     <property name="rightMargin">
+                      <number>5</number>
+                     </property>
+                     <property name="bottomMargin">
+                      <number>0</number>
+                     </property>
+                     <item>
+                      <widget class="IQFComboBox" name="comboBoxFilterIP">
+                       <item>
+                        <property name="text">
+                         <string>ANY</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>SOURCE OR DEST</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>SOURCE</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>DESTINATION</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>SOURCE AND DEST</string>
+                        </property>
+                       </item>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QStackedWidget" name="stackedWidgetIP">
+                       <property name="sizePolicy">
+                        <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+                         <horstretch>0</horstretch>
+                         <verstretch>0</verstretch>
+                        </sizepolicy>
+                       </property>
+                       <property name="currentIndex">
+                        <number>0</number>
+                       </property>
+                       <widget class="QWidget" name="page_3">
+                        <layout class="QHBoxLayout">
+                         <property name="spacing">
+                          <number>6</number>
+                         </property>
+                         <property name="margin">
+                          <number>9</number>
+                         </property>
+                         <item>
+                          <widget class="IPLineEdit" name="lineEditIP">
+                           <property name="enabled">
+                            <bool>false</bool>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <spacer>
+                           <property name="orientation">
+                            <enum>Qt::Horizontal</enum>
+                           </property>
+                           <property name="sizeHint" stdset="0">
+                            <size>
+                             <width>121</width>
+                             <height>20</height>
+                            </size>
+                           </property>
+                          </spacer>
+                         </item>
+                        </layout>
+                       </widget>
+                       <widget class="QWidget" name="page_4">
+                        <layout class="QHBoxLayout">
+                         <property name="spacing">
+                          <number>6</number>
+                         </property>
+                         <property name="margin">
+                          <number>9</number>
+                         </property>
+                         <item>
+                          <widget class="IQFLineEdit" name="lineEditIPS"/>
+                         </item>
+                         <item>
+                          <widget class="IQFLineEdit" name="lineEditIPD"/>
+                         </item>
+                        </layout>
+                       </widget>
+                      </widget>
+                     </item>
+                    </layout>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QGroupBox" name="groupBoxPorts">
+                    <property name="sizePolicy">
+                     <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
+                      <horstretch>0</horstretch>
+                      <verstretch>0</verstretch>
+                     </sizepolicy>
+                    </property>
+                    <property name="title">
+                     <string>Ports</string>
+                    </property>
+                    <layout class="QHBoxLayout">
+                     <property name="spacing">
+                      <number>6</number>
+                     </property>
+                     <property name="leftMargin">
+                      <number>5</number>
+                     </property>
+                     <property name="topMargin">
+                      <number>0</number>
+                     </property>
+                     <property name="rightMargin">
+                      <number>5</number>
+                     </property>
+                     <property name="bottomMargin">
+                      <number>0</number>
+                     </property>
+                     <item>
+                      <widget class="IQFComboBox" name="comboBoxFilterPorts">
+                       <item>
+                        <property name="text">
+                         <string>ANY</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>SOURCE OR DEST</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>SOURCE</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>DESTINATION</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>SOURCE AND DEST</string>
+                        </property>
+                       </item>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QStackedWidget" name="stackedWidgetPorts">
+                       <property name="sizePolicy">
+                        <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+                         <horstretch>0</horstretch>
+                         <verstretch>0</verstretch>
+                        </sizepolicy>
+                       </property>
+                       <property name="currentIndex">
+                        <number>0</number>
+                       </property>
+                       <widget class="QWidget" name="page_5">
+                        <layout class="QHBoxLayout">
+                         <property name="spacing">
+                          <number>6</number>
+                         </property>
+                         <property name="margin">
+                          <number>9</number>
+                         </property>
+                         <item>
+                          <widget class="IQFSpinBox" name="spinBoxViewPort">
+                           <property name="enabled">
+                            <bool>false</bool>
+                           </property>
+                           <property name="maximum">
+                            <number>65535</number>
+                           </property>
+                           <property name="value">
+                            <number>1024</number>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <spacer>
+                           <property name="orientation">
+                            <enum>Qt::Horizontal</enum>
+                           </property>
+                           <property name="sizeHint" stdset="0">
+                            <size>
+                             <width>121</width>
+                             <height>20</height>
+                            </size>
+                           </property>
+                          </spacer>
+                         </item>
+                        </layout>
+                       </widget>
+                       <widget class="QWidget" name="page_6">
+                        <layout class="QHBoxLayout">
+                         <property name="spacing">
+                          <number>6</number>
+                         </property>
+                         <property name="margin">
+                          <number>9</number>
+                         </property>
+                         <item>
+                          <widget class="IQFSpinBox" name="spinBoxPort1">
+                           <property name="maximum">
+                            <number>65535</number>
+                           </property>
+                           <property name="value">
+                            <number>1024</number>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <widget class="IQFSpinBox" name="spinBoxPort2">
+                           <property name="maximum">
+                            <number>65535</number>
+                           </property>
+                           <property name="value">
+                            <number>1024</number>
+                           </property>
+                          </widget>
+                         </item>
+                        </layout>
+                       </widget>
+                      </widget>
+                     </item>
+                     <item>
+                      <spacer>
+                       <property name="orientation">
+                        <enum>Qt::Horizontal</enum>
+                       </property>
+                       <property name="sizeType">
+                        <enum>QSizePolicy::Maximum</enum>
+                       </property>
+                       <property name="sizeHint" stdset="0">
+                        <size>
+                         <width>60</width>
+                         <height>20</height>
+                        </size>
+                       </property>
+                      </spacer>
+                     </item>
+                    </layout>
+                   </widget>
+                  </item>
+                 </layout>
+                </widget>
+                <widget class="QWidget" name="page_2">
+                 <layout class="QVBoxLayout">
+                  <property name="spacing">
+                   <number>6</number>
+                  </property>
+                  <property name="margin">
+                   <number>9</number>
+                  </property>
+                  <item>
+                   <widget class="QGroupBox" name="groupBoxState">
+                    <property name="title">
+                     <string>State-related settings</string>
+                    </property>
+                    <layout class="QGridLayout">
+                     <property name="margin">
+                      <number>4</number>
+                     </property>
+                     <property name="spacing">
+                      <number>4</number>
+                     </property>
+                     <item row="3" column="2">
+                      <widget class="IQFCheckBox" name="cbClosed">
+                       <property name="text">
+                        <string>Closed</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="2" column="2">
+                      <widget class="IQFCheckBox" name="cbLastAck">
+                       <property name="text">
+                        <string>Last Ack</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="4" column="1">
+                      <widget class="IQFCheckBox" name="cbTimeWait">
+                       <property name="text">
+                        <string>Time wait</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="3" column="1">
+                      <widget class="IQFCheckBox" name="cbClWait">
+                       <property name="text">
+                        <string>Close wait</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="2" column="1">
+                      <widget class="IQFCheckBox" name="cbFin">
+                       <property name="text">
+                        <string>Fin wait</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="4" column="0">
+                      <widget class="IQFCheckBox" name="cbEstablished">
+                       <property name="text">
+                        <string>Established</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="3" column="0">
+                      <widget class="IQFCheckBox" name="cbSetupOk">
+                       <property name="text">
+                        <string>Setup Ok</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="2" column="0">
+                      <widget class="IQFCheckBox" name="cbSetup">
+                       <property name="cursor">
+                        <cursorShape>ArrowCursor</cursorShape>
+                       </property>
+                       <property name="text">
+                        <string>Setup</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="1" column="0">
+                      <widget class="IQFCheckBox" name="cbState">
+                       <property name="text">
+                        <string>All</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="0" column="0">
+                      <widget class="IQFCheckBox" name="cbStateless">
+                       <property name="text">
+                        <string>Stateless</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="0" column="1" colspan="2">
+                      <spacer>
+                       <property name="orientation">
+                        <enum>Qt::Horizontal</enum>
+                       </property>
+                       <property name="sizeHint" stdset="0">
+                        <size>
+                         <width>181</width>
+                         <height>20</height>
+                        </size>
+                       </property>
+                      </spacer>
+                     </item>
+                     <item row="1" column="1" colspan="2">
+                      <spacer>
+                       <property name="orientation">
+                        <enum>Qt::Horizontal</enum>
+                       </property>
+                       <property name="sizeHint" stdset="0">
+                        <size>
+                         <width>181</width>
+                         <height>20</height>
+                        </size>
+                       </property>
+                      </spacer>
+                     </item>
+                     <item row="4" column="2">
+                      <spacer>
+                       <property name="orientation">
+                        <enum>Qt::Horizontal</enum>
+                       </property>
+                       <property name="sizeHint" stdset="0">
+                        <size>
+                         <width>81</width>
+                         <height>20</height>
+                        </size>
+                       </property>
+                      </spacer>
+                     </item>
+                    </layout>
+                   </widget>
+                  </item>
+                 </layout>
+                </widget>
+               </widget>
+              </item>
+              <item>
+               <layout class="QHBoxLayout">
+                <item>
+                 <widget class="IQFCheckBox" name="checkBoxApplyFilter">
+                  <property name="statusTip">
+                   <string>Applies the filter to the current packet view</string>
+                  </property>
+                  <property name="text">
+                   <string>Apply the filter</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="IQFPushButton" name="pBUpdateFilter">
+                  <property name="enabled">
+                   <bool>false</bool>
+                  </property>
+                  <property name="text">
+                   <string>Update Filter</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <spacer>
+                  <property name="orientation">
+                   <enum>Qt::Horizontal</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>331</width>
+                    <height>20</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+                <item>
+                 <widget class="IQFPushButton" name="pushButtonFilterStateRelated">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
+                  <property name="text">
+                   <string>State-related part</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+             </layout>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item row="2" column="0" colspan="3">
+          <spacer>
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>421</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item row="2" column="3">
+          <widget class="IQFPushButton" name="pushButtonCloseConsoleSettings">
+           <property name="text">
+            <string>Ok</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+       <widget class="QWidget" name="pageRuleTree">
+        <layout class="QGridLayout">
+         <property name="margin">
+          <number>4</number>
+         </property>
+         <item row="0" column="0" colspan="2">
+          <widget class="QSplitter" name="splitterNAT">
+           <property name="orientation">
+            <enum>Qt::Vertical</enum>
+           </property>
+           <widget class="QWidget" name="layoutWidgetFilter">
+            <layout class="QVBoxLayout">
+             <item>
+              <layout class="QHBoxLayout">
+               <item>
+                <widget class="IQFPushButton" name="pushButtonCloseFind">
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
+                 <property name="maximumSize">
+                  <size>
+                   <width>34</width>
+                   <height>34</height>
+                  </size>
+                 </property>
+                 <property name="icon">
+                  <iconset>
+                   <normaloff>../../../../../../../../usr/share/icons/crystalsvg/22x22/actions/fileclose.png</normaloff>../../../../../../../../usr/share/icons/crystalsvg/22x22/actions/fileclose.png</iconset>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QLabel" name="labelSearch">
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
+                 <property name="text">
+                  <string>Find</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="IQFLineEdit" name="lineEditFind"/>
+               </item>
+               <item>
+                <widget class="IQFComboBox" name="comboBoxFind">
+                 <item>
+                  <property name="text">
+                   <string>Name</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>Protocol</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>Source IP</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>Dest. IP</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>Source Port</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>Dest. Port</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>Input device</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>Output Device</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>Stateful</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>Notify</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>TCP Flags</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>New IP Address</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>New Port</string>
+                  </property>
+                 </item>
+                </widget>
+               </item>
+               <item>
+                <widget class="IQFPushButton" name="pushButtonFind">
+                 <property name="text">
+                  <string>Find</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="IQFCheckBox" name="checkBoxShowNat">
+                 <property name="statusTip">
+                  <string>Check this one to view the NAT ruleset</string>
+                 </property>
+                 <property name="layoutDirection">
+                  <enum>Qt::RightToLeft</enum>
+                 </property>
+                 <property name="text">
+                  <string>Show NAT rules</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item>
+              <widget class="QWidget" name="widgetFilter" native="true">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                 <horstretch>7</horstretch>
+                 <verstretch>4</verstretch>
+                </sizepolicy>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="layoutWidget_4">
+            <layout class="QVBoxLayout">
+             <item>
+              <widget class="QLabel" name="labelNAT">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="text">
+                <string>NAT rules:</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QWidget" name="widgetNat" native="true">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                 <horstretch>7</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <layout class="QHBoxLayout">
+           <item>
+            <widget class="IQFPushButton" name="pushButtonApply">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+               <horstretch>1</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="statusTip">
+              <string>Apply the changes to the firewall</string>
+             </property>
+             <property name="text">
+              <string>Apply</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="IQFPushButton" name="pushButtonSaveRulesToFile">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+               <horstretch>1</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="text">
+              <string>Save Rules</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="IQFPushButton" name="pushButtonUndoRuleTreeChanges">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+               <horstretch>1</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="text">
+              <string>Undo</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item row="1" column="0">
+          <widget class="IQFProgressBar" name="progressBarRuleTree">
+           <property name="maximumSize">
+            <size>
+             <width>16777215</width>
+             <height>12</height>
+            </size>
+           </property>
+           <property name="value">
+            <number>24</number>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+       <widget class="QWidget" name="pageStats">
+        <layout class="QGridLayout">
+         <property name="leftMargin">
+          <number>4</number>
+         </property>
+         <property name="topMargin">
+          <number>4</number>
+         </property>
+         <property name="bottomMargin">
+          <number>4</number>
+         </property>
+         <item row="0" column="0">
+          <widget class="QLabel" name="labelStatistics">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+             <horstretch>1</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="font">
+            <font>
+             <pointsize>12</pointsize>
+             <weight>75</weight>
+             <bold>true</bold>
+            </font>
+           </property>
+           <property name="text">
+            <string>Firewall statistics</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QLabel" name="labelViewSummaryOrPlot">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="text">
+            <string>View: </string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="2">
+          <widget class="IQFRadioButton" name="radioButtonStatsSummary">
+           <property name="text">
+            <string>Summary</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="3">
+          <widget class="IQFRadioButton" name="radioButtonPlot">
+           <property name="text">
+            <string>Plot</string>
+           </property>
+           <property name="checked">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0" colspan="4">
+          <widget class="QStackedWidget" name="stackedWidgetStats">
+           <property name="currentIndex">
+            <number>0</number>
+           </property>
+           <widget class="QWidget" name="pagePlot">
+            <layout class="QVBoxLayout">
+             <property name="margin">
+              <number>3</number>
+             </property>
+             <item>
+              <widget class="QFrame" name="frameStats">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                 <horstretch>0</horstretch>
+                 <verstretch>5</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="frameShape">
+                <enum>QFrame::NoFrame</enum>
+               </property>
+               <property name="frameShadow">
+                <enum>QFrame::Plain</enum>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QWidget" name="widgetStatsLegend" native="true">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                 <horstretch>0</horstretch>
+                 <verstretch>1</verstretch>
+                </sizepolicy>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="pageStatsSummary">
+            <layout class="QVBoxLayout">
+             <item>
+              <widget class="QWidget" name="widgetStatsSummary" native="true">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                 <horstretch>1</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>100</height>
+                </size>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+       <widget class="QWidget" name="pageNaturalLanguage">
+        <layout class="QVBoxLayout">
+         <item>
+          <widget class="QWidget" name="widgetNaturalLanguage" native="true"/>
+         </item>
+        </layout>
+       </widget>
+       <widget class="QWidget" name="pagePendingRules">
+        <layout class="QGridLayout">
+         <property name="margin">
+          <number>4</number>
+         </property>
+         <item row="0" column="0" colspan="3">
+          <widget class="QWidget" name="widgetPendingRules" native="true"/>
+         </item>
+        </layout>
+       </widget>
+       <widget class="QWidget" name="pageRules">
+        <layout class="QVBoxLayout">
+         <property name="margin">
+          <number>4</number>
+         </property>
+         <item>
+          <widget class="QLabel" name="labelRuleView">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="text">
+            <string>A view of the linux routing framework with which you can interact:</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QWidget" name="widgetRuleView" native="true">
+           <property name="minimumSize">
+            <size>
+             <width>400</width>
+             <height>400</height>
+            </size>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+       <widget class="QWidget" name="pageConfig">
+        <layout class="QGridLayout">
+         <property name="leftMargin">
+          <number>3</number>
+         </property>
+         <property name="topMargin">
+          <number>3</number>
+         </property>
+         <property name="rightMargin">
+          <number>3</number>
+         </property>
+         <property name="bottomMargin">
+          <number>5</number>
+         </property>
+         <item row="0" column="0" colspan="3">
+          <widget class="QWidget" name="widgetConfiguration" native="true">
+           <property name="minimumSize">
+            <size>
+             <width>300</width>
+             <height>200</height>
+            </size>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0">
+          <spacer>
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>341</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item row="1" column="1">
+          <widget class="IQFPushButton" name="pbConfApply">
+           <property name="text">
+            <string>Apply</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="2">
+          <widget class="IQFPushButton" name="pbConfCancel">
+           <property name="text">
+            <string>Cancel</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+       <widget class="QWidget" name="pageHtmlManual">
+        <layout class="QVBoxLayout">
+         <property name="leftMargin">
+          <number>4</number>
+         </property>
+         <property name="topMargin">
+          <number>4</number>
+         </property>
+         <property name="rightMargin">
+          <number>4</number>
+         </property>
+         <property name="bottomMargin">
+          <number>2</number>
+         </property>
+        </layout>
+       </widget>
+       <widget class="QWidget" name="pageStateT"/>
+       <widget class="QWidget" name="pageSnatT"/>
+       <widget class="QWidget" name="pageDnatT"/>
+       <widget class="QWidget" name="pageKMem"/>
+       <widget class="QWidget" name="pageLog"/>
+      </widget>
+      <widget class="QStackedWidget" name="stackedWidgetBrowser">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>100</width>
+         <height>16</height>
+        </size>
+       </property>
+       <property name="currentIndex">
+        <number>1</number>
+       </property>
+       <widget class="QWidget" name="pageBrowsers">
+        <layout class="QVBoxLayout">
+         <property name="margin">
+          <number>0</number>
+         </property>
+         <item>
+          <widget class="IQFSplitter" name="splitterInfoHelp">
+           <property name="orientation">
+            <enum>Qt::Vertical</enum>
+           </property>
+           <widget class="QWidget" name="layoutWidgetInfoBrowser">
+            <layout class="QVBoxLayout">
+             <item>
+              <widget class="QLabel" name="labelInfo">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="text">
+                <string>Information</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignCenter</set>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QWidget" name="widgetInfoBrowser" native="true"/>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="layoutWidgetHelpStats">
+            <layout class="QVBoxLayout">
+             <item>
+              <widget class="QLabel" name="labelHelpOrStats">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="text">
+                <string>Help</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignCenter</set>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QStackedWidget" name="stackedWidgetHelpOrStats">
+               <property name="currentIndex">
+                <number>0</number>
+               </property>
+               <widget class="QWidget" name="pageHelp"/>
+               <widget class="QWidget" name="pageStats_2"/>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+       <widget class="QWidget" name="pageNavigation">
+        <layout class="QVBoxLayout">
+         <property name="margin">
+          <number>4</number>
+         </property>
+         <item>
+          <widget class="IQFNavigationPanel" name="textBrowserNavigation"/>
+         </item>
+        </layout>
+       </widget>
+      </widget>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>752</width>
+     <height>24</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>File</string>
+    </property>
+    <addaction name="action_Quit"/>
+   </widget>
+   <widget class="QMenu" name="menuView">
+    <property name="title">
+     <string>View</string>
+    </property>
+    <widget class="QMenu" name="menuTool_bars">
+     <property name="title">
+      <string>Tool bars...</string>
+     </property>
+    </widget>
+    <addaction name="actionConfigure_Console_settings"/>
+    <addaction name="separator"/>
+    <addaction name="actionIQfire_Logs"/>
+    <addaction name="separator"/>
+    <addaction name="menuTool_bars"/>
+    <addaction name="separator"/>
+    <addaction name="actionSearch"/>
+   </widget>
+   <widget class="QMenu" name="menuSettings">
+    <property name="title">
+     <string>Edit</string>
+    </property>
+    <addaction name="actionConfigure_firewall"/>
+   </widget>
+   <widget class="QMenu" name="menuWindow">
+    <property name="title">
+     <string>Window</string>
+    </property>
+    <widget class="QMenu" name="menuAdvanced">
+     <property name="title">
+      <string>Advanced...</string>
+     </property>
+     <addaction name="actionKernel_State_Tables"/>
+     <addaction name="actionKernel_Snat_Tables"/>
+     <addaction name="actionKernel_Dnat_Tables"/>
+     <addaction name="actionKernel_Tables_Memory_Usage"/>
+    </widget>
+    <addaction name="actionConsole"/>
+    <addaction name="actionRule_Tree"/>
+    <addaction name="actionStatistics"/>
+    <addaction name="actionRule_view"/>
+    <addaction name="separator"/>
+    <addaction name="actionPending_rules"/>
+    <addaction name="actionNotified_packets"/>
+    <addaction name="separator"/>
+    <addaction name="actionNatural_Language"/>
+    <addaction name="separator"/>
+    <addaction name="actionPrevious_Window"/>
+    <addaction name="actionNext_Window"/>
+    <addaction name="actionHome_Window"/>
+    <addaction name="separator"/>
+    <addaction name="menuAdvanced"/>
+   </widget>
+   <widget class="QMenu" name="menuHelp">
+    <property name="title">
+     <string>Help</string>
+    </property>
+    <addaction name="actionHandbook"/>
+    <addaction name="actionAbout"/>
+    <addaction name="actionAbout_Qt"/>
+   </widget>
+   <addaction name="menuFile"/>
+   <addaction name="menuSettings"/>
+   <addaction name="menuView"/>
+   <addaction name="menuWindow"/>
+   <addaction name="menuHelp"/>
+  </widget>
+  <widget class="QToolBar" name="toolBarNavigation">
+   <property name="windowTitle">
+    <string>toolBar_2</string>
+   </property>
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>false</bool>
+   </attribute>
+  </widget>
+  <widget class="QToolBar" name="toolBarPanels">
+   <property name="windowTitle">
+    <string>toolBar_2</string>
+   </property>
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>false</bool>
+   </attribute>
+  </widget>
+  <widget class="QToolBar" name="toolBarPages">
+   <property name="windowTitle">
+    <string>toolBar_2</string>
+   </property>
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>false</bool>
+   </attribute>
+  </widget>
+  <widget class="QToolBar" name="toolBar">
+   <property name="layoutDirection">
+    <enum>Qt::RightToLeft</enum>
+   </property>
+   <property name="orientation">
+    <enum>Qt::Horizontal</enum>
+   </property>
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>false</bool>
+   </attribute>
+  </widget>
+  <action name="action_Quit">
+   <property name="text">
+    <string>&amp;Quit</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Q</string>
+   </property>
+  </action>
+  <action name="actionConsoleToolBar">
+   <property name="text">
+    <string>Console</string>
+   </property>
+  </action>
+  <action name="actionIQfire_Logs">
+   <property name="text">
+    <string>iQfire Logs</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+L</string>
+   </property>
+  </action>
+  <action name="actionConfigure_firewall">
+   <property name="text">
+    <string>Preferences</string>
+   </property>
+  </action>
+  <action name="actionRule_View">
+   <property name="text">
+    <string>Rule View</string>
+   </property>
+  </action>
+  <action name="actionRule_TreeToolBar">
+   <property name="text">
+    <string>Rule Tree</string>
+   </property>
+  </action>
+  <action name="actionStatisticsToolBar">
+   <property name="text">
+    <string>Statistics</string>
+   </property>
+  </action>
+  <action name="actionPending_rulesToolBar">
+   <property name="text">
+    <string>Pending rules</string>
+   </property>
+  </action>
+  <action name="actionNotified_packetsToolBar">
+   <property name="text">
+    <string>Notified packets...</string>
+   </property>
+  </action>
+  <action name="actionConsole">
+   <property name="text">
+    <string>Console</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+C</string>
+   </property>
+  </action>
+  <action name="actionRule_Tree">
+   <property name="text">
+    <string>Rule tree (setup firewall rules)</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+T</string>
+   </property>
+  </action>
+  <action name="actionStatistics">
+   <property name="text">
+    <string>Firewall Statistics</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+P</string>
+   </property>
+  </action>
+  <action name="actionRule_view">
+   <property name="text">
+    <string>Linux Routing and rules...</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+R</string>
+   </property>
+  </action>
+  <action name="actionPending_rules">
+   <property name="text">
+    <string>Connections waiting for authorization...</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+W</string>
+   </property>
+  </action>
+  <action name="actionNavigation">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Navigation</string>
+   </property>
+  </action>
+  <action name="actionSidebar_contents">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Sidebar contents</string>
+   </property>
+  </action>
+  <action name="actionHistory">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>History</string>
+   </property>
+  </action>
+  <action name="actionGeneric">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Generic</string>
+   </property>
+  </action>
+  <action name="actionConfigure_Console_settings">
+   <property name="text">
+    <string>Filter console output</string>
+   </property>
+  </action>
+  <action name="actionHandbook">
+   <property name="icon">
+    <iconset>
+     <normaloff>../../../../../../../../usr/share/icons/crystalsvg/32x32/actions/contents.png</normaloff>../../../../../../../../usr/share/icons/crystalsvg/32x32/actions/contents.png</iconset>
+   </property>
+   <property name="text">
+    <string>Firewall presentation and Handbook</string>
+   </property>
+   <property name="shortcut">
+    <string>F1</string>
+   </property>
+  </action>
+  <action name="actionAbout">
+   <property name="text">
+    <string>About</string>
+   </property>
+  </action>
+  <action name="actionSearch">
+   <property name="text">
+    <string>Search...</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+F</string>
+   </property>
+  </action>
+  <action name="actionSetup_console_options_and_filters">
+   <property name="text">
+    <string>Setup filters and console options</string>
+   </property>
+  </action>
+  <action name="actionAbout_Qt">
+   <property name="text">
+    <string>About Qt</string>
+   </property>
+  </action>
+  <action name="actionPrevious_Window">
+   <property name="text">
+    <string>Previous Window</string>
+   </property>
+  </action>
+  <action name="actionNext_Window">
+   <property name="text">
+    <string>Next Window</string>
+   </property>
+  </action>
+  <action name="actionHome_Window">
+   <property name="text">
+    <string>Home Window</string>
+   </property>
+  </action>
+  <action name="actionNatural_Language">
+   <property name="text">
+    <string>Natural Language</string>
+   </property>
+  </action>
+  <action name="actionNotified_packets">
+   <property name="text">
+    <string>Packets filtered and notified</string>
+   </property>
+  </action>
+  <action name="actionKernel_State_Tables">
+   <property name="text">
+    <string>Kernel State Tables</string>
+   </property>
+  </action>
+  <action name="actionKernel_Snat_Tables">
+   <property name="text">
+    <string>Kernel Snat Tables</string>
+   </property>
+  </action>
+  <action name="actionKernel_Dnat_Tables">
+   <property name="text">
+    <string>Kernel Dnat Tables</string>
+   </property>
+  </action>
+  <action name="actionKernel_Tables_Memory_Usage">
+   <property name="text">
+    <string>Kernel Tables Memory Usage</string>
+   </property>
+  </action>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>IQFLineEdit</class>
+   <extends>QLineEdit</extends>
+   <header>iqfwidgets.h</header>
+  </customwidget>
+  <customwidget>
+   <class>IQFComboBox</class>
+   <extends>QComboBox</extends>
+   <header>iqfwidgets.h</header>
+  </customwidget>
+  <customwidget>
+   <class>IQFRadioButton</class>
+   <extends>QRadioButton</extends>
+   <header>iqfwidgets.h</header>
+  </customwidget>
+  <customwidget>
+   <class>IQFCheckBox</class>
+   <extends>QCheckBox</extends>
+   <header>iqfwidgets.h</header>
+  </customwidget>
+  <customwidget>
+   <class>IQFSpinBox</class>
+   <extends>QSpinBox</extends>
+   <header>iqfwidgets.h</header>
+  </customwidget>
+  <customwidget>
+   <class>IQFPushButton</class>
+   <extends>QPushButton</extends>
+   <header>iqfwidgets.h</header>
+  </customwidget>
+  <customwidget>
+   <class>IPLineEdit</class>
+   <extends>QLineEdit</extends>
+   <header>iqf_validators.h</header>
+  </customwidget>
+  <customwidget>
+   <class>IQFSplitter</class>
+   <extends>QSplitter</extends>
+   <header>iqfwidgets.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>IQFStackedWidget</class>
+   <extends>QStackedWidget</extends>
+   <header>iqfwidgets.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>IQFNavigationPanel</class>
+   <extends>QTextBrowser</extends>
+   <header>iqfwidgets.h</header>
+  </customwidget>
+  <customwidget>
+   <class>IQFProgressBar</class>
+   <extends>QProgressBar</extends>
+   <header>iqfwidgets.h</header>
+  </customwidget>
+  <customwidget>
+   <class>IQFNotifiedPackets</class>
+   <extends>QTreeWidget</extends>
+   <header>iqf_notified_packets.h</header>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>

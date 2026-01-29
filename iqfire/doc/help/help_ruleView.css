@@ -1,0 +1,41 @@
+body
+{
+	background-color:rgb(140, 144, 184);
+	margin:2px;
+	padding:1px;
+	font-size:9pt;
+}
+
+h5
+{
+	font-size:9pt;
+	text-decoration:underline;
+}
+
+h3
+{
+	font-size:10pt;
+	font-style:italic;
+	text-align:center;
+}
+
+p
+{
+	text-align:justify;
+}
+
+/* link vistitati o non ancora visitati */
+a:link
+{
+	color:blue;
+}
+
+a:visited
+{
+	color:rgb(88%,88%,89%);
+}
+
+.footnote
+{
+	font-size:7pt;
+}

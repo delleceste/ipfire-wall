@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE html 
+     PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="it" lang="it"><head>
+	<link rel="stylesheet" href="schede.css" type="text/css" />
+	<title>2. Connection redirected from internal service X to external ssh server Y </title>
+</head>
+
+<body>
+<!--  - - - - - - - - - -   	TITOLO 		- - - - - - - - - - - - - -->
+<div id="title" > <p> IPFIRE<em id="page" >wall </em> </p> 
+</div>
+
+<div id="back">
+	
+	<div id="back_index" >
+		<a href="../fireindex.html" > Index</a>
+	</div>
+	
+	<div id="home_giacomo" >
+		<a href="../index.html" > Homepage di Giacomo. </a>
+	</div>
+	
+	<div id="Scenarios_index" >
+		<a href="../scenarios.html" > Scenarios index. </a>
+	</div>
+</div>	
+
+<div id="content" >
+
+<div id="titoloscen"> 
+<h3> Scenario 2. <br/> 
+		Destination nat: internal host A connects to internal host B but gets redirected to external Y. </h3>
+</div>
+
+<div id="fig1">
+	<img src="pngs/2-int-ext.png"  
+			alt="192.168.0.2->192.168.0.1 20025 becomes 192.168.0.2->158.110.144.168" 
+ 			title="Internal - external DNAT 2" /> </img>
+	</div>
+	
+
+
+<div id="scena"> 
+	<p>
+		
+	 	Internal host 192.168.0.2 wants to connect to 192.168.0.1, port 20025
+	 	The gateway 192.168.0.1, redirects connection towards 158.110.144.168, port 22.
+		Gateway's work is transparent to 192.168.0.2, who communicates to 158.110.144.168
+		thinking it is 192.168.0.1.
+	</p>
+</div>
+
+<div id="ipfire_output">
+
+<a href="jpegs/2-fire.gif" > <img src="jpegs/2-fire-little.gif" 
+			alt="Ipfire output, scenario 2" 
+ 			title="Ipfire output, DNAT scenario 2" /> </a>
+
+<p> In the picture above, you can see what happens in IPFIRE nat filter gateway. </p>
+</div>
+</div> <!-- content -->
+
+
+<div id="w3c" >
+	<p id="validation">
+ 	     <a href="http://validator.w3.org/check?uri=referer"><img
+   	       src="http://www.w3.org/Icons/valid-xhtml10"
+    	      alt="Valid XHTML 1.0!" height="31" width="88" /></a>
+	</p>
+</div>	
+      
+    
+<div id="foot_jumps" >  
+ 	<a href="#title" title="top_of_page"> 
+		Top of page</a>  <br />
+	<a href="../fireindex.html" title="foot_back_to_index"> 
+		Back to index</a>
+	<br/>
+	<a href="./scen3.html" title="foot_next"> 
+		Next page (Scenario 3)</a> <br/>
+	<a href="./scen1.html" title="foot_prev"> 
+		Previous page (Scenario 1)</a>
+</div>
+	
+</body>
+</html>

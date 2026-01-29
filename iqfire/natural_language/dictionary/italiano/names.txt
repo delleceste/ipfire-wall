@@ -1,0 +1,38 @@
+la porta;;porta;;le porte;;porte::DPORT{ENDRULE}
+
+la porta destinazione;;porta destinazione;;con porta destinazione;;
+avente porta destinazione;;verso la porta;;verso porta::DPORT{ENDRULE}
+
+destinazione::DEST{ENDRULE}
+verso::DIP{ENDRULE}
+verso l'indirizzo ip::DIP{ENDRULE}
+verso l'ip::DIP{ENDRULE}
+verso la porta::DPORT{ENDRULE}
+
+sorgente::SOURCE{ENDRULE}
+
+ingresso;;in ingresso;;l'ingresso;;entrata;;l'entrata;;accesso;;l'accesso::INPUT{ENDRULE}
+uscita;;in uscita;;l'uscita::OUTPUT{ENDRULE}
+
+proveniente da;; da ::FROM{ENDRULE}
+
+tcp;;transmission control protocol;;protocollo di controllo della trasmissione;;
+protocollo trasmissione::TCP{ENDRULE}
+udp;;user datagram protocol::UDP{ENDRULE}
+
+non in fase di inizializzazione;;non inizializzazione;;fuori dal setup;;no setup::SYN FALSE{ENDRULE}
+setup;;inizializzazione;;fase inizializzazione;;fase di inizializzazione;;setup connessione;;
+setup della connessione::SYN TRUE{ENDRULE}
+attivo;;a uno;;acceso;;true;;vero;;settato;;impostato;;on;;attivato::TRUE{ENDRULE}
+spento;;non impostato;;non settato;;disattivato;;off::FALSE{ENDRULE}
+syn::SYN{ENDRULE}
+ack;;acknowledge::ACK{ENDRULE}
+fin::FIN{ENDRULE}
+reset;;rst::RST{ENDRULE}
+reset della connessione::RST TRUE{ENDRULE}
+urgent;;urgent flag;;flag urgente;;urg::URG{ENDRULE}
+urgente;;in stato di urgente;;comunicazione urgente;;pacchetto urgente::URG TRUE{ENDRULE}
+
+
+
+

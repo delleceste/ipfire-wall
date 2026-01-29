@@ -1,0 +1,43 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<link rel="stylesheet" href="info.css" type="text/css" /> 
+<head>
+	<title></title>	
+</head>
+
+			
+<body>
+
+<h3>Do not unload the rules at exit</h3>
+
+<div id="content">
+
+<p>
+
+Root might want to start iqfire-wall to edit the administrative ruleset 
+and then close the <em>root configuration session</em> (i.e. close iqfirewall) 
+and let normal users use the software, while leaving all the rules loaded into 
+the kernel. <br/>
+On the other hand, <strong>normal users' rules are always flushed from the 
+firewall when the application is closed</strong>, and there is no way to 
+change this behaviour.
+
+</p>
+
+<p>
+	On the other hand, if this feature is disabled, when the user interface is turned off
+	all the rules are removed and this means:
+	<ul>
+	<li>no rules are loaded: the default policy (normally <strong>block</strong>) is applied;</li>
+	<li>every normal user can add his own rules (if allowed in the check box above) and they will be
+		the only rules consulted. </li> 
+	</ul>
+</p>
+
+
+</div> <!-- id="content" -->	
+
+</body>
+
+</html>

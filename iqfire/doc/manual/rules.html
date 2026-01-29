@@ -1,0 +1,110 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<link rel="stylesheet" title="Light Maroon" href="manual.css" type="text/css" />
+<head>
+	<title></title>
+	
+	
+	
+</head>
+			
+<head>
+	<title>Rules</title>	
+</head>
+			
+<body>
+
+<div id="banner">
+<h3 id="banner">IqFIRE-wall: a graphical linux firewall for your desktop</h3>
+</div>
+	
+	
+<div id="menu">
+
+<ul id="globalnav">
+
+  <li><a href="./index.html">Home</a></li>
+  <li><a href="console.html">Console</a></li>
+<!-- rule tree -->
+ <li><a href="ruletree.html" class="here">Rule tree</a>
+    	<ul>
+      	<li><a href="ruletree.html" class="here">About</a></li>
+	<li><a href="ruleadding.html">Managing rules</a></li>
+	</ul>
+  </li>
+
+<li><a href="ruleview.html">Rule view</a></li>
+
+<li><a href="stats.html">Statistics</a>
+</li>
+<li><a href="installation.html">Installation</a></li>
+<li><a href="download.html">Download</a></li>
+
+</ul>
+
+</div> <!-- id="menu" -->
+
+<div id="content">	
+<h3>Rule tree</h3>
+<a href="imgs/uncompressed/ruletree.jpg"><img src="imgs/ruletree.jpg" alt="Rule tree widget"/></a>
+	
+
+
+<p>
+
+This window displays all the rules loaded into the firewall. 
+They are organized in a tree with the aim of being grouped 
+by owner, policy and direction, for faster browsing.<br/>
+
+There you can usually see <strong>two</strong> main trees 
+(unless you are <cite>the root user</cite>, and in that case you
+will see only one):
+
+<ul>
+	<li>the administrator's rule tree, and</li>
+	<li>your rule tree.</li>
+</ul>
+</p>
+
+<p>
+<strong>Move the mouse over </strong> or <strong>select</strong> a rule in the tree 
+to have a representation on the <strong>info</strong> panel on the right.
+
+</p>
+<p> You can edit each rule directly on the <strong>tree items</strong> or right click
+ on the items and choose <strong>add/modify or delete</strong> a rule.
+In this second case another <a href="ruleadder.html">widget</a> 
+will help you completing the task.
+</p>
+
+<p>
+The button <strong>Apply</strong> loads the eventually modified tree into the kernel 
+while the button <strong>Save Rules</strong> effectively <strong>saves the ruleset on the
+ file on the disk</strong>.
+Remember to <strong>Save Rules</strong> if you want that at next startup the firewall to 
+load the just updated ruleset.
+</p>
+
+<p>
+If you have modified one or more rules, but still you have not <strong>Appl</strong>ied them,
+you can go back to the previous ruleset by clicking on <strong>Undo</strong>.
+</p>
+
+
+<p>
+In the <strong>information widget</strong> on the right panel, the IP addresses and ports
+appear <strong>underlined</strong> when you move your mouse over a tree item: clicking on
+ those <strong>hypertextual links</strong> will make iqfirewall try to resolve the 
+ numeric information into the textual one, if possible (i.e. you are connected to the network).
+</p>
+
+</div>
+
+
+
+	
+
+</body>
+
+</html>

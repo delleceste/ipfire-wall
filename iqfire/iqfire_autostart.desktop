@@ -1,0 +1,12 @@
+[Desktop Entry]
+Encoding=UTF-8
+Name=iqFirewall Network Firewall
+Comment=Setup a personal Firewall using a simple graphical interface
+GenericName=Network Firewall
+Exec=iqfire --minimized
+Terminal=false
+X-MultipleArgs=false
+Type=Application
+Icon=/usr/share/iqfire/icons/ipfire.png
+Categories=Application;Network;
+StartupNotify=false

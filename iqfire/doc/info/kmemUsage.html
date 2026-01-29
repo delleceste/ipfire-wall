@@ -1,0 +1,68 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<link rel="stylesheet" href="info.css" type="text/css" /> 
+<head>
+	<title></title>	
+</head>
+
+			
+<body>
+
+<h3>Kernel memory usage for internal tables</h3>
+
+<div id="content">
+
+<p>
+
+This plot displays the <em>kernel memory usage over time</em>. <strong>Five</strong> curves are 
+drawn on the graph:
+<ul>
+<li><strong>state tables</strong> curve: depicts the memory usage, in <em>kilobytes</em> of the <strong>state tables</strong>
+ loaded into the kernel by the firewall. If <strong>allowed traffic</strong> is mainly managed by <strong>stateful rules</strong>,
+ then this curves indicates the trend of the allowed traffic against time;</li>
+ 
+<li><strong>source nat tables</strong> curve: depicts the memory usage, in <em>kilobytes</em> of the <strong>source nat tables</strong>
+ loaded into the kernel by the firewall. Also <strong>masqueraded packets</strong> pertain  to this trend;</li>
+ 
+<li><strong>destination nat tables</strong> curve: depicts the memory usage, in <em>kilobytes</em> of the <strong>destination nat tables</strong>
+ loaded into the kernel by the firewall;</li>
+ 
+
+<li><strong>log info tables</strong> curve: depicts the memory usage, in <em>kilobytes</em> of the <strong>log info tables</strong>
+ loaded into the kernel by the firewall. High values for this quantity reveal high activity of the firewall 
+ <a href="action://showconsole" title="Go to the firewall console">console</a>. <br/>To reduce this value, enable 
+ <em>silent modality</em>, if you are not interested in reading the firewall activity through the console, or decrease
+ the log entries lifetime in the advanced settings of the firewall (root only);</li>
+ 
+ <li><strong>total</strong> curve: represents the <em>sum</em> of the values of the other curves and reveals the total 
+  memory in use for the firewall dynamic tables.</li>
+ 
+</ul>
+
+</p>
+
+<p>
+  These curves, especially the <strong>state tables</strong> one, reveal the firewall activity and the number of 
+  connections managed by the firewall, particularly the allowed traffic (state tables). The quantity of memory used
+  by the kernel for these tables varies in time in consequence of the network activity. 
+  <br/><strong>Note</strong>: file sharing applications open a great number of connections and might produce elevated 
+  values of the curves.
+</p>
+
+<h3>Displaying details on curve values</h3>
+<p>
+  Click with the <cite>left button</cite> of the mouse on a point of the plot near a curve to display a 
+  marker with the details of the closest point of the closest curve.
+</p>
+<p>
+  Zoom is available on the plot too. Select a region with the mouse left button pressed and then release the
+  mouse button to plot the selected area.
+</p>
+
+
+</div> <!-- id="content" -->	
+
+</body>
+
+</html>

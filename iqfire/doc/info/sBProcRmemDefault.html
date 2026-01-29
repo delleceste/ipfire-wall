@@ -1,0 +1,37 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<link rel="stylesheet" href="info.css" type="text/css" /> 
+<head>
+	<title></title>	
+</head>
+
+			
+<body>
+
+<h3>/proc/sys/net/core/rmem_default</h3>
+
+<div id="content">
+
+<p>
+
+Should you encounter <em>user/kernel</em> communication problems, 
+especially telling you <cite>recvfrom(): no buffer space available</cite>, 
+you can try increasing this value, to enlarge the <em>socket receive buffer size</em> used 
+to exchange a <em>netlink packet</em> between kernel and user space.
+
+</p>
+
+<p>
+	Do not change the default number unless you are very sure and you 
+	really encounter a problem like that described above.
+	Inside <em>iqfire-wall</em> user interface, you should normally not 
+	run into this kind of trouble.
+</p>
+
+
+</div> <!-- id="content" -->	
+
+</body>
+
+</html>

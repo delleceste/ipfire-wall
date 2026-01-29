@@ -1,0 +1,66 @@
+#  				INTERVALLI DI INDIRIZZI IP
+#
+# NOTA: parole non ambigue: intervallo, interno, compresi|entro
+# DOC intervallo di indirizzi ip compreso tra indirizzo1 e indirizzoN::delimita un intervallo di indirizzi ip entro cui deve appartenere l'indirizzo dei pacchetti che vogliamo che verifichino questa regola <br/><strong>Nota:</strong> non essendo specificato, deve essere chiaro dal contesto se trattasi di sorgente o destinazione
+intervallo::intervallo[\sa-zA-Z'\:]*$_REGEXP{IP_ADDRESS}[\s\-\selai']+$_REGEXP{IP_ADDRESS}::IP $1-$2::dell' o nell'intervallo PORTA1-PORTA2{ENDRULE}
+#
+# DOC indirizzi ip compresi tra indirizzo1 e indirizzoN::esprime un intervallo di indirizzi ip  <strong>destinazione</strong> compresi tra indirizzo1 e indirizzoN <br/><strong>Nota:</strong> non essendo specificato, deve essere chiaro dal contesto se trattasi di sorgente o destinazione
+compres::compres[\sa-zA-Z'\:]*$_REGEXP{IP_ADDRESS}[\s\-\selai']+$_REGEXP{IP_ADDRESS}::IP $1-$2::compresi tra indirizzo1 e indirizzoN{ENDRULE}
+
+# DOC entro l'indirizzo p1 e pN::esprime un intervallo di indirizzi ip  <strong>destinazione</strong> compresi tra indirizzo1 e indirizzoN <br/><strong>Nota:</strong> non essendo specificato, deve essere chiaro dal contesto se trattasi di sorgente o destinazione
+entro::entro[\sa-zA-Z'\:]*$_REGEXP{IP_ADDRESS}[\s\-\selai']+$_REGEXP{IP_ADDRESS}::IP $1-$2::entro indirizzo1 e indirizzoN{ENDRULE}
+#
+# DOC indirizzo all'interno dell'intervallo di indirizzi ip compresi tra la N e la M::delimita un intervallo di indirizzi ip entro cui deve appartenere l'indirizzo dei pacchetti che vogliamo che verifichino questa regola <br/><strong>Nota:</strong> non essendo specificato, deve essere chiaro dal contesto se trattasi di sorgente o destinazione
+interno::interno[\sa-zA-Z'\:]*$_REGEXP{IP_ADDRESS}[\s\-\selai']+$_REGEXP{IP_ADDRESS}::IP $1-$2::all'interno dell'intervallo di indirizzi ip compresi tra la N e la M{ENDRULE}
+
+# negazione dell'intervallo
+# NOTA: parole non ambigue: non compres[a|e], estern[amente], fuori, non + interno|dentro
+# NOTA: la parola chiave deve essere in  generale piu` lunga delle parole chiavi precedenti che si riferivano a intervalli, cosi` da essere
+#       valutate per prime
+
+# DOC indirizzo non compreso tra indirizzo1 e indirizzoN::esprime un intervallo di indirizzi ip IP <strong>all'infuori del quale</strong> avverr&agrave; la valutazione <br/><strong>Nota:</strong> non essendo specificato, deve essere chiaro dal contesto se trattasi di sorgente o destinazione
+non\s+compres[\sa-zA-Z'\:]*::non\s+compres[\sa-zA-Z'\:]*$_REGEXP{IP_ADDRESS}[\s\-\selai']+$_REGEXP{IP_ADDRESS}::IP !$1-$2::indirizzo non compreso tra indirizzo1 e indirizzoN{ENDRULE}
+
+# DOC indirizzo non interno all'intervallo indirizzo1-indirizzoN::esprime un intervallo di indirizzi ip IP <strong>all'infuori del quale</strong> avverr&agrave; la valutazione <br/><strong>Nota:</strong> non essendo specificato, deve essere chiaro dal contesto se trattasi di sorgente o destinazione
+non[\sa-zA-Z'\:]*intern[\sa-zA-Z'\:]*::non[\sa-zA-Z'\:]*intern[\sa-zA-Z'\:]*$_REGEXP{IP_ADDRESS}[\s\-\selai']+$_REGEXP{IP_ADDRESS}::IP !$1-$2::indirizzo non interno all'intervallo indirizzo1-indirizzoN{ENDRULE}
+
+# DOC non entro l'indirizzo p1 e pN::esprime un intervallo di indirizzi ip  <strong>destinazione</strong> compresi tra indirizzo1 e indirizzoN <br/><strong>Nota:</strong> non essendo specificato, deve essere chiaro dal contesto se trattasi di sorgente o destinazione
+non[\sa-zA-Z'\:]*entro[\sa-zA-Z'\:]*::non[\sa-zA-Z'\:]*entro[\sa-zA-Z'\:]*$_REGEXP{IP_ADDRESS}[\s\-\selai']+$_REGEXP{IP_ADDRESS}::IP $1-$2::entro indirizzo1 e indirizzoN{ENDRULE}
+
+# DOC indirizzo esterna all'intervallo tra p1 e pN::esprime un intervallo di indirizzi ip IP <strong>all'infuori del quale</strong> avverr&agrave; la valutazione <br/><strong>Nota:</strong> non essendo specificato, deve essere chiaro dal contesto se trattasi di sorgente o destinazione
+estern[\sa-zA-Z'\:]*::estern[\sa-zA-Z'\:]*$_REGEXP{IP_ADDRESS}[\s\-\selai']+$_REGEXP{IP_ADDRESS}::IP !$1-$2::indirizzo esterna all'intervallo indirizzo1-indirizzoN{ENDRULE}
+
+# DOC indirizzo fuori dall'intervallo indirizzo1-indirizzoN::esprime un intervallo di indirizzi ip IP <strong>all'infuori del quale</strong> avverr&agrave; la valutazione <br/><strong>Nota:</strong> non essendo specificato, deve essere chiaro dal contesto se trattasi di sorgente o destinazione
+fuori[\sa-zA-Z'\:]*::fuori[\sa-zA-Z'\:]*$_REGEXP{IP_ADDRESS}[\s\-\selai']+$_REGEXP{IP_ADDRESS}::IP !$1-$2::fuori dall'intervallo indirizzo1-indirizzoN{ENDRULE}
+
+#  				INTERVALLI DI PORTE
+#
+# NOTA: parole non ambigue: intervallo, interno, comprese|entro
+# DOC intervallo di porte compreso tra porta1 e portaN::delimita un intervallo di porte entro cui deve appartenere la porta dei pacchetti che vogliamo che verifichino questa regola <br/><strong>Nota:</strong> non essendo specificato, deve essere chiaro dal contesto se trattasi di sorgente o destinazione
+intervallo::intervallo[\sa-zA-Z'\:]*$_REGEXP{PORT_REGEXP}[\s\-\selai']+$_REGEXP{PORT_REGEXP}::$1-$2::dell' o nell'intervallo PORTA1-PORTA2{ENDRULE}
+#
+# DOC porte comprese tra porta1 e portaN::esprime un intervallo di porte  <strong>destinazione</strong> comprese tra porta1 e portaN <br/><strong>Nota:</strong> non essendo specificato, deve essere chiaro dal contesto se trattasi di sorgente o destinazione
+compres::compres[\sa-zA-Z'\:]*$_REGEXP{PORT_REGEXP}[\s\-\selai']+$_REGEXP{PORT_REGEXP}::PORT $1-$2::comprese tra porta1 e portaN{ENDRULE}
+
+# DOC entro la porta p1 e pN::esprime un intervallo di porte  <strong>destinazione</strong> comprese tra porta1 e portaN <br/><strong>Nota:</strong> non essendo specificato, deve essere chiaro dal contesto se trattasi di sorgente o destinazione
+entro::entro[\sa-zA-Z'\:]*$_REGEXP{PORT_REGEXP}[\s\-\selai']+$_REGEXP{PORT_REGEXP}::PORT $1-$2::entro la porta1 e portaN{ENDRULE}
+#
+# DOC porta all'interno dell'intervallo di porte comprese tra la N e la M::delimita un intervallo di porte entro cui deve appartenere la porta dei pacchetti che vogliamo che verifichino questa regola <br/><strong>Nota:</strong> non essendo specificato, deve essere chiaro dal contesto se trattasi di sorgente o destinazione
+interno::interno[\sa-zA-Z'\:]*$_REGEXP{PORT_REGEXP}[\s\-\selai']+$_REGEXP{PORT_REGEXP}::PORT $1-$2::all'interno dell'intervallo di porte comprese tra la N e la M{ENDRULE}
+
+# negazione dell'intervallo
+# NOTA: parole non ambigue: non compres[a|e], estern[amente], fuori, non + interno|dentro
+
+# DOC porta non compresa tra porta1 e portaN::esprime un intervallo di porte IP <strong>all'infuori del quale</strong> avverr&agrave; la valutazione <br/><strong>Nota:</strong> non essendo specificato, deve essere chiaro dal contesto se trattasi di sorgente o destinazione
+non\s+compres::non\s+compres[\sa-zA-Z'\:]*$_REGEXP{PORT_REGEXP}[\s\-\selai']+$_REGEXP{PORT_REGEXP}::PORT !$1-$2::porta non compresa tra porta1 e portaN{ENDRULE}
+
+# DOC non entro la porta p1 e pN::esprime un intervallo di porte  <strong>destinazione</strong> comprese tra porta1 e portaN <br/><strong>Nota:</strong> non essendo specificato, deve essere chiaro dal contesto se trattasi di sorgente o destinazione
+non[\sa-zA-Z'\:]*entro::non[\sa-zA-Z'\:]*entro[\sa-zA-Z'\:]*$_REGEXP{PORT_REGEXP}[\s\-\selai']+$_REGEXP{PORT_REGEXP}::PORT $1-$2::entro la porta1 e portaN{ENDRULE}
+
+# DOC porta esterna all'intervallo tra p1 e pN::esprime un intervallo di porte IP <strong>all'infuori del quale</strong> avverr&agrave; la valutazione <br/><strong>Nota:</strong> non essendo specificato, deve essere chiaro dal contesto se trattasi di sorgente o destinazione
+estern::estern[\sa-zA-Z'\:]*$_REGEXP{PORT_REGEXP}[\s\-\selai']+$_REGEXP{PORT_REGEXP}::PORT !$1-$2::porta esterna all'intervallo porta1-portaN{ENDRULE}
+
+# DOC porta fuori dall'intervallo porta1-portaN::esprime un intervallo di porte IP <strong>all'infuori del quale</strong> avverr&agrave; la valutazione <br/><strong>Nota:</strong> non essendo specificato, deve essere chiaro dal contesto se trattasi di sorgente o destinazione
+fuori::fuori[\sa-zA-Z'\:]*$_REGEXP{PORT_REGEXP}[\s\-\selai']+$_REGEXP{PORT_REGEXP}::PORT !$1-$2::fuori dall'intervallo porta1-portaN{ENDRULE}
+
+

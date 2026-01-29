@@ -1,0 +1,6 @@
+export PRINT_WARN=1
+export PRINT_ERR=1
+export PRINT_MSGS=1
+export PRINT_INFO=1
+
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:natural_language:/usr/local/qwt-5.2.0/lib

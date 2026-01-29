@@ -1,0 +1,2894 @@
+<ui version="4.0" >
+ <class>RuleAdder</class>
+ <widget class="QWidget" name="RuleAdder" >
+  <property name="geometry" >
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>454</width>
+    <height>815</height>
+   </rect>
+  </property>
+  <property name="windowTitle" >
+   <string>Add a rule</string>
+  </property>
+  <layout class="QGridLayout" >
+   <property name="leftMargin" >
+    <number>1</number>
+   </property>
+   <property name="topMargin" >
+    <number>1</number>
+   </property>
+   <property name="rightMargin" >
+    <number>1</number>
+   </property>
+   <property name="bottomMargin" >
+    <number>1</number>
+   </property>
+   <item row="0" column="0" >
+    <widget class="QLabel" name="labelRuleName" >
+     <property name="text" >
+      <string>Name:</string>
+     </property>
+     <property name="alignment" >
+      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="1" >
+    <widget class="QLineEdit" name="lineEditRuleName" >
+     <property name="maxLength" >
+      <number>24</number>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="2" colspan="2" >
+    <widget class="QLabel" name="labelDirection" >
+     <property name="text" >
+      <string>Direction:</string>
+     </property>
+     <property name="alignment" >
+      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="4" colspan="3" >
+    <widget class="IQFComboBox" name="comboBox" >
+     <item>
+      <property name="text" >
+       <string>INPUT</string>
+      </property>
+     </item>
+     <item>
+      <property name="text" >
+       <string>OUTPUT</string>
+      </property>
+     </item>
+     <item>
+      <property name="text" >
+       <string>FORWARD</string>
+      </property>
+     </item>
+     <item>
+      <property name="text" >
+       <string>PRE ROUTING</string>
+      </property>
+     </item>
+     <item>
+      <property name="text" >
+       <string>POST ROUTING</string>
+      </property>
+     </item>
+    </widget>
+   </item>
+   <item rowspan="2" row="1" column="0" colspan="3" >
+    <widget class="QGroupBox" name="groupBoxPolicy" >
+     <property name="title" >
+      <string>Policy</string>
+     </property>
+     <layout class="QGridLayout" >
+      <property name="leftMargin" >
+       <number>0</number>
+      </property>
+      <property name="topMargin" >
+       <number>0</number>
+      </property>
+      <property name="rightMargin" >
+       <number>0</number>
+      </property>
+      <property name="bottomMargin" >
+       <number>0</number>
+      </property>
+      <item row="0" column="0" >
+       <widget class="IQFRadioButton" name="radioButtonDenial" >
+        <property name="text" >
+         <string>Denial</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1" >
+       <widget class="IQFRadioButton" name="radioButtonPermission" >
+        <property name="text" >
+         <string>Permission</string>
+        </property>
+        <property name="checked" >
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1" >
+       <widget class="IQFRadioButton" name="radioButtonTranslation" >
+        <property name="text" >
+         <string>Translation</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item row="1" column="3" colspan="4" >
+    <widget class="QGroupBox" name="groupBoxProtocol" >
+     <property name="title" >
+      <string>Protocol</string>
+     </property>
+     <layout class="QGridLayout" >
+      <property name="leftMargin" >
+       <number>0</number>
+      </property>
+      <property name="topMargin" >
+       <number>0</number>
+      </property>
+      <property name="rightMargin" >
+       <number>0</number>
+      </property>
+      <property name="bottomMargin" >
+       <number>0</number>
+      </property>
+      <item row="0" column="0" >
+       <widget class="IQFRadioButton" name="radioButtonProtoTCP" >
+        <property name="text" >
+         <string>TCP</string>
+        </property>
+        <property name="checked" >
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1" >
+       <widget class="IQFRadioButton" name="radioButtonProtoUDP" >
+        <property name="text" >
+         <string>UDP</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="2" >
+       <widget class="IQFRadioButton" name="radioButtonProtocolICMP" >
+        <property name="text" >
+         <string>ICMP</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item row="2" column="3" colspan="2" >
+    <widget class="IQFCheckBox" name="checkBoxState" >
+     <property name="layoutDirection" >
+      <enum>Qt::RightToLeft</enum>
+     </property>
+     <property name="text" >
+      <string>stateful rule</string>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="5" colspan="2" >
+    <widget class="IQFCheckBox" name="checkBoxFTPSupport" >
+     <property name="layoutDirection" >
+      <enum>Qt::RightToLeft</enum>
+     </property>
+     <property name="text" >
+      <string>FTP support</string>
+     </property>
+    </widget>
+   </item>
+   <item row="3" column="0" colspan="7" >
+    <widget class="QGroupBox" name="groupBoxNATType" >
+     <property name="title" >
+      <string>Network address  translation type</string>
+     </property>
+     <layout class="QHBoxLayout" >
+      <property name="leftMargin" >
+       <number>0</number>
+      </property>
+      <property name="topMargin" >
+       <number>0</number>
+      </property>
+      <property name="rightMargin" >
+       <number>0</number>
+      </property>
+      <property name="bottomMargin" >
+       <number>0</number>
+      </property>
+      <item>
+       <widget class="IQFRadioButton" name="radioButtonSNAT" >
+        <property name="text" >
+         <string>SNAT</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="IQFRadioButton" name="radioButtonDNAT" >
+        <property name="text" >
+         <string>DNAT</string>
+        </property>
+        <property name="checked" >
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="IQFRadioButton" name="radioButtonMasq" >
+        <property name="text" >
+         <string>MASQ</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item row="4" column="0" colspan="7" >
+    <widget class="QGroupBox" name="groupBoxInterface" >
+     <property name="title" >
+      <string>Network Device</string>
+     </property>
+     <layout class="QVBoxLayout" >
+      <property name="spacing" >
+       <number>1</number>
+      </property>
+      <property name="leftMargin" >
+       <number>1</number>
+      </property>
+      <property name="topMargin" >
+       <number>1</number>
+      </property>
+      <property name="rightMargin" >
+       <number>1</number>
+      </property>
+      <property name="bottomMargin" >
+       <number>1</number>
+      </property>
+      <item>
+       <layout class="QHBoxLayout" >
+        <item>
+         <widget class="QLabel" name="labelInDevname" >
+          <property name="text" >
+           <string>Network Input device name:</string>
+          </property>
+          <property name="alignment" >
+           <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="IQFComboBox" name="comboBoxInInterface" >
+          <property name="enabled" >
+           <bool>false</bool>
+          </property>
+          <property name="editable" >
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="IQFCheckBox" name="checkBoxAnyInDev" >
+          <property name="text" >
+           <string>Any</string>
+          </property>
+          <property name="checked" >
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" >
+        <item>
+         <widget class="QLabel" name="labelOutDevname" >
+          <property name="text" >
+           <string>Network Output device name:</string>
+          </property>
+          <property name="alignment" >
+           <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="IQFComboBox" name="comboBoxOutInterface" >
+          <property name="enabled" >
+           <bool>false</bool>
+          </property>
+          <property name="editable" >
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="checkBoxAnyOutDev" >
+          <property name="text" >
+           <string>Any</string>
+          </property>
+          <property name="checked" >
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item row="5" column="0" colspan="7" >
+    <widget class="QGroupBox" name="groupBoxIP" >
+     <property name="title" >
+      <string>Network Layer</string>
+     </property>
+     <layout class="QVBoxLayout" >
+      <property name="leftMargin" >
+       <number>0</number>
+      </property>
+      <property name="topMargin" >
+       <number>0</number>
+      </property>
+      <property name="rightMargin" >
+       <number>0</number>
+      </property>
+      <property name="bottomMargin" >
+       <number>0</number>
+      </property>
+      <item>
+       <widget class="QStackedWidget" name="stackedWidgetIPFlags" >
+        <widget class="QWidget" name="page_5" >
+         <layout class="QVBoxLayout" >
+          <item>
+           <layout class="QHBoxLayout" >
+            <item>
+             <widget class="QLabel" name="labelSIP" >
+              <property name="text" >
+               <string>Source IP:</string>
+              </property>
+              <property name="alignment" >
+               <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="IQFLineEdit" name="lineEditSIP" >
+              <property name="enabled" >
+               <bool>false</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="SIPSeparator" >
+              <property name="text" >
+               <string>-</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="IQFLineEdit" name="lineEditSIP2" >
+              <property name="enabled" >
+               <bool>false</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="IQFCheckBox" name="checkBoxAnySip" >
+              <property name="text" >
+               <string>Any</string>
+              </property>
+              <property name="checked" >
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <layout class="QHBoxLayout" >
+            <item>
+             <spacer>
+              <property name="orientation" >
+               <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="sizeHint" >
+               <size>
+                <width>31</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+            <item>
+             <widget class="QFrame" name="frameSipMeaning" >
+              <property name="sizePolicy" >
+               <sizepolicy vsizetype="Fixed" hsizetype="Preferred" >
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="frameShape" >
+               <enum>QFrame::StyledPanel</enum>
+              </property>
+              <property name="frameShadow" >
+               <enum>QFrame::Raised</enum>
+              </property>
+              <layout class="QHBoxLayout" >
+               <property name="leftMargin" >
+                <number>6</number>
+               </property>
+               <property name="topMargin" >
+                <number>0</number>
+               </property>
+               <property name="rightMargin" >
+                <number>6</number>
+               </property>
+               <property name="bottomMargin" >
+                <number>0</number>
+               </property>
+               <item>
+                <widget class="IQFRadioButton" name="radioButtonSIPSingle" >
+                 <property name="text" >
+                  <string>Single</string>
+                 </property>
+                 <property name="checked" >
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="IQFRadioButton" name="radioButtonSIPInterval" >
+                 <property name="text" >
+                  <string>Interval</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="IQFRadioButton" name="radioButtonSIPAddrNetmask" >
+                 <property name="text" >
+                  <string>Addr/mask</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item>
+             <widget class="IQFCheckBox" name="checkBoxMySip" >
+              <property name="enabled" >
+               <bool>false</bool>
+              </property>
+              <property name="text" >
+               <string>My source IP</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <widget class="IQFCheckBox" name="checkBoxSipNot" >
+            <property name="text" >
+             <string>Source IP different from the specified</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <layout class="QHBoxLayout" >
+            <item>
+             <widget class="QLabel" name="labelNewSip" >
+              <property name="sizePolicy" >
+               <sizepolicy vsizetype="Preferred" hsizetype="Preferred" >
+                <horstretch>4</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="text" >
+               <string>New source IP:</string>
+              </property>
+              <property name="alignment" >
+               <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="IQFLineEdit" name="lineEditNewSip" >
+              <property name="enabled" >
+               <bool>true</bool>
+              </property>
+              <property name="sizePolicy" >
+               <sizepolicy vsizetype="Fixed" hsizetype="Expanding" >
+                <horstretch>35</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <layout class="QHBoxLayout" >
+            <item>
+             <widget class="QLabel" name="labelDIP" >
+              <property name="text" >
+               <string>Destination IP:</string>
+              </property>
+              <property name="alignment" >
+               <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="IQFLineEdit" name="lineEditDIP" >
+              <property name="enabled" >
+               <bool>false</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="DIPSeparator" >
+              <property name="text" >
+               <string>-</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="IQFLineEdit" name="lineEditDIP2" >
+              <property name="enabled" >
+               <bool>false</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="IQFCheckBox" name="checkBoxAnyDip" >
+              <property name="text" >
+               <string>Any</string>
+              </property>
+              <property name="checked" >
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <layout class="QHBoxLayout" >
+            <item>
+             <spacer>
+              <property name="orientation" >
+               <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="sizeHint" >
+               <size>
+                <width>35</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+            <item>
+             <widget class="QFrame" name="frameDipMeaning" >
+              <property name="sizePolicy" >
+               <sizepolicy vsizetype="Fixed" hsizetype="Preferred" >
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="frameShape" >
+               <enum>QFrame::StyledPanel</enum>
+              </property>
+              <property name="frameShadow" >
+               <enum>QFrame::Raised</enum>
+              </property>
+              <layout class="QHBoxLayout" >
+               <property name="leftMargin" >
+                <number>6</number>
+               </property>
+               <property name="topMargin" >
+                <number>0</number>
+               </property>
+               <property name="rightMargin" >
+                <number>6</number>
+               </property>
+               <property name="bottomMargin" >
+                <number>0</number>
+               </property>
+               <item>
+                <widget class="IQFRadioButton" name="radioButtonDIPSingle" >
+                 <property name="text" >
+                  <string>Single</string>
+                 </property>
+                 <property name="checked" >
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="IQFRadioButton" name="radioButtonDIPInterval" >
+                 <property name="text" >
+                  <string>Interval</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="IQFRadioButton" name="radioButtonDIPAddrNetmask" >
+                 <property name="text" >
+                  <string>Addr/mask</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item>
+             <widget class="IQFCheckBox" name="checkBoxMyDip" >
+              <property name="enabled" >
+               <bool>false</bool>
+              </property>
+              <property name="text" >
+               <string>My dest. IP</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <widget class="IQFCheckBox" name="checkBoxDipNot" >
+            <property name="text" >
+             <string>Destination IP different from the specified</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <layout class="QHBoxLayout" >
+            <item>
+             <widget class="IQFPushButton" name="pushButtonIPFlags" >
+              <property name="sizePolicy" >
+               <sizepolicy vsizetype="Fixed" hsizetype="Fixed" >
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="layoutDirection" >
+               <enum>Qt::LeftToRight</enum>
+              </property>
+              <property name="text" >
+               <string>Configure IP options</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="labelNewDip" >
+              <property name="sizePolicy" >
+               <sizepolicy vsizetype="Preferred" hsizetype="Preferred" >
+                <horstretch>1</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="text" >
+               <string>New destination IP:</string>
+              </property>
+              <property name="alignment" >
+               <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="IQFLineEdit" name="lineEditNewDip" >
+              <property name="enabled" >
+               <bool>true</bool>
+              </property>
+              <property name="sizePolicy" >
+               <sizepolicy vsizetype="Fixed" hsizetype="Expanding" >
+                <horstretch>35</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+         </layout>
+        </widget>
+        <widget class="QWidget" name="page_6" />
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item row="6" column="0" colspan="7" >
+    <widget class="QGroupBox" name="GroupBoxTransportLayer" >
+     <property name="title" >
+      <string>Transport Layer</string>
+     </property>
+     <layout class="QGridLayout" >
+      <property name="leftMargin" >
+       <number>0</number>
+      </property>
+      <property name="topMargin" >
+       <number>0</number>
+      </property>
+      <property name="rightMargin" >
+       <number>0</number>
+      </property>
+      <property name="bottomMargin" >
+       <number>0</number>
+      </property>
+      <item row="0" column="0" >
+       <widget class="QStackedWidget" name="stackedWidgetTCP" >
+        <property name="currentIndex" >
+         <number>0</number>
+        </property>
+        <widget class="QWidget" name="page_13" >
+         <layout class="QGridLayout" >
+          <item row="0" column="0" >
+           <layout class="QGridLayout" >
+            <item row="0" column="0" >
+             <layout class="QVBoxLayout" >
+              <item>
+               <layout class="QHBoxLayout" >
+                <item>
+                 <widget class="QLabel" name="labelSPort_5" >
+                  <property name="text" >
+                   <string>Source Port:</string>
+                  </property>
+                  <property name="alignment" >
+                   <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QSpinBox" name="spinBoxSport_5" >
+                  <property name="enabled" >
+                   <bool>false</bool>
+                  </property>
+                  <property name="minimum" >
+                   <number>1</number>
+                  </property>
+                  <property name="maximum" >
+                   <number>65535</number>
+                  </property>
+                  <property name="singleStep" >
+                   <number>100</number>
+                  </property>
+                  <property name="value" >
+                   <number>1024</number>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLabel" name="SPortSeparator_5" >
+                  <property name="sizePolicy" >
+                   <sizepolicy vsizetype="Preferred" hsizetype="Fixed" >
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
+                  <property name="text" >
+                   <string>-</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QSpinBox" name="spinBoxSport2_5" >
+                  <property name="enabled" >
+                   <bool>false</bool>
+                  </property>
+                  <property name="minimum" >
+                   <number>1</number>
+                  </property>
+                  <property name="maximum" >
+                   <number>65535</number>
+                  </property>
+                  <property name="singleStep" >
+                   <number>100</number>
+                  </property>
+                  <property name="value" >
+                   <number>1024</number>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QCheckBox" name="checkBoxAnySport" >
+                  <property name="text" >
+                   <string>Any</string>
+                  </property>
+                  <property name="checked" >
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item>
+               <layout class="QHBoxLayout" >
+                <item>
+                 <spacer>
+                  <property name="orientation" >
+                   <enum>Qt::Horizontal</enum>
+                  </property>
+                  <property name="sizeHint" >
+                   <size>
+                    <width>191</width>
+                    <height>20</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+                <item>
+                 <widget class="QFrame" name="frameSportMeaning" >
+                  <property name="sizePolicy" >
+                   <sizepolicy vsizetype="Fixed" hsizetype="Preferred" >
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
+                  <property name="frameShape" >
+                   <enum>QFrame::StyledPanel</enum>
+                  </property>
+                  <property name="frameShadow" >
+                   <enum>QFrame::Raised</enum>
+                  </property>
+                  <layout class="QHBoxLayout" >
+                   <property name="leftMargin" >
+                    <number>0</number>
+                   </property>
+                   <property name="topMargin" >
+                    <number>0</number>
+                   </property>
+                   <property name="rightMargin" >
+                    <number>0</number>
+                   </property>
+                   <property name="bottomMargin" >
+                    <number>0</number>
+                   </property>
+                   <item>
+                    <widget class="IQFRadioButton" name="radioButtonSPortSingle_5" >
+                     <property name="text" >
+                      <string>Single</string>
+                     </property>
+                     <property name="checked" >
+                      <bool>true</bool>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="IQFRadioButton" name="radioButtonSPortInterval_5" >
+                     <property name="text" >
+                      <string>Interval</string>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item>
+               <widget class="IQFCheckBox" name="checkBoxSportNot" >
+                <property name="sizePolicy" >
+                 <sizepolicy vsizetype="Fixed" hsizetype="Minimum" >
+                  <horstretch>2</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
+                <property name="text" >
+                 <string>Source Port different from the specified</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <layout class="QHBoxLayout" >
+                <item>
+                 <widget class="QLabel" name="labelNewSport" >
+                  <property name="text" >
+                   <string>New Source Port:</string>
+                  </property>
+                  <property name="alignment" >
+                   <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QSpinBox" name="spinBoxNewSport" >
+                  <property name="minimum" >
+                   <number>1</number>
+                  </property>
+                  <property name="maximum" >
+                   <number>65535</number>
+                  </property>
+                  <property name="singleStep" >
+                   <number>100</number>
+                  </property>
+                  <property name="value" >
+                   <number>1024</number>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QCheckBox" name="checkBoxNewSportEnable" >
+                  <property name="text" >
+                   <string>Enable Port NAT</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item>
+               <layout class="QHBoxLayout" >
+                <item>
+                 <widget class="QLabel" name="labelDPort_5" >
+                  <property name="text" >
+                   <string>Destination Port:</string>
+                  </property>
+                  <property name="alignment" >
+                   <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QSpinBox" name="spinBoxDPort_5" >
+                  <property name="enabled" >
+                   <bool>false</bool>
+                  </property>
+                  <property name="minimum" >
+                   <number>1</number>
+                  </property>
+                  <property name="maximum" >
+                   <number>65535</number>
+                  </property>
+                  <property name="singleStep" >
+                   <number>100</number>
+                  </property>
+                  <property name="value" >
+                   <number>1024</number>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLabel" name="DPortSeparator_5" >
+                  <property name="sizePolicy" >
+                   <sizepolicy vsizetype="Preferred" hsizetype="Fixed" >
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
+                  <property name="text" >
+                   <string>-</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QSpinBox" name="spinBoxDPort2_5" >
+                  <property name="enabled" >
+                   <bool>false</bool>
+                  </property>
+                  <property name="minimum" >
+                   <number>1</number>
+                  </property>
+                  <property name="maximum" >
+                   <number>65535</number>
+                  </property>
+                  <property name="singleStep" >
+                   <number>100</number>
+                  </property>
+                  <property name="value" >
+                   <number>1024</number>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QCheckBox" name="checkBoxAnyDport" >
+                  <property name="text" >
+                   <string>Any</string>
+                  </property>
+                  <property name="checked" >
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item>
+               <layout class="QHBoxLayout" >
+                <item>
+                 <spacer>
+                  <property name="orientation" >
+                   <enum>Qt::Horizontal</enum>
+                  </property>
+                  <property name="sizeHint" >
+                   <size>
+                    <width>171</width>
+                    <height>20</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+                <item>
+                 <widget class="QFrame" name="frameDportMeaning" >
+                  <property name="sizePolicy" >
+                   <sizepolicy vsizetype="Fixed" hsizetype="Preferred" >
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
+                  <property name="frameShape" >
+                   <enum>QFrame::StyledPanel</enum>
+                  </property>
+                  <property name="frameShadow" >
+                   <enum>QFrame::Raised</enum>
+                  </property>
+                  <layout class="QHBoxLayout" >
+                   <property name="leftMargin" >
+                    <number>0</number>
+                   </property>
+                   <property name="topMargin" >
+                    <number>0</number>
+                   </property>
+                   <property name="rightMargin" >
+                    <number>0</number>
+                   </property>
+                   <property name="bottomMargin" >
+                    <number>0</number>
+                   </property>
+                   <item>
+                    <widget class="IQFRadioButton" name="radioButtonDPortSingle_5" >
+                     <property name="text" >
+                      <string>Single</string>
+                     </property>
+                     <property name="checked" >
+                      <bool>true</bool>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="IQFRadioButton" name="radioButtonDPortInterval_5" >
+                     <property name="text" >
+                      <string>Interval</string>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item>
+               <widget class="IQFCheckBox" name="checkBoxDportNot" >
+                <property name="text" >
+                 <string>DestinationPort different from the specified</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <layout class="QHBoxLayout" >
+                <item>
+                 <widget class="QLabel" name="labelNewDPort" >
+                  <property name="text" >
+                   <string>New dest. Port:</string>
+                  </property>
+                  <property name="alignment" >
+                   <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QSpinBox" name="spinBoxNewDPort" >
+                  <property name="minimum" >
+                   <number>1</number>
+                  </property>
+                  <property name="maximum" >
+                   <number>65535</number>
+                  </property>
+                  <property name="singleStep" >
+                   <number>100</number>
+                  </property>
+                  <property name="value" >
+                   <number>1024</number>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QCheckBox" name="checkBoxNewDport" >
+                  <property name="text" >
+                   <string>DPort NAT</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="IQFPushButton" name="pushButtonTCPFlags_5" >
+                  <property name="text" >
+                   <string>TCP flags</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+             </layout>
+            </item>
+            <item row="0" column="1" >
+             <widget class="QLabel" name="labelTCPFlags_5" >
+              <property name="sizePolicy" >
+               <sizepolicy vsizetype="Preferred" hsizetype="Fixed" >
+                <horstretch>1</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="frameShape" >
+               <enum>QFrame::NoFrame</enum>
+              </property>
+              <property name="text" >
+               <string>SYN On
+ACK Off</string>
+              </property>
+              <property name="alignment" >
+               <set>Qt::AlignHCenter|Qt::AlignTop</set>
+              </property>
+              <property name="margin" >
+               <number>3</number>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+         </layout>
+        </widget>
+        <widget class="QWidget" name="pageTCPFlags" >
+         <layout class="QGridLayout" >
+          <item row="0" column="0" colspan="5" >
+           <widget class="QLabel" name="labelSelectflags" >
+            <property name="text" >
+             <string>Select the TCP flags you want to 
+evaluate and choose On or Off:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0" >
+           <widget class="QFrame" name="frame" >
+            <property name="frameShape" >
+             <enum>QFrame::NoFrame</enum>
+            </property>
+            <property name="frameShadow" >
+             <enum>QFrame::Raised</enum>
+            </property>
+            <layout class="QHBoxLayout" >
+             <property name="leftMargin" >
+              <number>0</number>
+             </property>
+             <property name="topMargin" >
+              <number>0</number>
+             </property>
+             <property name="rightMargin" >
+              <number>0</number>
+             </property>
+             <property name="bottomMargin" >
+              <number>0</number>
+             </property>
+             <item>
+              <widget class="QCheckBox" name="cBSyn" >
+               <property name="text" >
+                <string>SYN</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QRadioButton" name="rbSOn" >
+               <property name="text" >
+                <string>On</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QRadioButton" name="rbSOff" >
+               <property name="text" >
+                <string>Off</string>
+               </property>
+               <property name="checked" >
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item rowspan="3" row="1" column="2" >
+           <widget class="Line" name="line" >
+            <property name="orientation" >
+             <enum>Qt::Vertical</enum>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="4" >
+           <widget class="QFrame" name="frame_4" >
+            <property name="frameShape" >
+             <enum>QFrame::NoFrame</enum>
+            </property>
+            <property name="frameShadow" >
+             <enum>QFrame::Raised</enum>
+            </property>
+            <layout class="QHBoxLayout" >
+             <property name="leftMargin" >
+              <number>0</number>
+             </property>
+             <property name="topMargin" >
+              <number>0</number>
+             </property>
+             <property name="rightMargin" >
+              <number>0</number>
+             </property>
+             <property name="bottomMargin" >
+              <number>0</number>
+             </property>
+             <item>
+              <widget class="QCheckBox" name="cBUrg" >
+               <property name="text" >
+                <string>URG</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QRadioButton" name="rbUOn" >
+               <property name="text" >
+                <string>On</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QRadioButton" name="rbUOff" >
+               <property name="text" >
+                <string>Off</string>
+               </property>
+               <property name="checked" >
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item row="2" column="0" >
+           <widget class="QFrame" name="frame_2" >
+            <property name="frameShape" >
+             <enum>QFrame::NoFrame</enum>
+            </property>
+            <property name="frameShadow" >
+             <enum>QFrame::Raised</enum>
+            </property>
+            <layout class="QHBoxLayout" >
+             <property name="leftMargin" >
+              <number>0</number>
+             </property>
+             <property name="topMargin" >
+              <number>0</number>
+             </property>
+             <property name="rightMargin" >
+              <number>0</number>
+             </property>
+             <property name="bottomMargin" >
+              <number>0</number>
+             </property>
+             <item>
+              <widget class="QCheckBox" name="cBAck" >
+               <property name="text" >
+                <string>ACK</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QRadioButton" name="rbAOn" >
+               <property name="text" >
+                <string>On</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QRadioButton" name="rbAOff" >
+               <property name="text" >
+                <string>Off</string>
+               </property>
+               <property name="checked" >
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item row="2" column="1" >
+           <spacer>
+            <property name="orientation" >
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" >
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item row="2" column="3" >
+           <spacer>
+            <property name="orientation" >
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" >
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item row="2" column="4" >
+           <widget class="QFrame" name="frame_5" >
+            <property name="frameShape" >
+             <enum>QFrame::NoFrame</enum>
+            </property>
+            <property name="frameShadow" >
+             <enum>QFrame::Raised</enum>
+            </property>
+            <layout class="QHBoxLayout" >
+             <property name="leftMargin" >
+              <number>0</number>
+             </property>
+             <property name="topMargin" >
+              <number>0</number>
+             </property>
+             <property name="rightMargin" >
+              <number>0</number>
+             </property>
+             <property name="bottomMargin" >
+              <number>0</number>
+             </property>
+             <item>
+              <widget class="QCheckBox" name="cBFin" >
+               <property name="text" >
+                <string>FIN</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QRadioButton" name="rbFON" >
+               <property name="text" >
+                <string>On</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QRadioButton" name="rbFOff" >
+               <property name="text" >
+                <string>Off</string>
+               </property>
+               <property name="checked" >
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item row="3" column="0" >
+           <widget class="QFrame" name="frame_3" >
+            <property name="frameShape" >
+             <enum>QFrame::NoFrame</enum>
+            </property>
+            <property name="frameShadow" >
+             <enum>QFrame::Raised</enum>
+            </property>
+            <layout class="QHBoxLayout" >
+             <property name="leftMargin" >
+              <number>0</number>
+             </property>
+             <property name="topMargin" >
+              <number>0</number>
+             </property>
+             <property name="rightMargin" >
+              <number>0</number>
+             </property>
+             <property name="bottomMargin" >
+              <number>0</number>
+             </property>
+             <item>
+              <widget class="QCheckBox" name="cBPsh" >
+               <property name="text" >
+                <string>PSH</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QRadioButton" name="rbPOn" >
+               <property name="text" >
+                <string>On</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QRadioButton" name="rbPOff" >
+               <property name="text" >
+                <string>Off</string>
+               </property>
+               <property name="checked" >
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item row="3" column="4" >
+           <widget class="QFrame" name="frame_6" >
+            <property name="frameShape" >
+             <enum>QFrame::NoFrame</enum>
+            </property>
+            <property name="frameShadow" >
+             <enum>QFrame::Raised</enum>
+            </property>
+            <layout class="QHBoxLayout" >
+             <property name="leftMargin" >
+              <number>0</number>
+             </property>
+             <property name="topMargin" >
+              <number>0</number>
+             </property>
+             <property name="rightMargin" >
+              <number>0</number>
+             </property>
+             <property name="bottomMargin" >
+              <number>0</number>
+             </property>
+             <item>
+              <widget class="QCheckBox" name="cBRst" >
+               <property name="text" >
+                <string>RST</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QRadioButton" name="rbROn" >
+               <property name="text" >
+                <string>On</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QRadioButton" name="rbROff" >
+               <property name="text" >
+                <string>Off</string>
+               </property>
+               <property name="checked" >
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item row="4" column="0" colspan="2" >
+           <spacer>
+            <property name="orientation" >
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" >
+             <size>
+              <width>191</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item row="4" column="2" colspan="3" >
+           <widget class="QPushButton" name="pushButtonTCPFlagsOk" >
+            <property name="text" >
+             <string>Done with TCP flags.</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item row="7" column="0" colspan="3" >
+    <spacer>
+     <property name="orientation" >
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="sizeHint" >
+      <size>
+       <width>211</width>
+       <height>20</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+   <item row="7" column="3" colspan="3" >
+    <widget class="IQFPushButton" name="pushButtonApply" >
+     <property name="text" >
+      <string>Apply</string>
+     </property>
+    </widget>
+   </item>
+   <item row="7" column="6" >
+    <widget class="IQFPushButton" name="pushButtonCancel" >
+     <property name="text" >
+      <string>Cancel</string>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>IQFLineEdit</class>
+   <extends>QLineEdit</extends>
+   <header>iqfwidgets.h</header>
+  </customwidget>
+  <customwidget>
+   <class>IQFComboBox</class>
+   <extends>QComboBox</extends>
+   <header>iqfwidgets.h</header>
+  </customwidget>
+  <customwidget>
+   <class>IQFRadioButton</class>
+   <extends>QRadioButton</extends>
+   <header>iqfwidgets.h</header>
+  </customwidget>
+  <customwidget>
+   <class>IQFPushButton</class>
+   <extends>QPushButton</extends>
+   <header>iqfwidgets.h</header>
+  </customwidget>
+  <customwidget>
+   <class>IQFCheckBox</class>
+   <extends>QCheckBox</extends>
+   <header>iqfwidgets.h</header>
+  </customwidget>
+ </customwidgets>
+ <tabstops>
+  <tabstop>lineEditRuleName</tabstop>
+  <tabstop>comboBox</tabstop>
+  <tabstop>radioButtonDenial</tabstop>
+  <tabstop>radioButtonPermission</tabstop>
+  <tabstop>radioButtonTranslation</tabstop>
+  <tabstop>radioButtonProtoTCP</tabstop>
+  <tabstop>radioButtonProtoUDP</tabstop>
+  <tabstop>radioButtonProtocolICMP</tabstop>
+  <tabstop>checkBoxState</tabstop>
+  <tabstop>checkBoxFTPSupport</tabstop>
+  <tabstop>lineEditSIP</tabstop>
+  <tabstop>lineEditDIP</tabstop>
+  <tabstop>lineEditSIP2</tabstop>
+  <tabstop>radioButtonDIPSingle</tabstop>
+  <tabstop>radioButtonDIPInterval</tabstop>
+  <tabstop>radioButtonDIPAddrNetmask</tabstop>
+  <tabstop>lineEditDIP2</tabstop>
+  <tabstop>pushButtonIPFlags</tabstop>
+  <tabstop>pushButtonApply</tabstop>
+  <tabstop>pushButtonCancel</tabstop>
+  <tabstop>lineEditDIP2</tabstop>
+  <tabstop>lineEditDIP</tabstop>
+  <tabstop>lineEditSIP</tabstop>
+  <tabstop>radioButtonDIPSingle</tabstop>
+  <tabstop>radioButtonDIPInterval</tabstop>
+  <tabstop>radioButtonDIPAddrNetmask</tabstop>
+  <tabstop>radioButtonPermission</tabstop>
+  <tabstop>radioButtonTranslation</tabstop>
+  <tabstop>radioButtonProtoTCP</tabstop>
+  <tabstop>radioButtonProtoUDP</tabstop>
+  <tabstop>radioButtonDenial</tabstop>
+  <tabstop>lineEditSIP2</tabstop>
+  <tabstop>radioButtonProtocolICMP</tabstop>
+ </tabstops>
+ <resources/>
+ <connections>
+  <connection>
+   <sender>radioButtonProtoUDP</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>checkBoxFTPSupport</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>384</x>
+     <y>74</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>453</x>
+     <y>105</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioButtonProtocolICMP</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>checkBoxFTPSupport</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>451</x>
+     <y>74</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>453</x>
+     <y>105</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioButtonPermission</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>checkBoxState</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>245</x>
+     <y>74</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>348</x>
+     <y>105</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>groupBoxPolicy</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>checkBoxFTPSupport</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>199</x>
+     <y>105</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>453</x>
+     <y>105</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>pushButtonCancel</sender>
+   <signal>clicked()</signal>
+   <receiver>RuleAdder</receiver>
+   <slot>close()</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>453</x>
+     <y>814</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>448</x>
+     <y>746</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioButtonPermission</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>groupBoxNATType</receiver>
+   <slot>setHidden(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>229</x>
+     <y>74</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>79</x>
+     <y>146</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioButtonTranslation</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>groupBoxNATType</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>245</x>
+     <y>103</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>161</x>
+     <y>142</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioButtonDenial</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>groupBoxNATType</receiver>
+   <slot>setHidden(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>20</x>
+     <y>74</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>41</x>
+     <y>141</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioButtonProtocolICMP</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>GroupBoxTransportLayer</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>451</x>
+     <y>74</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>330</x>
+     <y>534</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioButtonProtoUDP</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>pushButtonTCPFlags_5</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>384</x>
+     <y>74</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>433</x>
+     <y>770</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioButtonDPortInterval_5</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>spinBoxDPort2_5</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>381</x>
+     <y>704</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>295</x>
+     <y>683</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioButtonSNAT</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>labelNewSport</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>21</x>
+     <y>153</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>82</x>
+     <y>651</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>groupBoxNATType</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>spinBoxNewSport</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>63</x>
+     <y>155</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>257</x>
+     <y>651</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioButtonSNAT</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>labelNewDPort</receiver>
+   <slot>setHidden(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>100</x>
+     <y>153</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>114</x>
+     <y>770</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioButtonSNAT</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>spinBoxNewDPort</receiver>
+   <slot>setHidden(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>66</x>
+     <y>153</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>223</x>
+     <y>770</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioButtonDNAT</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>labelNewSport</receiver>
+   <slot>setHidden(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>299</x>
+     <y>153</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>82</x>
+     <y>651</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioButtonDNAT</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>spinBoxNewSport</receiver>
+   <slot>setHidden(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>299</x>
+     <y>153</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>257</x>
+     <y>651</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioButtonDNAT</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>labelNewDPort</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>299</x>
+     <y>153</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>114</x>
+     <y>770</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioButtonDNAT</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>spinBoxNewDPort</receiver>
+   <slot>setShown(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>299</x>
+     <y>153</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>223</x>
+     <y>770</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioButtonMasq</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>labelNewSport</receiver>
+   <slot>setHidden(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>451</x>
+     <y>153</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>99</x>
+     <y>651</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioButtonMasq</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>spinBoxNewSport</receiver>
+   <slot>setHidden(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>451</x>
+     <y>153</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>257</x>
+     <y>651</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioButtonMasq</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>labelNewDPort</receiver>
+   <slot>setHidden(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>451</x>
+     <y>153</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>114</x>
+     <y>770</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>cBUrg</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>rbUOn</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>101</x>
+     <y>560</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>101</x>
+     <y>560</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>cBUrg</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>rbUOff</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>101</x>
+     <y>560</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>101</x>
+     <y>560</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>cBFin</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>rbFOff</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>101</x>
+     <y>560</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>101</x>
+     <y>560</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>cBSyn</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>rbSOff</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>59</x>
+     <y>560</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>101</x>
+     <y>560</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>cBSyn</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>rbSOn</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>59</x>
+     <y>560</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>101</x>
+     <y>560</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>checkBoxNewDport</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>spinBoxNewDPort</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>332</x>
+     <y>768</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>223</x>
+     <y>770</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>cBRst</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>rbROff</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>101</x>
+     <y>560</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>101</x>
+     <y>560</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>cBPsh</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>rbPOff</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>58</x>
+     <y>560</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>101</x>
+     <y>560</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>cBPsh</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>rbPOn</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>59</x>
+     <y>560</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>101</x>
+     <y>560</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>cBRst</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>rbROn</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>101</x>
+     <y>560</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>101</x>
+     <y>560</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>cBFin</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>rbFON</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>101</x>
+     <y>560</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>101</x>
+     <y>560</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>cBAck</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>rbAOff</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>55</x>
+     <y>560</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>101</x>
+     <y>560</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>cBAck</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>rbAOn</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>42</x>
+     <y>560</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>101</x>
+     <y>560</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>checkBoxAnyDport</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>spinBoxDPort_5</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>382</x>
+     <y>683</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>199</x>
+     <y>683</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>checkBoxAnySport</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>spinBoxSport_5</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>301</x>
+     <y>548</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>151</x>
+     <y>551</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioButtonSNAT</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>checkBoxNewSportEnable</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>31</x>
+     <y>153</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>383</x>
+     <y>649</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioButtonDNAT</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>checkBoxNewDport</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>299</x>
+     <y>153</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>332</x>
+     <y>768</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>checkBoxAnyDport</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>spinBoxDPort2_5</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>382</x>
+     <y>683</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>295</x>
+     <y>683</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>checkBoxNewDport</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>labelNewDPort</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>332</x>
+     <y>768</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>114</x>
+     <y>770</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>checkBoxNewSportEnable</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>labelNewSport</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>383</x>
+     <y>649</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>131</x>
+     <y>651</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>checkBoxNewSportEnable</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>spinBoxNewSport</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>383</x>
+     <y>649</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>257</x>
+     <y>651</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>checkBoxAnyDport</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>checkBoxAnyDport</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>306</x>
+     <y>673</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>303</x>
+     <y>673</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>checkBoxAnyDport</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>frameDportMeaning</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>302</x>
+     <y>669</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>300</x>
+     <y>692</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>checkBoxAnyDport</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>checkBoxDportNot</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>313</x>
+     <y>670</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>246</x>
+     <y>724</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>checkBoxAnySport</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>checkBoxSportNot</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>346</x>
+     <y>561</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>258</x>
+     <y>606</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>checkBoxAnySport</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>frameSportMeaning</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>342</x>
+     <y>547</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>291</x>
+     <y>580</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>checkBoxAnyInDev</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>comboBoxInInterface</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>451</x>
+     <y>204</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>327</x>
+     <y>206</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>checkBoxAnyOutDev</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>comboBoxOutInterface</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>451</x>
+     <y>236</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>327</x>
+     <y>238</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioButtonDIPSingle</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>lineEditDIP2</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>171</x>
+     <y>435</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>389</x>
+     <y>409</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioButtonTranslation</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>lineEditNewSip</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>241</x>
+     <y>103</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>442</x>
+     <y>381</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioButtonTranslation</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>labelNewSip</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>242</x>
+     <y>103</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>197</x>
+     <y>379</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioButtonTranslation</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>labelNewDip</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>245</x>
+     <y>103</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>263</x>
+     <y>494</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioButtonDNAT</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>labelNewDip</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>299</x>
+     <y>153</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>263</x>
+     <y>494</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioButtonPermission</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>lineEditNewSip</receiver>
+   <slot>setHidden(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>245</x>
+     <y>74</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>442</x>
+     <y>381</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioButtonPermission</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>labelNewSip</receiver>
+   <slot>setHidden(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>241</x>
+     <y>74</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>176</x>
+     <y>376</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioButtonTranslation</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>lineEditNewDip</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>245</x>
+     <y>103</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>442</x>
+     <y>494</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioButtonSNAT</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>labelNewSip</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>53</x>
+     <y>153</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>239</x>
+     <y>381</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioButtonSNAT</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>lineEditNewSip</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>53</x>
+     <y>153</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>356</x>
+     <y>373</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioButtonDNAT</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>lineEditNewDip</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>299</x>
+     <y>153</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>442</x>
+     <y>494</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioButtonPermission</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>lineEditNewDip</receiver>
+   <slot>setHidden(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>236</x>
+     <y>74</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>442</x>
+     <y>494</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioButtonPermission</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>labelNewDip</receiver>
+   <slot>setHidden(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>237</x>
+     <y>74</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>263</x>
+     <y>494</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioButtonDenial</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>lineEditNewDip</receiver>
+   <slot>setHidden(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>62</x>
+     <y>74</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>372</x>
+     <y>477</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioButtonDenial</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>labelNewSip</receiver>
+   <slot>setHidden(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>20</x>
+     <y>74</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>146</x>
+     <y>381</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioButtonDenial</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>lineEditNewSip</receiver>
+   <slot>setHidden(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>35</x>
+     <y>74</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>442</x>
+     <y>381</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioButtonDenial</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>labelNewDip</receiver>
+   <slot>setHidden(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>56</x>
+     <y>74</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>263</x>
+     <y>494</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>checkBoxAnyDip</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>lineEditDIP</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>441</x>
+     <y>409</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>239</x>
+     <y>409</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>checkBoxAnySip</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>lineEditSIP</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>441</x>
+     <y>296</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>226</x>
+     <y>296</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>checkBoxAnyDip</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>checkBoxMyDip</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>441</x>
+     <y>409</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>441</x>
+     <y>437</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>checkBoxAnySip</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>checkBoxMySip</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>441</x>
+     <y>296</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>441</x>
+     <y>324</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>checkBoxMySip</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>lineEditSIP</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>441</x>
+     <y>324</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>221</x>
+     <y>296</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>checkBoxMySip</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>radioButtonSIPSingle</receiver>
+   <slot>setChecked(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>441</x>
+     <y>324</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>161</x>
+     <y>322</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioButtonTranslation</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>checkBoxMySip</receiver>
+   <slot>setHidden(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>245</x>
+     <y>103</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>441</x>
+     <y>324</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>checkBoxAnyDip</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>frameDipMeaning</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>441</x>
+     <y>409</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>346</x>
+     <y>437</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>checkBoxMySip</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>frameSipMeaning</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>441</x>
+     <y>324</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>336</x>
+     <y>324</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>checkBoxMyDip</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>radioButtonDIPSingle</receiver>
+   <slot>setChecked(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>441</x>
+     <y>437</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>171</x>
+     <y>435</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>checkBoxMyDip</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>lineEditDIP</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>441</x>
+     <y>437</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>228</x>
+     <y>409</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>checkBoxMyDip</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>frameDipMeaning</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>441</x>
+     <y>437</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>346</x>
+     <y>437</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>checkBoxAnySip</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>frameSipMeaning</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>441</x>
+     <y>296</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>336</x>
+     <y>324</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioButtonTranslation</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>checkBoxMyDip</receiver>
+   <slot>setHidden(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>245</x>
+     <y>103</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>441</x>
+     <y>437</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+</ui>

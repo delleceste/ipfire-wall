@@ -1,0 +1,6 @@
+# pre_sostitutions.txt
+# Read by NaturalText.cpp in preProcess(), substitutes the regular expressions before :: with the words after ::
+#
+
+# netmask
+\s+netmask\s+;;\s+maschera di sottorete\s+;;\s+maschera di rete\s+;;\s+sottorete\s+::/

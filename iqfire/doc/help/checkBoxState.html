@@ -1,0 +1,57 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<link rel="stylesheet" href="help.css" type="text/css" /> 
+<head>
+	<title></title>
+	
+	
+	
+</head>
+			
+<head>
+	<title></title>	
+</head>
+			
+<body>
+
+<h3>Stateful rules</h3>
+
+<div id="content">
+
+<p>
+
+Enable this to associate a state table to the rule and turn on the simple
+<strong>state machine</strong> provided by <strong>iqfirewall</strong>.
+Read the <a href="action://showinfopanel">info panel</a> above for further information
+or the <strong>iqfirewall</strong> manual. 
+
+If you disable this feature, remember that the rule you are creating or modifying
+will allow the flow in only one direction (i.e. input but not output, or viceversa), and so you will probably need another rule to allow the same flow in the opposite direction.
+
+<ul>
+For instance, if you are allowing the output traffic towards 195.110.58.52, port 22:
+
+<li>with <strong>a stateful rule</strong>, this rule is enough to assure that the
+connection will be accepted and the data exchanged in both directions;</li>
+<li><strong>without the state machine</strong>, you will have to add another rule
+allowing the incoming traffic from source 195.110.58.52 and source port 22</li>.
+
+</ul>
+
+In the second case, if the rule is not well configured, you will not be protected
+against <strong>new</strong> connections initiated by 195.110.58.52, source port 22.
+
+</p>
+
+<h4>Note</h4>
+<p> The state machine must be globally enabled by the <strong>administrator</strong> 
+in the firewall settings:
+<strong>Settings</strong>-><strong>Configure the firewall interface</strong>-><strong>Advanced tab</strong>
+
+
+</div> <!-- id="content" -->	
+
+</body>
+
+</html>

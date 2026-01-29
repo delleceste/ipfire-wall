@@ -1,0 +1,197 @@
+#                                                       PORTE
+#
+# sorgente
+# DOC porta sorgente::specifica la porta sorgente, in forma numerica, che deve possedere il pacchetto tcp o udp per verificare la regola
+(?:port(?:e|a))*\s+sorgent(?:e|i)\s+::(?:port(?:e|a))*\s+sorgent(?:e|i)\s+$_REGEXP{PORT_REGEXP}::SPORT $1::porta sorgente NUMERO INTERO{ENDRULE}
+#
+# DOC porta sorgente diversa N::indica che la porta sorgente di ciascun pacchetto deve essere diversa da quella specificata
+# DOC porta sorgente diversa da N, M e K::indica che la porta sorgente di ciascun pacchetto deve essere diversa da quella specificata nella lista
+(?:port(?:e|a))*\s*sorgent(?:e|i)[\sa-zA-Z'\:]*(?:different|divers)[ea](?:\s+da)?[\sa-zA-Z'\:]*$_REGEXP{PORT_REGEXP}::(?:port(?:e|a))*\s*sorgent(?:e|i)[\sa-zA-Z'\:]*(?:different|divers)[ea](?:\s+da)?\s+$_REGEXP{PORT_REGEXP}::SPORT !$1::porta sorgente diversa da N{ENDRULE}
+# 
+#
+#
+# destinazione
+# DOC porta destinazione::specifica la porta destinazione, in forma numerica, che deve possedere il pacchetto tcp o udp per verificare la regola
+(?:porta)*\s+destinazione\s+::(?:porta)*\s+destinazione\s+$_REGEXP{PORT_REGEXP}::DPORT $1::porta sorgente NUMERO INTERO{ENDRULE}
+#
+# PORTA DESTINAZIONE DIVERSA DA
+# DOC porta destinazione diversa N::indica che la porta destinazione di ciascun pacchetto deve essere diversa da quella specificata
+# DOC porta destinazione destinazione diversa da N, M e K::indica che la porta destinazione di ciascun pacchetto deve essere diversa da quella specificata nella lista
+(?:port(?:a|e))*\s*destinazione[\sa-zA-Z'\:]*(?:different|divers)[ea](?:\s+da)?\s+::(?:port(?:a|e))*\s*destinazione[\sa-zA-Z'\:]*(?:different|divers)[ea](?:\s+da)?\s+$_REGEXP{PORT_REGEXP}::DPORT !$1::porta destinazione diversa da N{ENDRULE}
+# 
+#
+
+# PORTA DIVERSA DA
+# DOC porta diversa dalla N::indica che la porta deve essere diversa da quella numero N
+diversa da([lla]{0,3}|[lle]{0,3})::diversa\s+da(?:(?:lla)|(?:lle)){0,1}\s+$_REGEXP{GENERIC_PORT}::!$1::diversa da PORTA{ENDRULE}
+# DOC porte diverse dalla M::indica che le porte dei pacchetti tcp o udp devono essere diverse da quella specificata
+diverse da([lla]{0,3}|[lle]{0,3})::diverse\s+da(?:(?:lla)|(?:lle)){0,1}\s+$_REGEXP{GENERIC_PORT}::!$1::diverse da INTERVALLO DI PORTE{ENDRULE}
+
+
+
+# INTERVALLI DI PORTE (senza keyword sorgente ne` destinazione in syntax15.txt assieme a intervalli di IP)
+
+# 
+#
+#
+#
+# Intervallo di porte sorgente:
+#
+# NOTA: parole chiave necessarie: sorgente
+# NOTA: parole chiave non ambigue: intervallo, interno, compres[a|e] tra oppure fra
+#
+# intervallo - sorgente
+# DOC intervallo di porte  sorgente porta1-portaN::esprime un intervallo di porte   <strong>sorgente</strong> nel quale avverra` la valutazione della regola
+intervallo[\sa-zA-Z'\:]*sorgent(?:e|i)::intervallo[\sa-zA-Z'\:]*sorgent(?:e|i)[\sa-zA-Z'\:]*$_REGEXP{PORT_REGEXP}[\s\-\selai']+$_REGEXP{PORT_REGEXP}::SPORT $1-$2::intervallo di porte sorgente porta1-portaN{ENDRULE}
+
+# sorgente - intervallo
+# DOC porta sorgente all'interno dell'intervallo p1-pN::esprime un intervallo di porte   <strong>sorgente</strong> nel quale avverra` la valutazione della regola
+(?:port[\sa-zA-Z'\:]*)?sorgent(?:e|i)[\sa-zA-Z'\:]*intervallo::(?:port[\sa-zA-Z'\:]*)?sorgent(?:e|i)[\sa-zA-Z'\:]*intervallo[\sa-zA-Z'\:]*$_REGEXP{PORT_REGEXP}[\s\-\selai']+$_REGEXP{PORT_REGEXP}::SPORT $1-$2::intervallo di porte sorgente porta1-portaN{ENDRULE}
+
+# interno - sorgente
+# DOC interno dell'intervallo di porte  sorgente porta1-portaN::esprime un intervallo di porte  <strong>sorgente</strong>  nel quale avverra` la valutazione della regola
+intern[\sa-zA-Z'\:]*sorgent(?:e|i)::intern[\sa-zA-Z'\:]*sorgent(?:e|i)[\sa-zA-Z'\:]*$_REGEXP{PORT_REGEXP}[\s\-\selai']+$_REGEXP{PORT_REGEXP}::SPORT $1-$2::all'interno delle porte sorgenti porta1 e portaN{ENDRULE}
+
+# sorgente - interno
+# DOC porta sorgente all'interno dell'intervallo tra P1 e Pn::esprime un intervallo di porte  <strong>sorgente</strong>  nel quale avverra` la valutazione della regola
+(?:port[\sa-zA-Z'\:]*)?sorgent[\sa-zA-Z'\:]*intern::(?:port[\sa-zA-Z'\:]*)?sorgent[\sa-zA-Z'\:]*intern[\sa-zA-Z'\:]*$_REGEXP{PORT_REGEXP}[\s\-\selai']+$_REGEXP{PORT_REGEXP}::SPORT $1-$2::porta sorgente interna all'intervallo tra p1 e pN{ENDRULE}
+
+# comprese tra o comprese fra
+# DOC sorgente comprese tra  porta1 e portaN::esprime un intervallo di porte  <strong>sorgente</strong> compresi tra porta1 e portaN
+(?:port[\sa-zA-Z'\:]*)?sorgent(?:e|i)[\sa-zA-Z'\:]*compres(?:a|e)\s+(?:f|t)ra::(?:port[\sa-zA-Z'\:]*)?sorgent(?:e|i)[\sa-zA-Z'\:]*compres(?:a|e)\s+(?:f|t)ra[\sa-zA-Z'\:]*$_REGEXP{PORT_REGEXP}[\s\-\selai']+$_REGEXP{PORT_REGEXP}::SPORT $1-$2::comprese tra porta1 e portaN{ENDRULE}
+#
+# 
+# NOTA: la seguente non contiene parole non ambigue: per riconoscere un intervallo e` necessario un trattino tra le due porte, mentre non sono ammese altre lettere
+# 
+# DOC porta sorgente p1-pN::delimita un intervallo all'interno del quale la porta sorgente del pacchetto deve rientrare. Viene ammesso solo il segno meno in questa forma sintetica
+(?:port[\sa-zA-Z'\:]*)?sorgent::(?:port[\sa-zA-Z'\:]*)?sorgent[\sa-zA-Z'\:]*$_REGEXP{PORT_REGEXP}\-$_REGEXP{PORT_REGEXP}::SPORT $1-$2::dentro l'intervallo di porte sorgente porta1-portaN{ENDRULE}
+#
+#
+# Fuori da intervallo di porte sorgente
+#
+# NOTA: parole chiave necessarie: sorgente
+# NOTA: parole chiave non ambigue: fuori, non + intervallo, non + interno, estern(amente), non comprese
+# 
+
+# fuori - sorgente
+# DOC intervallo di porte sorgente porta1-portaN::esprime un intervallo di porte <strong>all'infuori del quale</strong> avverr&agrave; la valutazione
+fuori[\sa-zA-Z'\:]*(?:intervallo)?[\sa-zA-Z'\:]*sorgent(?:e|i)\s+::fuori[\sa-zA-Z'\:]*(?:intervallo)?[\sa-zA-Z'\:]*sorgent(?:e|i)[\sa-zA-Z'\:]*$_REGEXP{PORT_REGEXP}[\s\-\selai']+$_REGEXP{PORT_REGEXP}::SPORT !$1-$2::intervallo di porte sorgente porta1-portaN{ENDRULE}
+
+# sorgente - fuori
+# DOC porta sorgente fuori dall'intervallo compreso tra porta1 e portaN::esprime un intervallo di porte  <strong>all'infuori del quale</strong> avverr&agrave; la valutazione
+(?:port[\sa-zA-Z'\:]*)?sorgent[\sa-zA-Z'\:]*fuori[\sa-zA-Z'\:]*(?:intervallo)?[\sa-zA-Z'\:]*::(?:port[\sa-zA-Z'\:]*)?sorgent[\sa-zA-Z'\:]*fuori[\sa-zA-Z'\:]*(?:intervallo)?[\sa-zA-Z'\:]*$_REGEXP{PORT_REGEXP}[\s\-\selai']+$_REGEXP{PORT_REGEXP}::SPORT !$1-$2::porta sorgente fuori dall'intervallo compreso tra porta1 e portaN{ENDRULE}
+
+# non + interno - sorgente
+# DOC non all'interno dell'intervallo di porte sorgente  porta1-portaN::esprime un intervallo di porte  <strong>all'infuori del quale</strong> avverr&agrave; la valutazione
+non[\sa-zA-Z'\:]*intern[\sa-zA-Z'\:]*sorgent(?:e|i)::non[\sa-zA-Z'\:]*intern[\sa-zA-Z'\:]*sorgent(?:e|i)[\sa-zA-Z'\:]*$_REGEXP{PORT_REGEXP}[\s\-\selai']+$_REGEXP{PORT_REGEXP}::SPORT !$1-$2::non all'interno dell'intervallo di porte sorgente comprese tra p1 e pN{ENDRULE}
+
+# sorgente - non + interno
+# DOC porta sorgente non all'interno dell'intervallo porta1-portaN::esprime un intervallo di porte  <strong>all'infuori del quale</strong> avverr&agrave; la valutazione
+(?:port[\sa-zA-Z'\:]*)?sorgent[\sa-zA-Z'\:]*non[\sa-zA-Z'\:]*intern::(?:port[\sa-zA-Z'\:]*)?sorgent[\sa-zA-Z'\:]*non[\sa-zA-Z'\:]*intern[\sa-zA-Z'\:]*$_REGEXP{PORT_REGEXP}[\s\-\selai']+$_REGEXP{PORT_REGEXP}::SPORT !$1-$2::porta sorgente non all'interno dell'intervallo porta1-portaN{ENDRULE}
+
+# sorgente - non comprese
+# DOC porte sorgenti non comprese tra porta1 e portaN::esprime un intervallo di porte sorgenti <strong>all'infuori del quale</strong> avverr&agrave; la valutazione
+(?:port(?:a|e)\s+)?sorgent(?:e|i)\s+non\s+compres::(?:porte\s+)?sorgent(?:e|i)\s+non\s+compres[\sa-zA-Z'\:]*$_REGEXP{PORT_REGEXP}[\s\-\selai']+$_REGEXP{PORT_REGEXP}::SPORT !$1-$2::porta sorgente non compresa tra porta1 e portaN{ENDRULE}
+
+# estern[amente] - sorgente
+# DOC esterno all'intervallo di porte sorgente porta1-portaN::esprime un intervallo di porte <strong>all'infuori del quale</strong> avverr&agrave; la valutazione
+# DOC all'esterno dell'intervallo di porte sorgente porta1-portaN::esprime un intervallo di porte IP <strong>all'infuori del quale</strong> avverr&agrave; la valutazione
+estern[\sa-zA-Z'\:]*sorgent[\sa-zA-Z'\:]*::estern[\sa-zA-Z'\:]*sorgent[\sa-zA-Z'\:]*$_REGEXP{PORT_REGEXP}[\s\-\selai']+$_REGEXP{PORT_REGEXP}::SPORT !$1-$2::all'esterno dell'intervallo di porte sorgenti A-B oppure esterno all'intervallo di porte sorgente A - B{ENDRULE}
+
+# sorgente - estern[amente] 
+# DOC porta sorgente esterna all'intervallo tra la porta1 e la portaN::esprime un intervallo di porte <strong>all'infuori del quale</strong> avverr&agrave; la valutazione
+(?:port[\sa-zA-Z'\:]*)?sorgent[\sa-zA-Z'\:]*estern[\sa-zA-Z'\:]*(?:intervallo)?::(?:port[\sa-zA-Z'\:]*)?sorgent[\sa-zA-Z'\:]*estern[\sa-zA-Z'\:]*$_REGEXP{PORT_REGEXP}[\s\-\selai']+$_REGEXP{PORT_REGEXP}::SPORT !$1-$2::porta sorgente esterna all'intervallo tra la N e la M{ENDRULE}
+
+# non intervallo - sorgente
+# DOC non nell'intervallo di porte sorgente porta1-portaN::esprime un intervallo di porte sorgente <strong>all'infuori del quale</strong> avverr&agrave; la valutazione
+non[\sa-zA-Z'\:]*intervallo[\sa-zA-Z'\:]*sorgent(?:e|i)::non[\sa-zA-Z'\:]*intervallo[\sa-zA-Z'\:]*sorgent(?:e|i)[\s+]$_REGEXP{PORT_REGEXP}[\s\-\selai']+$_REGEXP{PORT_REGEXP}::SPORT !$1-$2::non all'interno dell'intervallo di porte sorgente porta1 porta2{ENDRULE}
+
+# sorgente - non intervallo
+# DOC porta sorgente non nell'intervallo tra p1 e pN::esprime un intervallo di porte sorgente <strong>all'infuori del quale</strong> avverr&agrave; la valutazione
+(?:port[\sa-zA-Z'\:]*)?sorgent(?:e|i)[\sa-zA-Z'\:]*non[\sa-zA-Z'\:]*intervallo::(?:port[\sa-zA-Z'\:]*)?sorgent(?:e|i)[\sa-zA-Z'\:]*non[\sa-zA-Z'\:]*intervallo[\sa-zA-Z'\:]*$_REGEXP{PORT_REGEXP}[\s\-\selai']+$_REGEXP{PORT_REGEXP}::SPORT !$1-$2::porta sorgente non nell'intervallo tra p1 e pN{ENDRULE}
+
+#
+#
+#
+# Intervallo di porte destinazione:
+#
+# NOTA: parole chiave necessarie: destinazione
+# NOTA: parole chiave non ambigue: intervallo, interno, compres[a|e] tra oppure fra
+#
+# intervallo - destinazione
+# DOC intervallo di porte  destinazione porta1-portaN::esprime un intervallo di porte   <strong>destinazione</strong> nel quale avverra` la valutazione della regola
+intervallo[\sa-zA-Z'\:]*destinazion(?:e|i)::intervallo[\sa-zA-Z'\:]*destinazion(?:e|i)[\sa-zA-Z'\:]*$_REGEXP{PORT_REGEXP}[\s\-\selai']+$_REGEXP{PORT_REGEXP}::DPORT $1-$2::intervallo di porte destinazione porta1-portaN{ENDRULE}
+
+# destinazione - intervallo
+# DOC porta destinazione all'interno dell'intervallo p1-pN::esprime un intervallo di porte   <strong>destinazione</strong> nel quale avverra` la valutazione della regola
+(?:port[\sa-zA-Z'\:]*)?destinazion(?:e|i)[\sa-zA-Z'\:]*intervallo::(?:port[\sa-zA-Z'\:]*)?destinazion(?:e|i)[\sa-zA-Z'\:]*intervallo[\sa-zA-Z'\:]*$_REGEXP{PORT_REGEXP}[\s\-\selai']+$_REGEXP{PORT_REGEXP}::DPORT $1-$2::intervallo di porte destinazione porta1-portaN{ENDRULE}
+
+# interno - destinazione
+# DOC interno dell'intervallo di porte  destinazione porta1-portaN::esprime un intervallo di porte  <strong>destinazione</strong>  nel quale avverra` la valutazione della regola
+intern[\sa-zA-Z'\:]*destinazion(?:e|i)::intern[\sa-zA-Z'\:]*destinazion(?:e|i)[\sa-zA-Z'\:]*$_REGEXP{PORT_REGEXP}[\s\-\selai']+$_REGEXP{PORT_REGEXP}::DPORT $1-$2::all'interno delle porte destinazioni porta1 e portaN{ENDRULE}
+
+# destinazione - interno
+# DOC porta destinazione all'interno dell'intervallo tra P1 e Pn::esprime un intervallo di porte  <strong>destinazione</strong>  nel quale avverra` la valutazione della regola
+(?:port[\sa-zA-Z'\:]*)?destinazion[\sa-zA-Z'\:]*intern::(?:port[\sa-zA-Z'\:]*)?destinazion[\sa-zA-Z'\:]*intern[\sa-zA-Z'\:]*$_REGEXP{PORT_REGEXP}[\s\-\selai']+$_REGEXP{PORT_REGEXP}::DPORT $1-$2::porta destinazione interna all'intervallo tra p1 e pN{ENDRULE}
+
+# comprese tra o comprese fra
+# DOC destinazione comprese tra  porta1 e portaN::esprime un intervallo di porte  <strong>destinazione</strong> compresi tra porta1 e portaN
+(?:port[\sa-zA-Z'\:]*)?destinazion(?:e|i)[\sa-zA-Z'\:]*compres(?:a|e)\s+(?:f|t)ra::(?:port[\sa-zA-Z'\:]*)?destinazion(?:e|i)[\sa-zA-Z'\:]*compres(?:a|e)\s+(?:f|t)ra[\sa-zA-Z'\:]*$_REGEXP{PORT_REGEXP}[\s\-\selai']+$_REGEXP{PORT_REGEXP}::DPORT $1-$2::comprese tra porta1 e portaN{ENDRULE}
+#
+# 
+# NOTA: la seguente non contiene parole non ambigue: per riconoscere un intervallo e` necessario un trattino tra le due porte, mentre non sono ammese altre lettere
+# 
+# DOC porta destinazione p1-pN::delimita un intervallo all'interno del quale la porta destinazione del pacchetto deve rientrare. Viene ammesso solo il segno meno in questa forma sintetica
+(?:port[\sa-zA-Z'\:]*)?destinazion::(?:port[\sa-zA-Z'\:]*)?destinazion[\sa-zA-Z'\:]*$_REGEXP{PORT_REGEXP}\-$_REGEXP{PORT_REGEXP}::DPORT $1-$2::dentro l'intervallo di porte destinazione porta1-portaN{ENDRULE}
+#
+#
+# Fuori da intervallo di porte destinazione
+#
+# NOTA: parole chiave necessarie: destinazione
+# NOTA: parole chiave non ambigue: fuori, non + intervallo, non + interno, estern(amente), non comprese
+# 
+
+# fuori - destinazione
+# DOC intervallo di porte destinazione porta1-portaN::esprime un intervallo di porte <strong>all'infuori del quale</strong> avverr&agrave; la valutazione
+fuori[\sa-zA-Z'\:]*(?:intervallo)?[\sa-zA-Z'\:]*destinazion(?:e|i)\s+::fuori[\sa-zA-Z'\:]*(?:intervallo)?[\sa-zA-Z'\:]*destinazion(?:e|i)[\sa-zA-Z'\:]*$_REGEXP{PORT_REGEXP}[\s\-\selai']+$_REGEXP{PORT_REGEXP}::DPORT !$1-$2::intervallo di porte destinazione porta1-portaN{ENDRULE}
+
+# destinazione - fuori
+# DOC porta destinazione fuori dall'intervallo compreso tra porta1 e portaN::esprime un intervallo di porte  <strong>all'infuori del quale</strong> avverr&agrave; la valutazione
+(?:port[\sa-zA-Z'\:]*)?destinazion[\sa-zA-Z'\:]*fuori[\sa-zA-Z'\:]*(?:intervallo)?::(?:port[\sa-zA-Z'\:]*)?destinazion[\sa-zA-Z'\:]*fuori[\sa-zA-Z'\:]*$_REGEXP{PORT_REGEXP}[\s\-\selai']+$_REGEXP{PORT_REGEXP}::DPORT !$1-$2::porta destinazione fuori dall'intervallo compreso tra porta1 e portaN{ENDRULE}
+
+# non + interno - destinazione
+# DOC non all'interno dell'intervallo di porte destinazione  porta1-portaN::esprime un intervallo di porte  <strong>all'infuori del quale</strong> avverr&agrave; la valutazione
+non[\sa-zA-Z'\:]*intern[\sa-zA-Z'\:]*destinazion(?:e|i)::non[\sa-zA-Z'\:]*intern[\sa-zA-Z'\:]*destinazion(?:e|i)[\sa-zA-Z'\:]*$_REGEXP{PORT_REGEXP}[\s\-\selai']+$_REGEXP{PORT_REGEXP}::DPORT !$1-$2::non all'interno dell'intervallo di porte destinazione comprese tra p1 e pN{ENDRULE}
+
+# destinazione - non + interno
+# DOC porta destinazione non all'interno dell'intervallo porta1-portaN::esprime un intervallo di porte  <strong>all'infuori del quale</strong> avverr&agrave; la valutazione
+(?:port[\sa-zA-Z'\:]*)?destinazion[\sa-zA-Z'\:]*non[\sa-zA-Z'\:]*intern::(?:port[\sa-zA-Z'\:]*)?destinazion[\sa-zA-Z'\:]*non[\sa-zA-Z'\:]*intern[\sa-zA-Z'\:]*$_REGEXP{PORT_REGEXP}[\s\-\selai']+$_REGEXP{PORT_REGEXP}::DPORT !$1-$2::porta destinazione non all'interno dell'intervallo porta1-portaN{ENDRULE}
+
+# destinazione - non comprese
+# DOC porte destinazioni non comprese tra porta1 e portaN::esprime un intervallo di porte destinazioni <strong>all'infuori del quale</strong> avverr&agrave; la valutazione
+(?:port(?:a|e)\s+)?destinazion(?:e|i)\s+non\s+compres::(?:porte\s+)?destinazion(?:e|i)\s+non\s+compres[\sa-zA-Z'\:]*$_REGEXP{PORT_REGEXP}[\s\-\selai']+$_REGEXP{PORT_REGEXP}::DPORT !$1-$2::porta destinazione non compresa tra porta1 e portaN{ENDRULE}
+
+# estern[amente] - destinazione
+# DOC esterno all'intervallo di porte destinazione porta1-portaN::esprime un intervallo di porte <strong>all'infuori del quale</strong> avverr&agrave; la valutazione
+# DOC all'esterno dell'intervallo di porte destinazione porta1-portaN::esprime un intervallo di porte IP <strong>all'infuori del quale</strong> avverr&agrave; la valutazione
+estern[\sa-zA-Z'\:]*destinazion[\sa-zA-Z'\:]*::estern[\sa-zA-Z'\:]*destinazion(?:e|i)[\sa-zA-Z'\:]*$_REGEXP{PORT_REGEXP}[\s\-\selai']+$_REGEXP{PORT_REGEXP}::DPORT !$1-$2::all'esterno dell'intervallo di porte destinazioni A-B oppure esterno all'intervallo di porte destinazione A - B{ENDRULE}
+
+# destinazione - estern[amente] 
+# DOC porta destinazione esterna all'intervallo tra la porta1 e la portaN::esprime un intervallo di porte <strong>all'infuori del quale</strong> avverr&agrave; la valutazione
+(?:port[\sa-zA-Z'\:]*)?destinazion[\sa-zA-Z'\:]*estern[\sa-zA-Z'\:]*(?:intervallo)?::(?:port[\sa-zA-Z'\:]*)?destinazion[\sa-zA-Z'\:]*estern[\sa-zA-Z'\:]*$_REGEXP{PORT_REGEXP}[\s\-\selai']+$_REGEXP{PORT_REGEXP}::DPORT !$1-$2::porta destinazione esterna all'intervallo tra la N e la M{ENDRULE}
+
+# non intervallo - destinazione
+# DOC non nell'intervallo di porte destinazione porta1-portaN::esprime un intervallo di porte destinazione <strong>all'infuori del quale</strong> avverr&agrave; la valutazione
+non[\sa-zA-Z'\:]*intervallo[\sa-zA-Z'\:]*destinazion(?:e|i)::non[\sa-zA-Z'\:]*intervallo[\sa-zA-Z'\:]*destinazion(?:e|i)[\s+]$_REGEXP{PORT_REGEXP}[\s\-\selai']+$_REGEXP{PORT_REGEXP}::DPORT !$1-$2::non all'interno dell'intervallo di porte destinazione porta1 porta2{ENDRULE}
+
+# destinazione - non intervallo
+# DOC porta destinazione non nell'intervallo tra p1 e pN::esprime un intervallo di porte destinazione <strong>all'infuori del quale</strong> avverr&agrave; la valutazione
+(?:port[\sa-zA-Z'\:]*)?destinazion(?:e|i)[\sa-zA-Z'\:]*non[\sa-zA-Z'\:]*intervallo::(?:port[\sa-zA-Z'\:]*)?destinazion(?:e|i)[\sa-zA-Z'\:]*non[\sa-zA-Z'\:]*intervallo[\sa-zA-Z'\:]*$_REGEXP{PORT_REGEXP}[\s\-\selai']+$_REGEXP{PORT_REGEXP}::DPORT !$1-$2::porta destinazione non nell'intervallo tra p1 e pN{ENDRULE}
+
+
+# DOC dalla porta N::indica una porta sorgente
+dall(?:a|e|')\s+::dall(?:a|e|')[\sa-zA-Z'\:]*$_REGEXP{PORT_REGEXP}::SPORT $1::dalla porta N{ENDRULE}
+
+#
+#
+#

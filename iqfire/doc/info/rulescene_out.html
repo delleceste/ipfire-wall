@@ -1,0 +1,46 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<link rel="stylesheet" href="info_ruleView.css" type="text/css" /> 
+<head>
+	<title></title>
+	
+	
+	
+</head>
+			
+<head>
+	<title></title>	
+</head>
+			
+<body>
+
+<h3>The output block</h3>
+
+<div id="content">
+
+
+<p>
+The packets in the <strong>output</strong> block will leave the machine
+through the next block: the <strong>post routing</strong> phase.
+</p>
+<p>
+Here you can <strong>filter</strong> the network packets that are about to
+leave your computer, generated from a local application.
+For instance, you can allow the network traffic towards a specific service,
+as the web browsing or deny connections towards the peer to peer networks.
+<ul>
+<li>You can block a connection <a href="action://adddenialout">adding an output denial rule</a>, or;</li>
+<li>accept an outgoing connection <a href="action://addpermissionin">adding an  permission rule</a>.</li>
+</ul>
+In the <strong>output</strong> direction, you can change the <strong>destination</strong> of a locally generated packet.
+For instance, you could redirect the connections towards the port <strong>80</strong>, the web service, towards the <strong>proxy server</strong>
+ listening on the port <strong>8080</strong>.
+This can be done adding an <a href="action://addoutdnat">output destination NAT rule</a>
+</p>
+
+</div> <!-- id="content" -->	
+
+</body>
+
+</html>

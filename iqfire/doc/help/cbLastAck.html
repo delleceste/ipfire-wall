@@ -1,0 +1,66 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<link rel="stylesheet" href="info.css" type="text/css" /> 
+<head>
+	<title></title>	
+</head>
+
+			
+<body>
+
+<h3>Packets in LAST ACK state</h3>
+
+<div id="content">
+
+<p>
+
+Check if you want the console to print the packets in the <strong>LAST ACK</strong> state.
+
+</p>
+
+<p>
+
+Uncheck if you are not interested in filtering the packets in this state.
+
+</p>
+
+<h3>The connection states</h3>
+
+<p>
+	The <em>ipfire-wall</em> kernel module implements a simple state machine for the <strong>TCP</strong> 
+	connections. Below a short description of the states a connection goes through is provided:
+	<ul>
+	<li><strong>SETUP</strong>: the side that initiates the connection has sent a <strong>SYN</strong> packet 
+	to initialize the communication. The first packet of a new connection has this flag set to true.</li>
+	<li><strong>SETUP OK</strong>: the first <em>setup</strong> packet has been received and a confirmation of 
+	this event is sent from the receiver to the source of the connection. This second packet of a new connection 
+	is characterized by the SYN and ACK flags of the tcp header set to true, and all the others set to false;</li>
+	<li><strong>ESTABLISHED</strong>: if the two phases above end successfully, the connection becomes <em>
+	established</em> and the data transfer can take place from this moment on. From this step on, the so called
+ 	<cite>three way handshake</cite> tcp communication initialization process has been completed and the 
+	sender/receiver are said to be connected.</li>
+	<li><strong>FIN WAIT</strong>: a packet with a flag <strong>FYN</strong> set to <strong>true</strong> has been
+ 	seen and the side that receives a packet like that is aware that the sender wants to close the connection.</li>
+	<li><strong>CLOSE_WAIT</strong>: being in the <em>FIN WAIT</em>, this state is entered when an <strong>ACK</strong> 
+	packet arrives.</li>
+	<li><strong>LAST ACK</strong>: another packet with a <strong>FIN</strong> flag set to <strong>true</strong> is seen;</li>
+	<li><strong>TIME WAIT</strong>: the last <strong>ACK</strong> is received: the next state will be <strong>closed</strong>;</li>
+	<li><strong>CLOSE</strong>: the connection is closed.
+	</ul>
+</p>
+
+
+<p> To learn more about the <em>TCP protocol</em> and the tcp connection states, please 
+read <a href="http://www.giacomos.it/ipfire/rulefields.html" title="http://www.giacomos.it/ipfire/rulefields.html">this web page</a>.
+</p>
+
+<p>
+	For <strong>ipfire-wall/iqfire-wall</strong> state machine implementation, read 
+	<a href="http://www.giacomos.it/ipfire/stateful.html" title="http://www.giacomos.it/ipfire/stateful.html">this other web page</a>
+</p>
+
+
+</body>
+
+</html>

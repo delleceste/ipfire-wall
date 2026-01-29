@@ -1,0 +1,117 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<link rel="stylesheet" title="Light Maroon" href="iqfire-web.css" type="text/css" />
+<link rel="stylesheet" href="iqfire-web-blue.css" title="Light ice" type="text/css" /> 
+<head>
+	<title></title>
+	
+	
+	
+</head>
+			
+<head>
+	<title>Rules</title>	
+</head>
+			
+<body>
+
+<div id="banner">
+<h3 id="banner">IqFIRE-wall: a graphical linux firewall for your desktop: managing rules</h3>
+</div>
+	
+	
+<div id="menu">
+
+<ul id="globalnav">
+
+  <li><a href="./index.html">Home</a></li>
+  <li><a href="console.html">Console</a></li>
+<!-- rule tree -->
+ <li><a href="ruletree.html" class="here">Rule tree</a>
+    	<ul>
+      	<li><a href="ruletree.html">About</a></li>
+	<li><a href="ruleadding.html" class="here">Managing rules</a></li>
+	</ul>
+  </li>
+
+<li><a href="ruleview.html">Rule view</a></li>
+
+<li><a href="stats.html">Statistics</a>
+</li>
+<li><a href="installation.html">Installation</a></li>
+<li><a href="help.html">Help</a></li>
+
+</ul>
+
+</div> <!-- id="menu" -->	
+
+	<div id="content">
+<h3>Managing Rules</h3>
+<a  href="imgs/uncompressed/adder1.jpg"><img src="imgs/adder1.jpg" alt="Rule adder, page 1"/></a>
+<p>
+In the first page of the <strong>rule adding/modifying wizard</strong> you can setup
+ the rule name, the network protocol and device of the rule.
+</p>
+<p>
+Note that, in the lower part of the dialog, a summary of the rule being created/modified
+is available. Just modify a field and watch the changes in the lower part.
+In this way, when you configure the next steps, you can always keep in mind all the settings
+ previously configured in the other phases.
+</p>
+
+<a  href="imgs/uncompressed/adder2.jpg"><img src="imgs/adder2.jpg" alt="Rule adder, page 1"/></a>
+<p>
+In the second part, called <cite>Network Layer</cite> one can setup <strong>internet addresses</strong> 
+which the rule shall match. As you can see, many options are choosable here.
+In all the configuration widgets, the keyboard input is filtered so that the user is prevented from
+ typing addresses with wrong syntax.
+</p>
+
+
+<a  href="imgs/uncompressed/adder3.jpg"><img src="imgs/adder3.jpg" alt="Rule adder, page 1"/></a>
+<p>
+In the third page of the configuration widget, the transport protocol related part is configured.
+This means <strong>port numbers</strong> for <strong>TCP</strong> and <strong>UDP</strong> protocols, as
+ well as <strong>the TCP flags</strong> concerning the TCP control protocol (see the image below).
+</p>
+
+
+<a  href="imgs/uncompressed/adderFlags.jpg"><img src="imgs/adderFlags.jpg" alt="Rule adder, page tcp flags"/></a>
+<p>
+  Enable the flag you want to check and then choose if you want it to be <strong>on</strong> or <strong>off</strong> 
+ to match your rule.
+</p>
+  
+<p>
+As you can see, the configuration of a new rule, or the modification of an already existing one, is very
+ simple and straightforward interacting with this dialog.
+</p>
+<p>
+<strong>Apply</strong> adds the rule on the <strong>rule tree</strong>, 
+at the first available position <strong>after</strong> the item you selected in the adding action, while
+<strong>Cancel</strong> interrupts and cancels the procedure.
+With the buttons <strong>Previous</strong> and <strong>Next</strong>, you can navigate through the configuration
+ pages of the adder dialog.
+
+
+</p>
+
+<p>
+Note that while adding or modifying a rule, the main window is disabled and so you are required to 
+complete or cancel the operation before being able to interact with the main window.
+
+</p>
+<p>
+Notwithstanding, the <strong>help</strong> and <strong>info</strong> right panels are still available
+ and updated during the operations on the adder dialog. So you can keep an eye on them if you need help!
+If they are not visible, click on the corresponding <strong>toolbar</strong> icons to activate them.
+</p>
+
+
+</div>
+	
+
+</body>
+
+</html>

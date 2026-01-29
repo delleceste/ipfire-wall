@@ -1,0 +1,163 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<link rel="stylesheet" href="iqfire-web.css" type="text/css" /> 
+
+			
+<head>
+	<title>Statistics</title>	
+</head>
+			
+<body>
+	
+	
+	
+	
+<div id="banner">
+<h3 id="banner">IqFIRE-wall: a graphical linux firewall for your desktop</h3>
+</div>
+
+<div id="menu">
+
+<ul id="globalnav">
+
+  <li><a href="./index.html">Home</a>
+ </li>
+  
+  <li><a href="console.html">Console</a>
+   </li>
+<!-- rule tree -->
+ <li><a href="ruletree.html">Rule tree</a></li>
+
+<li><a href="ruleview.html">Rule view</a>
+	</li>
+
+<li><a href="stats.html" class="here">Statistics</a>
+    	<ul>
+     	<li><a href="stats.html" class="here">The plot</a></li>
+	<li><a href="stats_txt.html">Textual information</a></li>
+   	</ul>
+</li>
+<li><a href="installation.html">Installation</a></li>
+<li><a href="help.html">Help</a></li>
+
+</ul>
+
+</div> <!-- id="menu" -->
+
+<div id="content">
+
+
+<h3>Statistics</h3>
+
+<a  href="imgs/uncompressed/stats.jpg"><img src="imgs/stats.jpg" alt="Rule adder, page tcp flags"/></a>
+
+<p>
+
+The <strong>statistics</strong> window represents with great detail the
+activity of the <cite>firewall</cite> over time.
+</p>
+
+<p>
+Two visualizations are available:
+
+<ul>
+<li>A plot representing the percentage of packets <strong>blocked</strong> or
+ <strong>allowed</strong> for each direction <strong>over time</strong> </li>
+ 
+ <li>
+ 	An <strong>html</strong> formatted page, which sums up the statistics
+ 	in a numeric form.
+ </li>
+ 
+</ul>
+
+</p>
+
+<p>
+
+In this window one can see the plot of the statistics with 
+<strong>percentage</strong> in the <strong>y</strong> axis and the 
+<strong>time</strong> in the <strong>x</strong> axis. 
+</p>
+<p>
+	The percentage is referred to the total packets processed and it is
+	based on requests forwarded to the <strong>firewall</strong> in the 
+	kernel space.
+	The time axis starts from the moment the interface is started up.
+	
+</p>
+
+<p>
+	Another view is possible: click on the <strong>radio button</strong>
+	called <strong>Summary</strong> to view an <strong>html</strong> formatted
+	 text with a summary of the statistics concerning the <cite>firewall</cite>
+	  activity.
+</p>
+
+<h5>Zooming the plot</h5>
+
+
+<p>
+
+At any point inside the plot, you can click the <strong>left</strong> button of
+the mouse and hold it pressed while drawing a <strong>rectangle</strong> over
+ the portion of the graph you want to <strong>zoom</strong>. <br/>
+ When you <strong>release</strong> the mouse, the <strong>rectangular area</strong>
+  you selected will be zoomed.
+
+</p>
+
+<h5>Unzooming the plot</h5>
+
+
+<p>
+	Simply <strong>click</strong> with the <strong>middle</strong> mouse button
+	at any place in the plot to zoom back of one level.
+	If you did zoom <cite>3</cite> times for instance, you will have to click 
+	<cite>3</cite> times to go back to the normal zoom (<strong>1:1</strong>).
+</p>
+
+<h5>Showing and hiding curves in the plot</h5>
+
+
+<p>
+	In the <strong>Plot</strong> mode of the statistics window, one can
+	notice, in the lowest part of the widget, a series of buttons, each
+	representing a particular curve on the plot.<br/>
+	<strong>Moving</strong> the mouse over those buttons will produce 
+	this help message to change and describe the meaning of the curve 
+	associated with the button.
+	<strong>Move away</strong> the mouse from the button to view again the 
+	global statistics window message.
+	
+</p>
+
+<p>
+	Another easy way to get information about the curve represented by the 
+	button is to stop the mouse cursor over it and wait shortly for a 
+	<strong>tool tip</strong> describing the plot item.
+	This is useful if in the future you do not want to have the <strong>help panel
+	</strong> shown in this window.
+</p>
+
+
+</div>
+
+<div class="footnote">
+<p>
+	<strong class="note">Note</strong> that, while the plot starts gathering the information
+	at the moment of the startup of the <strong>iqFirewall</strong> user interface, 
+	the <strong>textual</strong> page tracks the behaviour of the firewall since the
+	<cite>kernel module</cite> of <strong>ipfire-wall</strong> is loaded. This typically
+	 means at computer startup.
+</p>
+
+<p>
+	Beware of the different information that may contain the plot and the textual summary then!
+<p>
+
+</div>
+</body>
+
+</html>

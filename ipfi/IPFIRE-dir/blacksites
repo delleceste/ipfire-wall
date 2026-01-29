@@ -1,0 +1,15 @@
+# Put here Internet addresses you want to be blocked.
+# Comments are allowed: first character of the line must be '#'.
+#
+# Example:
+# www.badsite.com
+#
+#
+# File is read by IPFIREWALL 'resolver' if ipfire is started with option '-dns N',
+# where N is the interval in seconds after which names are refreshed.
+#
+# (C) Giacomo S.
+# june 2005 - january 2006 jacum@libero.it
+#
+# Have a nice time :)
+#

@@ -1,0 +1,42 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<link rel="stylesheet" href="info.css" type="text/css" /> 
+<head>
+	<title></title>
+	
+	
+	
+</head>
+			
+<head>
+	<title></title>	
+</head>
+			
+<body>
+
+<h3>Passive FTP support</h3>
+
+<div id="content">
+
+<p>
+
+      This check box enables the <strong>passive FTP</strong> support for this rule.
+       It is normally applied to a permission rule allowing the <strong>ftp control</strong>
+        flow (i.e. towards the port 21/ftp).<br/>
+        For each ftp control connection, a new table is created in the kernel space firewall
+         to allow the <strong>related</strong> connection to take place successfully.
+
+</p>
+
+<p>
+    The <strong>payload</strong> data is inspected to look for the <strong>ftp data</strong>
+     connection parameters negotiated in the <strong>control</strong> session.
+     This procedure is necessary to allow the FTP transfers.
+</p>
+
+</div> <!-- id="content" -->	
+
+</body>
+
+</html>

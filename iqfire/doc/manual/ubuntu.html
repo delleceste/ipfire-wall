@@ -1,0 +1,204 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<link rel="stylesheet" href="iqfire-web.css" type="text/css" /> 
+
+			
+<head>
+	<title>ipfire-wall/iqfire-wall Installation on ubuntu and kubuntu systems</title>	
+</head>
+			
+<body>
+	
+<div id="banner">
+<h3 id="banner">IqFIRE-wall: a graphical linux firewall for your desktop: installation</h3>
+</div>
+
+<div id="menu">
+
+<ul id="globalnav">
+
+  <li><a href="./index.html">Home</a>
+ </li>
+  
+  <li><a href="console.html">Console</a>
+   </li>
+<!-- rule tree -->
+ <li><a href="ruletree.html">Rule tree</a></li>
+
+<li><a href="ruleview.html">Rule view</a>
+	</li>
+
+<li><a href="stats.html">Statistics</a>
+    	
+</li>
+<li><a href="installation.html" class="here">Installation</a>
+<ul>
+     	<li><a href="installation.html">Installing <em>iqfire-wall</em></a></li>
+	<li><a href="ubuntu.html" class="here">on <em>ubuntu</em></a></li>
+	<li><a href="debian.html">on <em>debian GNU/Linux</em></a></li>
+	<li><a href="configuration.html">Configure the firewall</a></li>
+   	</ul>
+
+</li>
+<li><a href="help.html">Help</a></li>
+
+</ul>
+
+</div> <!-- id="menu" -->
+
+<div id="content">
+
+
+<h3>Ubuntu installation</h3>
+
+<p>
+
+Depending on your ubuntu installation, the following steps are possible:
+
+</p>	
+
+<ul>
+<li><a href="ubuntu.html#u7.10">Kubuntu/Ubuntu 7.10, default installation</a>;</li>
+<li><a href="ubuntu.html#u7.10general">Kubuntu/Ubuntu, general instructions</a>;</li>
+</ul>
+
+<p>
+  Before starting with the first or the second procedure, be sure to read the following <strong>requirements</strong> 
+  that <strong>must</strong> be satisfied before installing  <strong>iqfire-wall</strong>.
+  It could be necessary that you are connected to the <strong>Internet</strong> to complete all the steps or that 
+  you have the ubuntu <strong>DVD</strong> available.
+</p>
+
+<h3 id="requirements">Requirements</h3>
+
+
+<p>
+  <ul>
+<li>add to the software sources the repository that provides the 
+	<strong>kde4</strong> packages;</li>
+	
+<li>install <strong>libqt4-core</strong>, <strong>libqt4-dev</strong>, 
+<strong>libqt4-gui</strong></li>
+
+
+<li>install <strong>kdelibs5</strong>, <strong>kdelibs5-dev</strong>;</li>
+
+<li>install <strong>libqwt5-qt4 </strong>, <strong>libqwt5-qt4-dev</strong>;</li>
+
+<li>install <strong>linux-headers-2.6.xx</strong> where 2.6.xx is the number of
+the version of the kernel installed. If you are unsure of which kernel you are
+running, just type on a terminal the command <strong>uname -r</strong>;</li>
+
+</ul>
+
+<p>
+Supposing you are using <strong>ubuntu or kubuntu 7.10</strong>, this means
+ typing from a terminal:
+ 
+ <ul>
+ <li>To add the repository providing the <strong>kde4</strong> packages, choose one of
+ these two steps:</li>
+ <ul>
+ <li>as root, or using the command <strong>sudo</strong>, open the file
+ <strong>/etc/apt/sources.list</strong> with your favourite text editor, 
+  typically <strong>gedit</strong> in ubuntu or <strong>kwrite</strong>
+  in kubuntu or <strong>vi</strong> (command line editor), and add the line 
+ <strong>deb http://ppa.launchpad.net/kubuntu-members-kde4/ubuntu gutsy main</strong>
+, <strong>or</strong>;</li>
+ 
+ <li>add the line above in the graphical package manager, adept;</li>
+ 
+ </ul>
+ 
+ <li>execute <strong>sudo apt-get update</strong>;</li>
+ 
+ <li>execute <strong>sudo apt-get install libqt4-core libqt4-dev kdelibs5 kdelibs5-dev
+  libqwt5-qt4 libqwt5-qt4-dev linux-headers-2.6.22-14-generic</strong>.</li>
+  
+ </ul>
+
+Having satisfied these prerequisites, you should be ready to install <strong>iqfire-wall</strong> 
+with one of the following two procedures:
+<ul>
+<li><a href="ubuntu.html#u7.10">Kubuntu/Ubuntu 7.10, default installation</a>;</li>
+<li><a href="ubuntu.html#u7.10general">Kubuntu/Ubuntu, general instructions</a>;</li>
+</ul>
+
+
+</p>
+
+<h3 id="u7.10">Ubuntu/Kubuntu 7.10, default installation</h3>
+<p>
+  If you have installed the ubuntu or kubuntu linux in the classical way, that is using the 
+ installation cd, with the default kernel, then the easiest way to proceed is the following,
+ that makes use of the <strong>iqfire-wall</strong> precompiled packages for the ubuntu distribution.
+</p>
+
+
+
+<h3 id="u7.10general">Ubuntu/Kubuntu, general instructions</h3>
+<p>
+ If you have installed the ubuntu or kubuntu linux and then you have updated your kernel, or the gcc/g++
+ compiler, or other system libraries and packages, you are recommended to download the <strong>iqfire-wall</strong> 
+ sources and build/install them using the script provided by the <strong>tar.gz</strong> package.
+</p>
+<p>
+The installation steps consist into <strong>downloading</strong> and <strong>installing</strong> iqfire-wall on your system.
+<strong>iqfire-wall</strong> is hosted on <a href="http://sourceforge.net/projects/ipfire-wall">sourceforge.net</a> 
+ since the creation of the project <strong>ipfire-wall</strong>.
+Actually, the project has the same name although the package <strong>IPFIRE-wall</strong> now contains <strong>iqfire-wall</strong> 
+too.
+
+<ul>
+  <li>Download the <strong>IqFIRE-wall sources</strong>:</li>
+  <ul>
+    <li>the <strong>.tar.gz package</strong> from <a href="http://sourceforge.net/projects/ipfire-wall">sourceforge.net</a>,
+    which represents the latest package of the firewall distribution, including 
+    <ul>
+      <li>the ipfire-wall kernel module;</li>
+      <li>the ipfire-wall console firewall (the console version, as it was until version 0.98.6); </li>
+      <li>the new <strong>iqfire-wall</strong> graphical user interface.</li>
+    </ul></li>
+
+  <li>the latest snapshot available, containing the most <strong>up to date</strong> modifications on the 
+  code of <strong>iqfire-wall</strong>, via the CVS 
+  <a href="http://sourceforge.net/projects/ipfire-wall">sourceforge.net</a> repository:
+  <ul>
+      <li>open a terminal in your linux desktop;</li>
+      <li>execute <em>cvs -d:pserver:anonymous@ipfire-wall.cvs.sourceforge.net:/cvsroot/ipfire-wall login</em></li>
+       <li>execute <em>cvs -z3 -d:pserver:anonymous@ipfire-wall.cvs.sourceforge.net:/cvsroot/ipfire-wall co -P IPFIRE-wall</em>
+	  </li>
+  </ul>
+  The so downloaded package, called <strong>IPFIRE-wall</strong>, contains the same parts described above: kernel part, ipfire-wall
+  console and iqfire-wall
+  </li>
+
+  </ul>
+  <li>if you downlaoded the <strong>.tar.gz package</strong>, unpack it the in a directory of your choice and extract it right clicking on 
+  the <strong>IPFIRE-wall-x.y.z.tar.gz</strong> icon and choosing the correct action to <strong> extract</strong> the 
+  <strong>.tar.gz</strong> archives or give the command <strong>tar -xzf IPFIRE-wall.x.y.z.tar.gz</strong> from the 
+  command line;</li>
+  <li>open a terminal and change directory into IPFIRE-wall's: <strong>cd /directory/of/download/IPFIRE-wall-x.y.z</strong>;</li>
+  <li>build and install the firewall launching the script <strong>install.sh</strong> with the command <strong>./install.sh</strong>, 
+   and confirming with the key <strong>return</strong> at the first installer question.</li>
+<li>If something <strong>fails</strong>, read the <a href="ubuntu.html#requirements">Requirements</a> once again to be sure you did
+ not forget to install a needed dependency.</li>
+<li>If you go to your desktop panel and click on the applications menu (<strong>menu K</strong> on KDE or <strong>Applications</strong> 
+ on Gnome), you should find a launcher for <strong>iqfire-wall</strong> under the <strong>Internet</strong> submenu. Click on it 
+ to launch <strong>iqfire-wall</strong>;</li>
+ <li>optionally, you can <strong>drag</strong> with the mouse the icon above and <strong>drop</strong>
+ it into the desktop workspace to create a 
+  <strong>launcher inside your desktop</strong>.</li>
+
+<li>To later <strong>reinstall</strong> iqfire-wall, re-run the script <em>install.sh</em> as above, adding the parameter 
+  <strong> clean</strong> to the invocation command.</li>
+</ul>
+
+</p>
+
+
+</div>
+</body>
+
+</html>

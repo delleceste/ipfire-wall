@@ -1,0 +1,78 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<link rel="stylesheet" href="help.css" type="text/css" /> 
+<head>
+	<title></title>
+	
+	
+	
+</head>
+			
+<head>
+	<title>Rules</title>	
+</head>
+			
+<body>
+
+<h3>Rules</h3>
+
+<p>
+
+This window displays all the rules loaded into the firewall. 
+They are organized in a tree with the aim of being grouped 
+by owner, policy and direction, for faster browsing.<br/>
+If you are not the administrator of the machine (<cite>root</cite>), 
+you can browse the <strong>Admin</strong> tree, but in read-only mode.
+Actually, root can setup a group of rules which are always loaded into
+the firewall and cannot be deleted or modified by an unprivileged user.
+<br/>
+The <strong>user</strong> tree instead can be browsed and modified.<br/>
+<strong>Moving</strong> the mouse over each item in the tree, in the 
+<strong>information</strong> panel above (if not active, click on the
+<strong>i</strong> icon in the tool bar) one can see the rule represented
+in a more readable <strong>html</strong> format, which summarizes the rule
+represented in the tree item.
+
+</p>
+
+<p> 
+<strong>Selecting</strong> a tree item will fix the information for that
+rule, and moving the mouse over other items will no more produce an update 
+in the info panel.
+
+</p>
+
+<p>
+	Once an item is selected, right click on it if you want to:
+	<ul>
+	<li>add a new rule <strong>after</strong> the rule you're positioned on;</li>
+	<li>modify the selected rule;</li>
+	<li>delete the selected rule in the tree.</li>
+	</ul>
+	
+	Remember to click on the <strong>Apply</strong> button to really 
+	update the rules in the firewall and then on the <strong>Save</strong>
+	 button, if you want to write the informations on the files.</br>
+	If you are unhappy with your changes, just avoid applying or saving the 
+	rules and go back to another firewall window or click on the <strong>Undo</strong>
+	button.
+</p>
+
+<p>
+	Inside the <cite>rule tree window</cite>, you can perform a <strong>search</strong> 
+	based on strings accepting wildcards (<strong>*</strong>), clicking on the menu
+	<strong>View</strong> and then <strong>Search...</strong>.<br/>
+	A suitable widget will appear on the top of the tree and will perform a search for
+	you.<br/>
+	Just type the string you want to look for, e.g. <strong>192.168.1.*</strong>, select
+	in the combo box the field inside which you want to look for (in this case 
+	<strong>Source IP</strong>, and click on the button <strong>Find</strong>.
+	
+</p>
+
+	
+
+</body>
+
+</html>

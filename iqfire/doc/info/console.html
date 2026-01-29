@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<link rel="stylesheet" href="info_console.css" type="text/css" /> 
+<head>
+	<title></title>
+	
+	
+	
+</head>
+			
+<head>
+	<title>The console</title>	
+</head>
+			
+<body>
+
+<h3>The console</h3>
+
+<p>
+
+This is the <strong>iqFirewall</strong> console.
+It shows the packets processed by the firewall, together with their associated response.
+</p>
+
+<ul>
+	<li>An accepted packet starts with <strong>OK</strong>, followed by the number of the 
+	rule applied;</li>
+	
+	<li>A blocked packet starts with an <strong>X</strong>, followed by the number of the 
+	rule applied;</li>
+	
+	<li>A line starting with <strong>?</strong> represents a packet without a matching rule,
+	to which the <a href="manual://defaultPolicy.html">firewall default policy</a> is applied.</li>
+
+</ul>
+The information in each line represents:
+<ol>
+
+	<li>the packet direction throught the firewall;</li>
+	<li>the network device involved;</li>
+	<li>the <a href="manual://protocol.html">transport protocol</a> type;</li>
+	<li>the source <a href="manual://ip.html">ip address</a>;</li>
+	<li>the source <a href="manual://port.html">port</a>;</li>
+	<li>the destination <a href="manual://ip.html">ip address</a>;</li>
+	<li>the destination <a href="manual://port.html">port</a>;</li>
+	<li>the <a href="manual://state.html">state</a> of the connection;</li>
+	<li>for the tcp protocol, the <a href="manual://tcpFlags.html">flags</a> of the TCP connection;</li>
+	<li>the <a href="manual://ruleName.html">name</a> of the rule applied;</li>
+</ol>
+	
+<div class="footnote">
+<p> <strong class="note">Note:</strong> given the colors used by the console to represent
+  the packets, it is advised to use the <strong>white on black</strong> <em>konsole</em> scheme.
+</p>
+
+</div>
+</body>
+
+</html>

@@ -1,0 +1,22 @@
+
+Package: ipfire-wall
+Version: 0.99.4ubuntu-8.10
+Section: utils
+Priority: optional
+Architecture: i386
+Depends: kdelibs5 (>= 4:4.1.3), konsole (>=4:4.1.3), libqwt5-qt4 (>=5.1.1-1), libc6 (>=2.4),  libqtcore4 (>=4.4.3), libqtgui4 (>=4.4.3), libstdc++6 (>=4.3.2), linux-headers-2.6.27-7 (>=2.6.27-7.14), build-essential (>=11.4), gcc (>=4.3.1-1)
+Installed-Size: 9780
+Maintainer: Giacomo S. (delleceste@gmail.com)
+Description: An easy to use linux firewall, NAT capable and integrated in kde and gnome desktops.
+ .
+ IPFIRE-wall provides simple configuration and management of
+ your personal network.
+ This package installs the user interface and the kernel module.
+ Needs Qt4 libraries installation, libqwt5-qt4 libraries and kdelibs5.
+ Integrates with the GNOME and KDE desktop environments.
+ Does not need full KDE4 installation.
+ The firewall is fully graphical and user friendly, with a nice system tray, 
+ popups for easy configuration and a tree view for simple policy configuration.
+ Also normal users can personalize iqfire-wall.
+ .
+  Homepage: http://www.giacomos.it/

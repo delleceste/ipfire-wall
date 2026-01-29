@@ -1,0 +1,70 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<link rel="stylesheet" href="info.css" type="text/css" /> 
+<head>
+	<title></title>	
+</head>
+
+			
+<body>
+
+<h3>Network Address Translation</h3>
+
+<div id="content">
+
+<p>
+
+This option enables <em>Network Address Translation</em> globally.
+<em>Network Address Translation</em> (<strong>NAT</strong>) is a feature that 
+allows changing the source or destination address (or source or destination port)
+of a packet to redirect it to another destination (or service, for port translation) or 
+to make it appear as coming from another host (for source NAT).
+
+</p>
+
+<p>
+	For instance, with Network Address Translation you are able to redirect 
+	all the traffic from host A to host B towards host C.
+	Moreover, it is possible to redirect a connection to port x towards another 
+	port number.
+</p>
+
+<p>
+	A particular case of <em>NAT</em> is represented by <strong>masquerade</strong>: 
+	used particularly in gateways, it allows to <strong>share an internet connection</strong> 
+	among multiple hosts referring to the gateway connected to the <em>Internet</em>.
+</p>
+
+<p>
+	Configuring <em>NAT</em> requires <em>administrator</em> privileges: this means that 
+	only root can add/remove NAT rules and enable/disable this option.
+</p>
+
+<p>
+	To read further on about the NAT theme, here some links to external pages are 
+	provided. Most of them are quite technical:
+	<ul>
+	<li><a href="http://www.faqs.org/rfcs/rfc1631.html" title="http://www.faqs.org/rfcs/rfc1631.html">
+		RFC 1631 - The IP Network Address Translator (NAT)</a>;</li>
+	<li><a href="http://www.faqs.org/rfcs/rfc2663.html" title="http://www.faqs.org/rfcs/rfc2663.html">
+		RFC 2663 - IP Network Address Translator (NAT) Terminology and Considerations</a>;</li>
+	<li><a href="http://www.rfc-archive.org/getrfc.php?rfc=3235" title="http://www.rfc-archive.org/getrfc.php?rfc=3235">Network Address Translator (NAT)-Friendly Application Design Guidelines</a>;</li>
+	
+	</ul>
+</p>
+
+<p>
+	The following links instead are more related to <em>ipfire-wall/iqfire-wall</em> 
+	Network Address Translation implementation/utilization:
+	<ul>
+		<li><a href="http://www.giacomos.it/ipfire/nat.html" title="http://www.giacomos.it/ipfire/nat.html">Network address and port translation</a>;</li>
+		<li><a href="http://www.giacomos.it/ipfire/scenarios.html" title="http://www.giacomos.it/ipfire/scenarios.html">Network address and port translation scenarios</a>, will provide sample situations in which NAT can be used;</li>
+	</ul>
+</p>
+
+</div> <!-- id="content" -->	
+
+</body>
+
+</html>

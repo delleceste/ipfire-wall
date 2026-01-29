@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE html 
+     PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="it" lang="it"><head>
+	<link rel="stylesheet" href="schede.css" type="text/css" />
+	<title> Network configuration. </title>
+</head>
+
+<body>
+<!--  - - - - - - - - - -   	TITOLO 		- - - - - - - - - - - - - -->
+<div id="title" > <p> IPFIRE<em id="page" >wall </em> </p> 
+</div>
+
+<div id="back">
+	
+	<div id="back_index" >
+		<a href="./fireindex.html" > Index</a>
+	</div>
+	
+	<div id="home_giacomo" >
+		<a href="../index.html" > Homepage di Giacomo. </a>
+	</div>
+	
+	<div id="Scenarios_index" >
+		<a href="../scenarios.html" > Scenarios index. </a>
+	</div>
+</div>	
+
+<div id="content" >
+
+<div id="title_netconf">
+	<h3> Sample network configuration. </h3>
+</div>
+
+<div id="fig1">
+	<img src="pngs/config-rete.png"  
+			alt="Network configuration" 
+ 			title="Sample network configuration" /> </img>
+	</div>
+	
+
+
+<div id="scena"> 
+	<p>
+		
+	 	In the picture above the network configuration considered for tests and following scenarios
+	 	is shown. 192.168.0.2 and 192.168.0.3 are internal hosts, with private network addresses.
+	 	Host 192.168.0.1 acts as a gateway, and does NAT MASQUERADING and filtering of
+	 	all connections. In this configuration, all machines are supposed to have ipfire installed.
+	 	Internal hosts are connected by means of a simple HUB, while connection with external
+	 	Internet is assured by a modem, with IP address dynamically assigned and shown above
+	 	as 80.111.114.96. This address changes every time a connection is established with the 
+	 	Internet Service Provider, and so may vary in IPFIRE outputs that will be shown in next pages.
+	</p>
+</div>
+
+</div> <!-- content -->
+
+
+<div id="w3c" >
+	<p id="validation">
+ 	     <a href="http://validator.w3.org/check?uri=referer"><img
+   	       src="http://www.w3.org/Icons/valid-xhtml10"
+    	      alt="Valid XHTML 1.0!" height="31" width="88" /></a>
+	</p>
+</div>	
+      
+    
+<div id="foot_jumps" >  
+ 	<a href="#title" title="top_of_page"> 
+		Top of page</a>  <br />
+	<a href="./fireindex.html" title="foot_back_to_index"> 
+		Back to index</a>
+	<br/>
+	<a href="./scen1.html" title="foot_next"> 
+		Next page (Scenario 1)</a> <br/>
+	<a href="../scenarios.html" title="foot_prev"> 
+		Previous page (Scenarios index)</a>
+</div>
+	
+</body>
+</html>

@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE html 
+     PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="it" lang="it"><head>
+	<link rel="stylesheet" href="schede.css" type="text/css" />
+	<title> IPFIRE - NAT/MASQUERADING </title>
+</head>
+
+<body>
+<!--  - - - - - - - - - -   	TITOLO 		- - - - - - - - - - - - - -->
+<div id="title" > <p> IPFIRE<em id="page" >wall </em> </p> 
+</div>
+
+<div id="back">
+	
+	<div id="back_index" >
+		<a href="./fireindex.html" > Index</a>
+	</div>
+	
+	<div id="home_giacomo" >
+		<a href="../index.php" > Homepage di Giacomo. </a>
+	</div>
+</div>	
+
+<div id="content" >
+
+<div id="nat"> 
+	<h3> Network address and port translation (See also 
+		<a href="scenarios.html">NAT scenarios</a>). </h3>
+	<p>
+		IPFIREwall is able to translate packets so that they can be redirected to 
+		another host. <em>Destination</em> addresses and ports can be changed in the pre routing
+		phase (see <a href="./rulefields.html"> linux networking overview</a> for details) 
+		or in the  output phase, for locally generated packets. The last function is working only if
+		the port is changed. IPFIRE is not able to deliver a <em> locally generated</em> packet
+		to another machine if this implies a forwarding from an interface to another (i.e. eth0->ppp0). <br/>
+		Thanks to the network destination address translation it is possible to redirect a connection
+		to another machine. If IPFIRE is installed on a gateway and a web server resides behind it,
+		packets directed towards the web port, the number 80, can be redirected inside the private network to
+		the web server. When inserting a new translation rule, a new address and in case a new port must
+		be provided. If only the address is specified, the port is left unchanged, and viceversa.
+		The remaining fields of the rule are evaluated at the same way they are inside the
+		filtering algorithm. <br/>
+		<em> Source </em> network address translation has not been yet implemented, it's intended
+		to change source addresses as they leave machine. An equivalent form of source network address 
+		translation has been applied on a gateway to the Internet: <em> IP masquerading</em>.<br/>
+		<em> IP masquerading </em> is a particular form of Source NAT in which the source address
+		to be masqueraded is dynamically chosen reading the one of the network interface provided
+		as <cite> device</cite> in the translation rule. This is useful for those connections having an ip
+		dynamically assigned by an Internet service provider. It does not matter if the address changes
+		at each dial-up connection: it is read every time translation is applied to that interface.
+		For instance, if <em> ppp0</em> is specified as the <em> output</em> device, then 
+		the outgoing packets are masqueraded with the ppp0 interface address.
+		<br/>
+		Kernel work in translation routine does not end here: dynamic tables have to be set up 
+		to trace out the already <em>natted</em> connections, so that coming back
+		packets are de-masqueraded or de-snatted or de-dnatted and the receiving machine
+		thinks they really come from the remote host and not from the gateway/IPFIREwall.
+		Note that in this environment only addresses and ports are changed and a tcp/udp checksum
+		is always recalculated. No adjustments are done in window sizes or other tcp fields.
+		Since the kernel translation tables, as well as the state tables and the logging tables, are dynamically
+		allocated, they each have their own lifetime and there is a maximum amount of entries
+		in their lists. Administrators should read <a href="./table_variables"> kernel dynamic 
+		tables timeouts and 
+		numerousness</a> chapter for details and notes.<br/>
+		As for the state tables, <em>also the timings of the NAT tables is based on a state machine</em>.<br/>
+		The <em>port redirection</em> has been tested to work with <em>transparent 
+		proxying</em>. Have a look at <a href="examples/scen7.html" >transparent
+		proxying scenario</a> for an example of transparent proxying combined with the execution of an email scanner.
+		<br/>
+		Translated packets (source or destination) are printed on the screen 
+		together with filtered packets in input, output or forward directions.
+		
+	</p>
+</div>
+	
+<div id="example_primergy_redir">
+
+	<h3> Example: an external connection is redirected to an internal host. </h3>
+	
+	<div id="fig">
+	<a href="examples/jpegs/5-fire.gif" > <img src="examples/jpegs/5-fire-little.gif" 
+			alt="primergy to 192.168.0.2" 
+ 			title="158.110.144.168 to 102.168.0.2" /> </a>
+	</div>
+	<p> As you can see in the screenshot above, an external host, having the IP address 158.110.144.168, connects to
+		the gateway interface with address 80.104.113.84, and port 222.
+		The NAT gateway is told to forward connections towards port 222 coming from 158.110.144.168
+		to the internal host 192.168.0.2, port 22 (ssh server). Referring to the picture, in the first line you can see 
+		the connection setup packet arriving from the remote host, reaching the prerouting point. In the second 
+		log line, one can see that such packet is destination address and port translated, and so forwarded
+		to 192.168.0.2, port 22.<br/>
+		Then the internal host sends back the answer directly to the external one, passing through the gateway 
+		anyway, since it always sends to it packets directed to the Internet. The NAT gateway recognizes
+		an already seen translated flow, and in post routing phase changes source address and port, to make
+		the remote host think that the response will be coming back from the public host 80.104.113.84 rather than a 
+		private ssh server.<br/>
+		In the figure above, one can see also the state of the connection changing from setup to setup ok and finally
+		(acknowledged connection) to established.
+		<br/><br/>
+		See also <a href="scenarios.html">NAT scenarios</a> for other examples of network address
+		and port translation tested in <a href="examples/netconf.html">this environment</a>.
+	</p>
+	
+	
+
+</div> <!-- dns redir -->
+
+
+</div> <!-- content --> 
+
+<div id="w3c" >
+	<p id="validation">
+ 	     <a href="http://validator.w3.org/check?uri=referer"><img
+   	       src="http://www.w3.org/Icons/valid-xhtml10"
+    	      alt="Valid XHTML 1.0!" height="31" width="88" /></a>
+	</p>
+</div>	
+      
+    
+<div id="foot_jumps" >  
+ 	<a href="#title" title="top_of_page"> 
+		Top of page</a>  <br />
+	<a href="./fireindex.html" title="foot_back_to_index"> 
+		Back to index</a>
+	<br/>
+	<a href="./outdnat.html" title="foot_next"> 
+		Next page (Output DNAT (version 0.98.4 and following)</a> <br/>
+	<a href="./stateful.html" title="foot_prev"> 
+		Previous page (Stateful connections)</a>
+</div>
+	
+</body>
+</html>

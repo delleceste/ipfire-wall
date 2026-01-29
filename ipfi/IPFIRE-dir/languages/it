@@ -1,0 +1,763 @@
+# File di traduzione delle stringhe di IPFIRE in italiano.
+# Traduzioni disponibili dalla versione 0.96 di IPFIRE-wall
+#
+# (C) Giacomo Strangolino
+# mailto:delleceste@gmail.com
+#
+# Le linee che iniziano per # sono dei commenti.
+# Sono ammesse linee composte solo dal carattere di 'a capo', come 
+# quella che precede l'inizio delle stringhe di traduzione.
+# Le righe formate in altro modo sono considerate di traduzione e 
+# pertanto verra' allocato dello spazio per memorizzarle..
+#
+# Percorriamo il main() entrando nelle varie funzioni via via invocate.
+#
+Loading module \"%s\" ...\t=Carico il modulo "%s" ...	
+FAILED=FALLITO
+ALREADY LOADED=GIA' CARICATO
+DO YOU WANT THIS RULE TO BE STATEFUL [y|n]? =VUOI CHE QUESTA REGOLA SIA DI STATO [s|n]? 
+s=y
+failed to open pipe=errore nell'apertura della pipe
+CONFIGURATION FILES:=FILE DI CONFIGURAZIONE:
+Permission rules:=Regole di permesso:     
+Denial rules:=Regole di negazione:
+Translation rules:=Regole di traduzione:
+- Blocked sites rules:=- Regole di blocco dei siti web:
+Setting up interprocess communication... =Stabilisco la comunicazione interprocesso...
+Error creating semaphore.=Errore di creazione del semaforo.
+There are %d denial, %d permission=Ci sono %d regole di negazione, %d di permesso
+ and %d translation rules.= e %d di traduzione degli indirizzi.
+ rules.=
+#
+# Messaggi in print_cmd_options(), interface_functions.c
+#
+- log level of kernel messages: %d;=- livello di log dei messaggi del kernel: %d;
+- log level of user interface: %d.=- livello di log dei messaggi dell'interfaccia utente: %d.
+- log level on file %s: %u.=- livello di log sul file %s: %u.
+  [All filtering and translation is monitored.]=  [Viene descritto tutto il filtraggio e il NAT.]
+  [All filtering is monitored, except pre/post directions.]=  [Descrizione del filtraggio, eccetto le direzioni PRE e POST.]
+  [Implicit and explicit denial is monitored.]=  [Vengono mostrati gli esiti impliciti e la negazione esplicita.]
+  [Only implicit denial is monitored.]=  [Vengono illustrati solo gli esiti impliciti.]
+- Quiet modality enabled.=- E' stata abilitata la modalita' silenziosa.
+  Decrease loguser to avoid message exchange between=  Riduci il parametro 'loguser' per evitare numerosi
+  user and kernel space.=messaggi tra il kernel e l'interfaccia utente.
+Rules will remain =Le regole rimarranno 
+active=attive
+ in firewall after you shut= all'interno del firewall dopo che
+  down user interface.=  l'interfaccia utente sara' stata spenta.
+- Program will run as a =- Il programma verra' eseguito come 
+daemon=demone
+, redirecting=, redirigendo
+output to =l'output verso il dispositivo "
+null=nullo"
+ device.=.
+- Log file will be =- Il file di log verra' 
+cleared=ripulito
+- Kernel module will =- Il modulo del kernel 
+not=non
+ be = verra' 
+unloaded=rimosso dalla memoria
+ at exit.= all'uscita.
+- Kernel module will be =- Il modulo del kernel sara' 
+- Ports will be translated into service names.=- I numeri di porta verranno tradotti nei rispettivi servizi.
+- Ports will not be translated into service names.=- Le porte rimarranno espresse in forma numerica.
+- Blacklisted sites will be blocked. List will be refreshed every %d seconds.=- La lista nera dei siti web bloccati verra' rinfrescata ogni %d secondi.
+- Mailer enabled. An email will be sent every =- Il mailer e' attivo. Verra' inviata una mail ogni 
+- Mailer disabled.=- La spedizione delle e-m@il e' disabilitata.
+#
+# Ritorniamo nel main, dopo l'invocazione di print_cmd_options()
+#
+# Messaggi di errore all'avvio:
+#
+Error sending hello to firewall.=Errore nell'inviare il primo messaggio al firewall.
+Be sure that root has loaded IPFIRE module into the kernel!=Sei sicuro che l'amministratore abbia caricato il modulo di IPFIRE nel kernel?
+Type \"/sbin/lsmod\" on the console and look for \"ipfi_...\"=Digita "/sbin/lsmod" sulla console e cerca le voci che iniziano per "ipfi_"
+modules in the list. If you don't see them, IPFIRE is not loaded=nella lista. Se non sono presenti, IPFIRE non e' caricato
+into the kernel and so this error happened.=nel kernel e percio' si e' verificato questo errore.
+ipfire is busy!=IPFIRE e' occupato!
+Another instance of an userspace interface seems to be running, =Sembra che sia gia' in esecuzione un'altra istanza dell'interfaccia utente, 
+with pid %d!=avente id di processo pari a %d! Puo' essere eseguita solo un'istanza alla volta.
+That instance should be terminated, e.g. with the command \"kill %d\".=Si dovrebbe terminare la sua esecuzione, ad esempio con il comando "kill %d".
+Error sending a simple goodbye to firewall.=Errore nell'invio dell'arrivederci al kernel.
+Simple exit notified.=L'uscita e' stata notificata al kernel.
+ERROR SENDING CONFIGURATION OPTIONS TO KERNEL!=Errore nell'invio delle opzioni di configurazione al kernel!
+BE SURE TO HAVE LOADED IPFI KERNEL MODULE!=Assicurati che il modulo di IPFIRE sia caricato in memoria.
+(YOU HAVE TO BE ROOT TO DO THAT :)=(Devi essere amministratore per poter caricare IPFIRE nel kernel :)
+- - Options accepted by kernel: - -=- - Opzioni accettate dal kernel: - -
+main() error receiving message from kernel firewall=main(): errore di ricezione del messaggio dallo spazio kernel!
+#
+#
+# Funzione print_command() in ipfire_userspace.c
+#
+Rule adding/removing failed: generic error from kernel!=Generico errore del kernel nel tentativo di aggiungere o rimuovere una regola!
+Rule adding/removing failed. You have not the permission to make such change.=L'aggiunta o rimozione della regola e' fallita poiche' non possiedi i diritti necessari!
+RULE=REGOLA
+ [owner: %d]:= [proprietario: %d]:
+- - OPTIONS - -=- - OPZIONI - -
+NAT: =TRADUZIONE DEGLI INDIRIZZI (NAT): 
+# Senza spazio all'inizio: femminile
+ENABLED=ABILITATA
+DISABLED=DISABILITATA
+MASQUERADE:=MASCHERAMENTO DEGLI INDIRIZZI:
+# Con lo spazio: maschile
+ ENABLED= ABILITATO
+ DISABLED= DISABILITATO
+STATEFUL FIREWALL:=REGOLE DI STATO:
+ALL RULES WILL BE TREATED AS STATEFUL.=TUTTE LE REGOLE SARANNO CONSIDERATE REGOLE DI STATO.
+KERNEL LOGLEVEL: %d LOG KERNEL/USER LEVEL: %d=LIVELLO DI LOG DEL KERNEL: %d KERNEL/UTENTE: %d
+- User is allowed to insert his own rules.=- L'utente e' abilitato all'inserimento delle proprie regole.
+- User is not allowed to modify firewall rules.=- L'utente non e' abilitato all'inserimento delle proprie regole.
+- Rules won't be removed from firewall at exit.=- Le regole non saranno cancellate all'uscita.
+- Your rules will be removed as soon as you turn off user interface.=- Le tue regole saranno rimosse non appena avrai spento l'interfaccia utente.
+- Destination nat tables lifetime: %lu seconds, max %lu entries.=- Tempo di vita delle tabelle di NAT-destinazione: %lu sec, max. %lu elementi.
+  DNat table size: %u bytes -> max memory for nat tables: %.2f kB=  Spazio occupato dalle tabelle di D-NAT: %u bytes -> totale: %.2f kB
+- Source nat tables lifetime: %lu seconds, max %lu entries.=- Tempo di vita delle tabelle di NAT-sorgente: %lu sec, max %lu elementi.
+  SNat table size: %u bytes -> max memory for snat tables: %.2f KB=  Spazio occupato dalle tabelle di S-NAT: %u bytes -> totale: %.2f kB
+- State conn. tables lifetime: %lus. Max %lu entries. [Setup/shutdown:%lus.]=- T. vita delle tabelle di stato: %lus. Max %lu elem. [Apertura/Chius.:%lus.]
+  State table size: %u bytes -> max memory for state tables: %.2f KB=  Spazio occupato dalle tabelle di stato: %u bytes -> totale: %.2f kB
+- Loginfo entries lifetime: %lu, max %lu entries.=- T. vita delle tab. di log: %lus, max %lu elem.
+  Loginfo table size: %u bytes -> max memory for loginfo tables: %.2f KB=  Spazio occupato dalle tabelle di log: %u bytes -> totale: %.2f kB
+- Selective log is disabled (this is not recommended).=- Il sistema di log selettivo e' disabilitato (sconsigliato).
+  Set kernel/user log level to 1 to enable it.=  Si imposti a 1 il livello di log kernel/utente per abilitarlo.
+#
+#
+# Ritorno al main()
+#
+- Flushing rules as requested...=- Rimuovo le regole, come richiesto...
+Sending rules to kernel...=Invio delle regole al firewall...
+Error sending denial rules to kernel space!=Errore nell'invio delle regole di negazione allo spazio kernel!
+Error sending permission rules to kernel space!=Errore nell'invio delle regole di permesso allo spazio kernel!
+Sending =Invio delle regole di 
+translation=traduzione degli indirizzi
+ rules...=...
+Error sending translation rules to kernel=Errore nell'invio delle regole di traduzione (NAT) allo spazio kernel!
+Warning: you are not root and cannot send translation rules to kernel!=Attenzione: non sei root e non puoi inserire regole di traduzione degli indirizzi!
+Waiting for resolver to complete its task...=Attendo che il risolutore dei nomi completi il suo compito...
+Resolver correctly exited.=Il risolutore dei nomi e' uscito correttamente.
+Error updating blacklist rules!=Errore nel ricaricare le regole di negazione!
+Blacklist rules updated!=Regole di negazione aggiornate correttamente!
+Resolver exited abnormally!=Il risolutore dei nomi e' uscito in modo inaspettato!
+* Option \"-mailer\" ignored when \"-load\" is specified!=* L'opzione "-mailer" viene ignorata quando contemporaneamente viene specificata l'opzione "-load"!
+Error opening pipe for mailer=Errore di apertura della pipe per il mailer
+main(): fork() for mailer failed=main(): errore di creazione del processo figlio 'mailer' (fork() )
+Exiting after fork() failure!=Esco dopo il fallimento della funzione fork()!
+main(): fork() failed=main(): la funzione fork() e' fallita
+Stopping mailer... =Arresto il mailer... 
+main(): error shutting down mailer!=main(): errore nell'arresto del mailer!
+Stopping listener...  =Spengo l'ascoltatore dei messaggi del kernel...
+main(): error shutting down listener!=main(): errore di spegnimento dell'ascoltatore dei messaggi del kernel!
+Stopping resolver...  =Spengo il risolutore dei nomi dei siti web bloccati...
+main(): error shutting down resolver!=main(): errore nello spegnimento del risolutore dei nomi!
+BYE!=CIAO!
+#
+# Listener, in interface.c
+#
+Failed to allocate space for port services. Disabling.=Errore nell'allocazione della memoria per la risoluzione delle porte. Disabilito la funzione.
+listener(): error sending init message=listener() [ascoltatore dei messaggi dal firewall]: errore di invio del messaggio di inizializzazione al kernel
+listener(): error getting message from kernel!=listener(): errore nella ricezione del messaggio dal kernel!
+read 0 bytes!=letti 0 bytes!!
+#
+# print_lostpack_info(), in ipfire_userspace.c
+#
+WARNING: lost some packets:=ATTENZIONE: sono stati persi alcuni pacchetti:
+INPUT: =INGRESSO: 
+OUTPUT: =USCITA: 
+FWD: =INOLTRO: 
+LOST %lu PACKETS FROM KERNEL. TOTAL UNTIL NOW: %lu/%lu [%.5f %%]=SONO STATI PERSI %lu PACCHETTI IN ARRIVO DAL KERNEL. %lu SU %lu FINORA [%.5f%%]
+#
+# print_packet(), in utils.c. Solo questo, nient'altro per motivi di efficienza!
+#
+CKSUM ERR!=ERR.CHECKSUM!
+#
+# sig1_handler() interface.c
+#
+sig1_handler(): error reading from pipe=sig1_handler(): errore di lettura dalla pipe
+sig1_handler(): error processing command \"%s\"=sig1_handler(): errore nell'eseguire il comando "%s"
+Reading service names and creating dynamic tables...=Leggo i nomi dei servizi e creo le tabelle dinamiche...
+Failed to allocate space for port services. Disabling.=Errore di allocazione della memoria per la risoluzione delle porte. La disabilito.
+Service name resolution seems to be already active!=Sembra che la risoluzione dei numeri di porta sia gia' attiva!
+Freeing memory for service tables...=Libero la memoria occupata dalle tabelle servizio/porta...
+Service name resolution seems to be already disabled!=La risoluzione dei numeri di porta risulta gia' disabilitata!
+#
+# son_signal_handler(), interface.c
+#
+Listener exiting.=Arresto l'ascoltatore dei messaggi del firewall.
+Closing logfile...=Chiudo il file di log...
+FAILED=FALLITO
+done=fatto
+Freeing memory for service names tables...=Libero la memoria occupata dalle tabelle servizio/porta...
+Listener exiting for a fatal error!=L'ascoltatore dei messaggi del firewall e' terminato per un errore grave!
+#
+# dnsres_handler(), interface.c
+#
+Updating kernel denial rules after updating blocked sites list.=Aggiorno le regole di negazione dopo aver rinfrescato i nomi dei siti web bloccati.
+Error updating blacklist rules!=Errore durante l'aggiornamento delle regole di negazione.
+Blacklist rules updated [%d rules]!=Le regole di negazione sono state aggiornate [%d regole]!
+#
+# mailer_read_handler(), interface.c
+#
+Failed to send statistics request to kernel firewall!=Errore di invio delle richiesta delle statistiche al kernel!
+Failed to read statistics from kernel firewall!=Errore di ricezione delle statistiche dal kernel!
+WRITING TO PIPE=SCRIVO SULLA PIPE
+mailer_read_handler(): failed to write to pipe for mailer!=mailer_read_handler(): errore di scrittura sulla pipe per il mailer!
+#
+# signal_handler(), interface.c
+#
+Signal handler... =Gestore del segnale di uscita...
+FATAL ERROR! Report to =ERRORE GRAVE! Per favore segnalalo a 
+Trying to communicate last goodbye to kernel firewall...=Cerco di inviare l'ultimo addio al kernel...
+Removing rules inserted... =Cancello le regole inserite...
+Error sending goodbye message!=Errore di invio dell'arrivederci al firewall!
+main(): error reading options=main(): errore di lettura delle opzioni
+#
+# print_kernel_userspace_exit_status(), ipfire_userspace.c
+#
+%d rules flushed: \"-noflush\" or \"-load\" or \"-rc\" option?= Sono state cancellate %d regole: e' attiva una delle opzioni "-noflush", "-load" o "-rc"?
+%d rules have been removed from firewall.=Sono state cancellate %d regole.
+#
+# di nuovo nel signal_handler()
+#
+Freeing memory if necessary... =Libero la memoria, se necessario... 
+Closing pipe...=Chiusura della pipe...
+ FAILED= FALLITA
+done=fatto
+Removing semaphore...=Rimuovo il semaforo...
+FAILED=FALLITO
+WARNING=ATTENZIONE
+Unloading %s kernel module...=Tolgo il modulo %s dal kernel..
+Kernel module will not be unloaded: the default=Il modulo kernel non verra' rimosso: verra' applicata
+policy specified at module loading time will be applied.=la politica predefinita scelta al momento del suo caricamento.
+control: not necessary... =socket di controllo: non necessario...
+  data: not necessary.=  socket dei dati: non necessario.
+: the firewall has been stopped but the kernel module wasn't unloaded.=: Il modulo del kernel e' ancora caricato in memoria.
+         If the firewall policy was to drop packets which do not match any= Se la politica era quella di scartare i pacchetti non corrispondenti ad alcuna
+         rule, then many applications could stop working until you remove= regola, le applicazioni potrebbero smettere di funzionare finche' il modulo
+         IPFIRE module from the kernel or restart IPFIRE itself.= non verra' rimosso, o l'interfaccia del firewall stesso riavviata.
+#
+#
+# print_request(): interface_functions.c
+#
+print_request(): ERROR SENDING PRINT REQUEST TO KERNEL!=print_request(): ERRORE NELL'INVIO DELLA RICHIESTA DI STAMPA AL KERNEL!
+- - - Rules loaded in firewall - - -=- - - Regole caricate nel firewall - - -
+- - - - End of list. NOTE: rules are grouped by =- - - - Fine della lista. N.B.: le regole sono raggruppate a seconda della 
+DIRECTION=DIREZIONE
+#
+# state_table_request(), print_state_table_entry()
+#
+TABLE OF STATEFUL CONNECTIONS=TABELLA DELLE CONNESSIONI DI STATO
+TABLE OF ACTIVE SNAT CONNECTIONS=TABELLA DELLE CONNESSIONI NAT SORGENTE ATTIVE
+TABLE OF ACTIVE DNAT CONNECTIONS=TABELLA DELLE CONNESSIONI NAT DESTINAZIONE ATTIVE
+Kernel table empty.=La tabella delle connessioni di stato memorizzate nel firewall e' vuota.
+End of connection table=Fine della tabella delle connessioni di stato
+ID:%d:=ID:%d:
+INDEV: %s=IF.IN: %s
+OUTDEV: %s=IF.OUT: %s
+from rule %d =dalla regola %d 
+#
+#
+#
+Option \"%s\": warning: you are user %d.=Opzione "%s": attenzione: sei l'utente %d.
+You must be root to let rules active in firewall=Devi essere l'amministratore per poter lasciare le regole attive nel firewall
+after turning off userspace interface!=dopo aver spento l'interfaccia utente!
+Parameter \"%s\" must be followed by an integer=Il parametro "%s" deve essere seguito da un intero
+and an indicator among sec, min, hour, days=e da un indicatore tra i seguenti: sec, min, hour, days
+Parameter \"%s\" must be followed by an integer from 0 to 7=Il parametro "%s" deve essere seguito da un intero da 0 a 7
+Only root can modify user log level!=Solo l'amministratore puo' modificare il livello di verbosita' dei messaggi kernel/utente.
+Parameter \"%s\" must be followed by an integer indicating,=Il parametro "%s" deve essere seguito da un intero che indichi
+in seconds, the refresh time.=l'intervallo di rinfresco, in secondi.
+Parameter \"%s\" must be followed by a file name:=Il parametro "%s" deve essere seguito dal nome di un file:
+e.g.: \"/var/log/ipfire.log\"=per esempio: "/var/log/ipfire.log"
+Only root can modify log file name!=Solo l'amministratore puo' modificare il nome del file di log!
+e.g.: \"/home/user/allowed\"=per esempio: "/home/utente/permessi"
+e.g.: \"/home/user/blacklist\"=per esempio: "/home/utente/listanera"
+e.g.: \"/home/user/blacksites\"=per esempio: "/home/utente/siti_bloccati"
+e.g.: \"/home/user/translation_bis\"=per esempio: "/home/utente/translation_bis"
+Parameter \"%s\" must be followed by a string containing a filename with translated strings, positioned in the IPFIRE/languages directory of the home user.=Il parametro "%s" deve essere seguito da una stringa che rappresenti il nome di un file contenente le stringhe di traduzione posizionato nella cartella home/IPFIRE/languages.
+You must be root to clear logfile!=Devie essere root per ripulire il file di log!
+You must be root to set all stateful option!=Devi avere i diritti di amministratore per impostare tutte le regole a regole di stato!
+Option \"%s\": warning: you are user %d.=Opzione "%s": attenzione: sei l'utente %d.
+You must be root to set this privilege.=Devi essere root per impostare questo privilegio.
+You must be root to set \"justload\".=Devi essere root per attivare l'opzione "justload".
+You must be root to set \"justload\" or \"rc\" options.=Devi essere root per attivare le opzioni "justload" o "rc".
+You must be root to load rules and exit.=Devi essere root per poter caricare le regole in memoria e poi uscire subito.
+You must be root to unload module at exit.=Devi essere root per poter rimuovere il modulo dal kernel all'uscita.
+Ignoring unknown option %s.=Tralascio l'opzione sconosciuta "%s".
+%u days =%u giorni 
+%u hours =%u ore 
+%u mins =%u min. 
+%u secs =%u sec. 
+#
+# manage_adding_rule(), interface_functions.c
+#
+Type 'p' if  you want to specify the position of the new rule=Digita 'p' se desideri specificare la posizione della nuova regola
+in the list, another key to insert new rule at the tail of the=all'interno della lista, un'altro carattere per inserirla in fondo
+list (default is at the tail [%d]): =alla lista (scelta predefinita: in coda [posizione %d]): 
+Position of the new rule: =Posizione della nuova regola: 
+Position %d not valid! Minimum position value is 1.=La posizione n. %d non e' valida. Il valore minimo e' 1.
+Error inserting rule at position %d!=Errore nell'inserimento della nuova regola nella posizione %d!
+Rule will be inserted at the end of the list...=La nuova regola verra' inserita per ultima...
+Error inserting rule at position %d!=Errore di inserimento della nuova regola nella posizione %d!
+#
+# manage_deleting_rule(), interface_functions.c
+#
+TYPE 'p' TO DELETE A PERMISSION RULE=DIGITA 'p' PER CANCELLARE UNA REGOLA DI PERMESSO
+     'd' TO DELETE A DENIAL RULE=       'd' PER CANCELLARE UNA REGOLA DI NEGAZIONE
+     't' TO DELETE A TRANSLATION RULE.=       't' PER CANCELLARE UNA REGOLA DI TRADUZIONE DEGLI INDIRIZZI
+ENTER THE POSITION OF THE RULE YOU WANT TO DELETE, 0 TO EXIT.=INSERISCI LA POSIZIONE DELLA REGOLA CHE DESIDERI CANCELLARE, 0 PER ANNULLARE L'OPERAZIONE.
+Error: value %d out of range!=Errore: %d e' un valore fuori da quelli possibili!
+Rule %d:=LA REGOLA n.%d:
+WILL BE DELETED, ARE YOU SURE [y | n]?=VERRA' CANCELLATA, SEI SICURO [s|n]?
+PERMISSION=LA REGOLA DI PERMESSO
+ RULE AT POSITION %d SUCCESSFULLY DELETED.= NELLA POSIZIONE %d E' STATA CANCELLATA CON SUCCESSO.
+DENIAL=LA REGOLA DI NEGAZIONE
+TRANSLATION=LA REGOLA DI TRADUZIONE DEGLI INDIRIZZI
+Error opening help file!=Errore di apertura del file di help!
+- - - - - - - Press a key to read on... - - - - - - =- - - - Premi un tasto qualsiasi per continuare... - - -
+#
+# print_rules(), interface_functions.c
+#
+DENIAL RULE=REGOLA DI NEGAZIONE
+PERMISSION RULE=REGOLA DI PERMESSO
+BLACKLISTED SITE RULE=REGOLA SITO BLOCCATO
+MASQUERADE RULE N. %d=REGOLA DI MASCHERAMENTO INDIRIZZI N. %d.
+PREROUTING DEST. ADDRESS TRANSL. RULE N. %d=REGOLA DI TRADUZIONE INDIRIZZI DESTINAZ. N. %d
+OUTPUT DNAT. RULE N. %d=REGOLA DI DNAT IN USCITA N. %d
+OUTPUT POSTROUTING SNAT. RULE N. %d=REGOLA DI TRADUZIONE INDIRIZZI SORGENTE N. %d
+OUTPUT POSTROUTING MASQ. RULE N. %d=REGOLA DI MASCHERAMENTO IN POSTROUTING N. %d
+ INPUT= INPUT
+ OUTPUT= OUTPUT
+ FORWARD= FORWARD
+OWNER: %d=PROPRIETARIO: %d
+PROTO: =PROTOC.: 
+IPSRC: %s | =IP SORG.: %s | 
+IPSRC NOT: %s | =IP SORG NON: %s | 
+IPSRC: NOT MY ADDRESS=IP SORG: DIVERSO DAL MIO
+IPSRC: MY ADDRESS=IP SORG: IL MIO
+IPSRC: %s =IP SORG: %s 
+IPSRC NOT IN INTERVAL: %s = IP SORG FUORI DALL'INTERVALLO: %s 
+IPDST: %s | "=IP DEST.: %s | 
+IPDST NOT: %s | =IP DEST NON: %s | 
+IPDST: %s =IP DEST.: %s 
+IPDST NOT IN INTERVAL: %s =IP DEST.FUORI DALL'INTERVALLO: %s 
+IPDST: NOT MY ADDR=IP DEST: DIVERSO DAL MIO
+IPDST: MY ADDRESS=IP DEST: IL MIO
+# Total length and TOS non li ho tradotti
+SPORT: %d | =PORTA SORG.: %d | 
+SPORT NOT: %d | =PORTA SORG. DIVERSA DA: %d | 
+SPORT: %d - %d | = PORTA SORG. DA %d A %d | 
+SPORT NOT IN: %d - %d | =PORTA SORG. FUORI DALL'INTERVALLO %d - %d | 
+DPORT: %d | =PORTA DEST.: %d | 
+DPORT NOT: %d | =PORTA DEST. DIVERSA DA: %d | 
+DPORT: %d - %d | =PORTA DEST. DA %d A %d | 
+DPORT NOT IN: %d - %d | =PORTA DEST. FUORI DALL'INTERVALLO %d - %d | 
+# Flag e opzioni ICMP non tradotti...
+PASSIVE FTP SUPPORT =SUPPORTO PER L'FTP PASSIVO 
+STATE=REGOLA DI STATO
+IP DNAT TO: %s | =IP DEST TRADOTTO IN: %s | 
+IP SNAT TO: %s | =IP SORG TRADOTTO IN: %s | 
+PORT DNAT TO: %d | =PORTA DEST TRADOTTA IN: %d | 
+PORT SNAT TO: %d | =PORTA SORG TRADOTTA IN: %d | 
+MASQ=MASCH
+in device: %s=disposit. input: %s
+out device: %s=disposit. output: %s
+  PRINT YOUR RULES.   =  VEDI LE TUE REGOLE.  
+    FLUSH FIREWALL RULES. |=    SVUOTA FIREWALL.      |
+ PRINT RULES IN FIREWALL.  = VEDI TUTTE LE REGOLE.     
+ RELOAD RULES.    = RICARICA REGOLE.  
+  INSERT A RULE.         =  INSERISCI UNA REGOLA.
+   DELETE A RULE.        =   CANCELLA UNA REGOLA.  
+ PRINT STATE TABLE.        = VEDI LA TABELLA DI STATO. 
+  SAVE RULES.      =  SALVA LE REGOLE. 
+  PRINT PACKETS FLOWING.    =  VEDI I PACCHETTI SCORRERE.
+  SILENT MODALITY.          =  MODALITA' SILENZIOSA.     
+      PORT RESOLUTION OFF.  =      DISAB.RISOLUZ.PORTE.  
+ KERNEL STATISTICS      = STATISTICHE DEL KERNEL 
+      LOCAL STATISTICS.=      STATISTICHE LOCALI.
+  PRINT CONFIGURATION INFO.=  VEDI INFO CONFIGURAZIONE.
+SETUP/CLEAR A VIEW FILTER.|=AGG./RIMUOVI FILTRO VISTA.|
+# Sarebbe: "  EDIT BLOCKED SITES. \t| " 
+  EDIT BLOCKED SITES. 	| = MODIFICA SITI BLOCCATI.| 
+      PRINT THE FILTER. = STAMPA IL FILTRO VISTA.
+  QUIT.=  ESCI.
+STATE=STATO
+#
+# interaction(), interface_functions.c
+#
+print_request(): ERROR SENDING FLUSH COMMAND TO KERNEL!=print_request(): ERRORE NELL'INVIO DEL COMANDO DI SVUOTAMENTO DELLE REGOLE DEL FIREWALL
+Flushed %d rules!=Sono state rimosse %d regole!
+NEW PERMISSION RULE=NUOVA REGOLA DI PERMESSO
+Type \"x\" to exit this menu without modifying rules.=Digita "x" per uscire da questo menu' senza apportare modifiche alle regole.
+No rule added...=Non e' stata aggiunta alcuna regola...
+New rule to be added:=Nuova regola da aggiungere:
+Do you want to add the new rule [y | n]? =Vuoi aggiungere la nuova regola [s | n]? 
+New rule has not been added.=La nuova regola non e' stata aggiunta.
+Rule not added.=La regola non e' stata aggiunta.
+ERROR UPDATING KERNEL RULES!=ERRORE NELL'AGGIORNAMENTO DELLE REGOLE NEL KERNEL!
+FIREWALL RULES UPDATED [%d RULES] :)=LE REGOLE DEL FIREWALL SONO STATE AGGIORNATE [%d REGOLE] :)
+Saving rules on file...=Salvo le regole sul file...
+Error saving rules!=Errore nel salvataggio delle regole!
+RULE NOT DELETED.=LA REGOLA NON E' STATA CANCELLATA.
+ERROR UPDATING KERNEL RULES!=ERRORE NELL'AGGIORNAMENTO DELLE REGOLE DEL KERNEL!
+%d FIREWALL RULES UPDATED :)=SONO STATE AGGIORNATE %d REGOLE :)
+Saving rules on file...=Salvo le regole sul file...
+Error saving rules!=Errore di salvataggio delle regole!
+Saving rules...=Salvataggio delle regole in corso...
+done=fatto
+. Saved %d rules.=. Sono state salvate %d regole.
+Error notifying refresher=Errore di notifica al risolutore dei nomi dei siti web
+ERROR UPDATING RULES!=ERRORE DI AGGIORNAMENTO DELLE REGOLE!
+Error sending netlink stats request!=Errore di invio della richiesta delle statistiche sul socket netlink!
+Verbose modality enabled. =E' stata abilitata la modalita' prolissa. 
+Press =Premi 
+ to switch to silent modality.= per ritornare alla modalita' silenziosa.
+Silent modality enabled.=E' stata abilitata la modalita' silenziosa.
+ to switch to verbose modality again.= per ritornare alla modalita' prolissa.
+Silent modality with kernel/user communication still enabled.=Modalita' silenziosa con la comunicazione kernel/utente ancora attiva.
+Press '+' to restore the verbose modality.=Premi il tasto '+' per riabilitare la modalita' prolissa.
+Press '-' to restore the silent modality.=Premi il tasto '-' (meno) per ritornare alla modalita' silenziosa.
+Use 's' and 'v' to toggle between silent and verbose modality=Usa i tasti 's' e 'v' per cambiare tra la modalita' silenziosa e non
+by stopping and re-enabling kernel/user communication (more efficient!)=agendo sulla attivazione/disattivazione della comunicazione kernel/utente (piu' efficiente!)
+User =Utente 
+- Disabling port resolution.=- Disabilito la risoluzione dei servizi.
+- Print 'u' to enable port resolution.=Digita 'u' per riabilitare la risoluzione dei numeri di porta.
+- Enabling port resolution.=- Abilito la risoluzione dei numeri di porta nei nomi dei servizi.
+- Print 'b' to disable port resolution.=Digita 'b' per disabilitare la risoluzione dei numeri di porta.
+- Requesting =- Richiedo le statistiche del firewall al 
+firewall statistics...=...
+Failed to send statistics request to kernel firewall!=Errore nell'invio della richiesta delle statistiche al kernel!
+Failed to read statistics from kernel firewall!=Errore di lettura delle statistiche dal kernel!
+MAILER OPTIONS=OPZIONI DEL MAILER
+Error getting mailer options from file \"%s\"!=Errore di lettura delle opzioni del mailer dal file "%s"!
+IS THIS A PERMISSION [p] OR DENIAL RULE [d] ?=SI TRATTA DI UNA REGOLA DI PERMESSO [p] O DI NEGAZIONE [d] ?
+IS THIS A PERMISSION RULE=SI TRATTA DI UNA REGOLA DI PERMESSO      
+        A DENIALE RULE=          DI UNA REGOLA DI NEGAZIONE
+        A SOURCE NAT RULE=          DI UNA REGOLA DI NAT SORGENTE        
+        A DESTINATION NAT RULE=          DI UNA REGOLA DI NAT DESTINAZIONE
+        A MASQUERADE RULE=          DI UNA REGOLA DI MASCHERAMENTO DEGLI INDIRIZZI
+INSERT THE =INSERISCI LA 
+DIRECTION=DIREZIONE
+ THE RULE AFFECTS= A CUI LA REGOLA VA APPLICATA
+CHOOSE =SCEGLI IL 
+PROTOCOL=PROTOCOLLO
+SPECIFY THE =INDICA IL 
+INPUT DEVICE=DISPOSITIVO D'INGRESSO
+ RELATED TO THE RULE: = A CUI DEVE ESSERE APPLICATA LA REGOLA: 
+OUTPUT DEVICE=DISPOSITIVO D'USCITA
+- IP PARAMETERS: =- PARAMETRI IP: 
+SOURCE ADDRESS: =INDIRIZZO SORGENTE: 
+DESTINATION ADDRESS: =INDIRIZZO DESTINAZIONE: 
+ARE YOU INTERESTED IN SPECIFYING OTHER =DESIDERI SPECIFICARE ALTRI PARAMETRI SPECIFICI DEL 
+IP LAYER=LIVELLO IP
+SPECIFIC PARAMETERS (TOS, TOTAL LENGTH) [y | n]? [n] =(TIPO DI SERVIZIO (TOS), LUNGHEZZA TOTALE... [s|n]? [n] 
+- TRANSPORT LEVEL PARAMETERS: =- PARAMETRI DEL LIVELLO DI TRASPORTO: 
+SOURCE PORT: =PORTA SORGENTE: 
+DESTINATION PORT: =PORTA DESTINAZIONE: 
+ARE YOU INTERESTED IN SPECIFYING OTHER =DESIDERI SPECIFICARE ALTRI PARAMETRI SPECIFICI DEL 
+TRANSPORT LAYER=LIVELLO DI TRASPORTO TCP
+SPECIFIC PARAMETERS (FLAGS: SYN, ACK, RST ... ) [y | n]? [n]=( I FLAG SYN, ACK, RST ... ) [s | n]? [n]
+SPECIFIC PARAMETERS (TYPE, CODE..) [y | n]? =(TIPO, CODICE..) [s | n]? 
+ICMP=PROTOCOLLO ICMP
+ yes.= si'.
+ no.=no.
+GIVE RULE A SIMPLE NAME [MAX 20 CHARS]: =PUOI DARE ALLA REGOLA UN SEMPLICE NOME [MAX. 20 CARATTERI]: 
+Bad rule name: too long!=Il nome dato e' troppo lungo!
+Do you want to enable ftp passive support?[y|n] =Desideri abilitare il supporto per l'FTP passivo? [s|n] 
+ yes= si'
+#
+#  set_kinda_rule()
+#
+PERMISSION RULE:=REGOLA DI PERMESSO:
+DENIAL RULE:=REGOLA DI NEGAZIONE:
+SOURCE NETWORK ADDRESS TRANSLATION:=REGOLA DI TRADUZIONE DEGLI INDIRIZZI SORGENTE:
+DESTINATION NETWORK ADDRESS TRANSLATION RULE:=REGOLA DI TRADUZIONE DEGLI INDIRIZZI DESTINAZIONE:
+MASQUERADE RULE (a sort of SNAT):=REGOLA DI MASCHERAMENTO DEGLI INDIRIZZI (una sorta di Source NAT):
+#
+# get_direction()
+#
+Bad direction \"%s\".=Direzione non valida "%s".
+Direction is mandatory in translation rules!=E' obbligatorio precisare la direzione nelle regole di traduzione!
+Error: direction is mandatory!=Errore: e' obbligatorio precisare la direzione!
+Bad direction \"%s\".=Direzione "%s" non valida.
+Destination nat can be applied to =Il DNAT puo' essere applicato solo nelle direzioni di 
+ and= e
+ directions only.=.
+Source network address translation is applied to =Il NAT dell'indirizzo sorgente e' applicato alla direzione di 
+ direction automatically.= automaticamente.
+#
+# get_in_protocol()
+#
+Warning: protocol not specified.=Attenzione: protocollo non specificato.
+Rule will apply to all protocols.=La regola verra' applicata a tutti i protocolli (TCP, UDP, ICMP).
+Protocol \"%s\" not valid!=Protocollo "%s" non valido!
+selected not addr: \"%s\"=Indirizzo diverso da: "%s"
+IP SRC NOT IN INTERVAL %s=INDIRIZZO IP SORGENTE FUORI DALL'INTERVALLO %s
+IP DST NOT IN INTERVAL %s=INDIRIZZO IP DESTINAZ. FUORI DALL'INTERVALLO %s
+#
+get_not_ip(): error in input address=get_not_ip(): errore nell'indirizzo digitato
+fill_ip_interval(): error getting first address!=fill_ip_interval(): errore nel ricavare il primo indirizzo!
+fill_ip_interval(): error getting second address!=fill_ip_interval(): errore nel ricavare il secondo indirizzo!
+First address [%s] must be less than second [%s]!=Il primo indirizzo [%s] deve avere valore minore del secondo [%s]!
+Bad value for the first port! Must be between %d and %d!=Valore errato per la prima porta: esso deve essere compreso tra %d e %d!
+Bad value for the second port! Must be between %d and %d!=Valore errato per la seconda porta: esso deve essere compreso tra %d e %d!
+%d, the first port, is not less than %d, the second!=Errore: il valore della prima porta, %d, non e' minore di quello della seconda, %d.
+Value of port must be between %d and %d, not %d!=Il valore della porta deve essere compreso tra %d e %d, non puo' valere %d!
+SPECIFY ICMP TYPE: =INDICA IL TIPO ICMP: 
+ICMP CODE: =IL CODICE ICMP (ICMP CODE): 
+send_command_to_listener(): error writing to pipe=send_command_to_listener(): errore di scrittura sulla pipe
+: printing packets has been disabled for now:=: la stampa dei pacchetti e' stata disabilitata per ora:
+         high network traffic/low resources on machine=         l'elevato traffico di rete o le scarse risorse di sistema
+         caused packet loss from kernel/user communication.=         hanno causato errori di comunicazione kernel/utente.
+         Press =         Premi il tasto 
+key to re-enable verbose printing.=per riabilitare la modalita' di stampa prolissa.
+stop_printing(): error sending command =stop_printing(): errore di invio del comando 
+* DROP RULES *=* REGOLE DI NEGAZIONE *
+* ACCEPT RULES *=* REGOLE DI PERMESSO *
+* TRANSLATION RULES *=* REGOLE DI TRADUZIONE DEGLI INDIRIZZI *
+ ! RULES SHOULD NOT BE LOADED:= ! LE REGOLE NON DOVREBBERO VENIRE CARICATE:
+   USER DOES NOT SEEM TO BE ALLOWED TO INSERT HIS OWN RULES.=   L'UTENTE SEMBRA NON AVERE I PERMESSI PE INSERIRE LE PROPRIE REGOLE.
+      CHECK WITH F3 AND CONTACT ADMINISTRATOR.=   CONTROLLA LA SITUAZIONE CON IL TASTO F3 E CONTATTA L'AMMINISTRATORE.
+#
+# print_kstats(), interface_functions.c
+#
+* STATISTICS FROM =* STATISTICHE DAL PUNTO DI VISTA DEL 
+ POINT OF VIEW *= *
+Kernel module has been loaded since %s=Il modulo del kernel e' stato caricato il %s
+Policy being applied to packets not matching any rule: =Politica predefinita applicata ai pacchetti che non trovano riscontro in alcuna regola: 
+drop=scartarli
+accept=accettarli
+SUMMARY ON PACKETS =RIASSUNTO CIRCA I PACCHETTI 
+PROCESSED=ANALIZZATI
+ BY = DAL 
+- [TOTAL: %lu]=- [TOTALE: %lu]
+- TOTAL:=- TOTALE:
+[%.2f/day %.2f/h %.2f/min %.2f/s]=[%.2f/g %.2f/ora %.2f/min %.2f/s]
+INPUT PACKETS=PACCHETTI IN INGRESSO
+ DROPPED= SCARTATI
+ ACCEPTED= ACCETTATI
+INPUT PACKETS DROPPED =PACCHETTI IN INGRESSO SCARTATI 
+IMPLICITLY=IMPLICITAMENTE
+[WITH DEFAULT POLICY]: %lu [%.1f%%].=[A CAUSA DELLA POLITICA PREDEFINITA]: %lu [%.1f%%].
+INPUT PACKETS ACCEPTED =PACCHETTI IN INGRESSO ACCETTATI 
+OUTPUT PACKETS=PACCHETTI IN USCITA
+OUTPUT PACKETS DROPPED =PACCHETTI IN USCITA SCARTATI 
+OUTPUT PACKETS ACCEPTED =PACCHETTI IN USCITA ACCETTATI 
+FORWARD PACKETS=PACCHETTI PER L'INOLTRO
+FORWARD PACKETS DROPPED =PACCHETTI PER L'INOLTRO SCARTATI 
+FORWARD PACKETS ACCEPTED =PACCHETTI PER L'INOLTRO ACCETTATI 
+- Packets =- Pacchetti 
+sent=inviati
+ to user firewall: %lu.= all'interfaccia utente del firewall: %lu.
+not sent=non inviati
+ to user firewall due to kernel/user log level: %lu.= all'interfaccia del firewall a motivo del livello di log kernel/utente: %lu.
+lost=persi
+ while sending towards userspace: %lu= durante l'invio verso lo spazio utente: %lu
+ towards userspace over total packets sent: %lu/%lu [%.2f %%]= verso lo spazio utente sul totale dei pacchetti mandati: %lu/%lu [%.2f %%]
+- Pre routing nat checks found %d packets with errors=- I controlli in pre routing effettuati nel NAT hanno riscontrato %d pacchetti contenenti errori
+  over %lu arrived (bad checksum). [%.2f %%]=  su un totale di %lu pacchetti in arrivo (checksum errata), [%.2f %%]
+#
+# print_stats()
+#
+STATISTICS FROM =STATISTICHE DAL PUNTO DI VISTA DEL 
+USERSPACE FIREWALL=FIREWALL IN SPAZIO UTENTE
+ POINT OF VIEW=
+SUMMARY ON PACKETS =RIASSUNTO SUI PACCHETTI 
+PROCESSED=ANALIZZATI
+ BY = DAL 
+IN THIS SESSION:=IN QUESTA SESSIONE:
+- Packets =- Pacchetti 
+received=ricevuti
+ from kernel firewall: %lu.= dal firewall: %lu.
+not sent=non inviati
+ by kernel firewall due to loglevel: %d.= dal firewall kernel a causa del livello di log: %d.
+lost=persi
+ in kernel/user communication: %lu= nella comunicazione kernel/utente: %lu
+ (not lost by firewall ;)= (non persi dal firewall ;)
+ over total packets received: %lu/%lu [%.2f %%]= sul totale dei pacchetti ricevuti: %lu/%lu [%.2f %%]
+Press any key to return to main menu...=Premi un tasto qualsiasi per ritornare al menu' principale...
+prompt_return_to_menu(): error sending enable printing command=prompt_return_to_menu(): errore nell'invio della stampa.
+SOURCE NETWORK ADDRESS TRANSLATION: =TRADUZIONE DELL'INDIRIZZO SORGENTE: 
+NEW SOURCE IP ADDRESS: =NUOVO INDIRIZZO IP SORGENTE: 
+DESTINATION NETWORK ADDRESS TRANSLATION: =TRADUZIONE DELL'INDIRIZZO DESTINAZIONE: 
+NEW DESTINATION IP ADDRESS: =NUOVO INDIRIZZO IP DESTINAZIONE: 
+get_snat_parameters(): error in address=get_snat_parameters(): errore nell'indirizzo
+NEW SOURCE PORT: =NUOVA PORTA SORGENTE: 
+NEW DESTINATION PORT: =NUOVA PORTA DESTINAZIONE: 
+Value not permitted for port. Ports must be=Valore non valido per la porta. I valori delle porte devono essere
+between %d and %d.=comprese tra %d e %d.
+MASQUERADE:=MASCHERAMENTO DEGLI INDIRIZZI:
+YOU SHOULD SPECIFY THE OUTPUT DEVICE TO MASQUERADE: =DOVRESTI SPECIFICARE IL DISPOSITIVO DI RETE DI USCITA DA MASCHERARE: 
+get_masquerade_parameters(): error getting device name!=get_masquerade_parameters(): errore nell'ottenimento del nome dell'interfaccia!
+I CAN'T MASQUERADE AN UNSPECIFIED OUTPUT INTERFACE!=NON POSSO MASCHERARE UN'INTERFACCIA DI RETE D'USCITA NON SPECIFICATA!
+#
+#
+# save_rules(), ipfire_userspace.c
+#
+Error opening file: \"%s\"=Errore di apertura del file: "%s"
+Error locking semaphore!=Errore di acquisizione del semaforo!
+Error unlocking semaphore!=Errore di sblocco del semaforo!
+ERROR: MASQUERADE/NAT RULE AND NO DIRECTION SPECIFIED! [RULE%d]=ERRORE: REGOLA DI NAT O MASCHERAMENTO SENZA UNA DIREZIONE! [REGOLA %d]
+Only root can modify translation ruiles!=Solo root puo' modificare le regole di traduzione degli indirizzi!
+update_kernel_rules(): error in flush request!=update_kernel_rules(): errore nella richiesta di svuotamento delle regole!
+Reloading rules from file and freeing old vector...=Ricarico le regole dal file e libero il vecchio vettore...
+You are not root: not freeing old translation rules.=Non sei l'amministratore: non libero le vecchie regole di traduzione.
+Error sending new rules to kernel space!=Errore di invio delle nuove regole in spazio kernel!
+RELOADING RULES=RICARICO LE REGOLE
+ERROR UPDATING KERNEL RULES!=ERRORE DI AGGIORNAMENTO DELLE REGOLE DEL KERNEL!
+FIREWALL PERMISSION RULES UPDATED :)=LE REGOLE DI PERMESSO SONO STATE AGGIORNATE :)
+FIREWALL DENIAL RULES UPDATED :)=LE REGOLE DI NEGAZIONE SONO STATE AGGIORNATE :)
+FIREWALL TRANSLATION RULES UPDATED :)=LE REGOLE DI NAT SONO STATE AGGIORNATE :)
+openlog(): error opening log file=openlog(): errore di apertura del file di log
+You have not the rights to insert a translation rule!=Non hai i diritti sufficienti per inserire una regola di traduzione degli indirizzi!
+You must be root to delete a translation rule!=Devi essere root per poter cancellare una regola di traduzione degli indirizzi!
+Position %d out of range!=Posizione %d fuori dall'intervallo consentito!
+Error opening file %s fo reading=Errore di apertura del file "%s" in lettura!
+wait_acknowledgement(): error receiving ack from kernel!=wait_acknowledgement(): errore di ricezione della conferma dal kernel!
+Bad ACKNOWLEDGEMENT value (%d) (Should be 50)!=Valore di conferma errato (%d): dovrebbe valere 50!
+Fork failed=fork() fallita
+hello_handshake(): error sending hello.=hello_handshake(): errore di invio del messaggio di "ciao".
+#
+# allocate_ruleset(), ipfire_userspace.c
+#
+allocate_ruleset(): error opening ruleset file \"%s\".=allocate_ruleset(): errore di apertura del file delle regole "%s".
+Error closing ruleset file.=Errore di chiusura del file delle regole.
+Error unlocking semaphore!=Errore di rilascio del semaforo!
+Error, freeing memory.=Errore, libero la memoria.
+Error! Number of rules mismatch [%d vs %d]! Strange!=Errore: scostamento nel numero delle regole [%d e %d]! Strano!
+Freeing memory...=Libero la memoria...
+UNSUPPORTED=NON SUPPORTATO
+Error opening options file for reading=Errore di apertura del file delle opzioni in lettura
+#
+# Mailer
+#
+MAIL FROM IPFIRE=MAIL DA IPFIRE
+Mail sent from IPFIRE-wall=Mail inviata da IPFIRE-wall
+Fields 'to', 'from', 'smtp host' and 'mailer path' must be specified!=Bisogna specificare i campi 't', 'from', 'smtp_host' e 'mailer path'!
+MAILER OPTIONS:=OPZIONI DEL MAILER:
+SUBJECT:  \"%s\"=OGGETTO:  "%s"
+MAIL INTRODUCTION: \"%s\"=INTRODUZIONE DELL'EMAIL: "%s"
+MESSAGE BODY FILE:  \"%s\"=FILE DEL CORPO DEL MESSAGGIO:  "%s"
+SMTP HOST:  \"%s\"=SERVER SMTP:  "%s"
+SMTP PORT: %u=PORTA SMTP: %u
+A MAIL IS SENT EVERY =VERRA' INVIATA UNA MAIL OGNI 
+ATTACHMENT ENABLED: =ALLEGATO ABILITATO: 
+ATTACHMENT FILE: \"%s\"=FILE ALLEGATO: "%s"
+ATTACHMENT FILE: COMPRESSED LOGFILE=FILE ALLEGATO: FILE DI LOG COMPRESSO
+ATTACHMENT DISABLED.=ALLEGATO DISABILITATO.
+MAXIMUM NUMBER OF MAILS TO SEND: %u.=NUMERO MASSIMO DI EMAIL DA INVIARE: %u.
+Error opening mail filename \"%s\"!=Errore di apertura del file dell'email "%s"!
+Starting mailer...[=Avvio del mailer...[
+Type '=Digita '
+to see mailer options.=per conoscere le opzioni del mailer.
+Error getting options from filename \"%s\".=Errore di lettura delle opzioni dal file "%s".
+Returning to sleep... Meanwhile try to repair such file :)=Ritorno a dormire... Nel frattempo cerca di riparare il file :)
+Stopping mailer.=Arresto del mailer.
+Closing mailer pipe...=Chiusura della pipe del mailer...
+Kernel module was loaded at %s=Il modulo e' stato caricato nel kernel il %s
+Userspace IPFIRE-wall started on %s=L'interfaccia utente di IPFIRE-wall e' stata avviata il %s
+Version: %s %s \"%s\" by %s [mailto:%s].=Versione: %s %s "%s" di %s [email:%s].
+Description: %s.=Descrizione: %s.
+Developed between %s.=Periodo di sviluppo: %s.
+Mailer \"SMTPclient\" by Ralf S. Engelschall and Davide Libenzi.=Il mailer "SMTPclient" e' stato scritto da Ralf S. Engelschall e Davide Libenzi.
+KERNEL STATISTICS.=STATISTICHE DEL KERNEL.
+Input packets filtered:=Pacchetti filtrati in ingresso:
+Output packets filtered:=Pacchetti in uscita filtrati:
+Pre routing packets filtered:=Pacchetti filtrati in pre routing:
+Post routing packets filtered:=Pacchetti filtrati in post routing:
+Forward packets filtered:=Pacchetti filtrati in forward:
+Total packets filtered:=Totale dei pacchetti filtrati:
+Packets lost in kernel/user communication:=Pacchetti persi nella comunicazione kernel/utente:
+Packets sent to userspace:=Pacchetti inviati in spazio utente:
+Packets unsent to usersp. (because of loglevel):=Pacchetti non inviati allo spazio utente (per il livello di log):
+Verdicts.=Verdetti.
+Default policy being applied to packets not matching any rule: =Politica predefinita per i pacchetti che non hanno riscontro con alcuna regola: 
+drop.=scartarli.
+accept.=accettarli.
+Input packets accepted:=Pacchetti accettati in ingresso:
+Input packets dropped:=Pacchetti scartati in ingresso:
+Input packets implicitly accepted:=Pacchetti in ingresso implicitamente accettati:
+Input packets implicitly dropped:=Pacchetti in ingresso implicitamente scartati:
+Output packets accepted:=Pacchetti accettati in uscita:
+Output packets dropped:=Pacchetti scartati in uscita:
+Output packets implicitly accepted:=Pacchetti in uscita implicitamente accettati:
+Output packets implicitly dropped:=Pacchetti in uscita implicitamente scartati:
+Forward packets accepted:=Pacchetti accettati in forward:
+Forward packets dropped:=Pacchetti scartati in forward:
+Forward packets implicitly accepted:=Pacchetti in forward implicitamente accettati:
+Forward packets implicitly dropped:=Pacchetti in forward implicitamente scartati:
+Nat checksum checks found %u bad arriving packets.=I controlli della checksum sul NAT hanno trovato %u pacchetti con errori.
+This is mail number %u.=Questa e' l'email numero %u.
+Since %s%u mails have been successfully sent, and %u failed.=Dal %s%u email sono state inviate con successo, mentre %u non sono state spedite.
+The time interval between a mail and the subsequent is %lu seconds.=L'intervallo di tempo tra una mail e la successiva e' di %lu secondi.
+Other %u mails will be sent.=Altre %u email saranno spedite.
+This is the last mail (%u) sent in this ipfire userspace session.=Questa e' l'ultima email (%u) spedita in questa sessione dell'interfaccia utente.
+Executing: =Eseguo: 
+execv() failed=errore di execv()
+Fork failed=errore della funzione fork() nel mailer_read_handler
+Stopping mailer.=Arresto del mailer.
+Closing mailer pipe...=Chiusura della pipe del mailer...
+ FAILED= FALLITA
+An attachment file has been specified: \"%s\":=E' stato indicato il seguente file di allegato: "%s":
+logfile will not be sent and attachment will not be compressed.=non verra' inviato il file di log ne' l'allegato verra' compresso.
+Writing email...=Scrivo l'email...
+Error writing email!=Errore nello scrivere l'email!
+Going back to sleep...=Ritorno a dormire...
+Sending email to \"%s\"...=Invio dell'email a "%s"...
+Error sending email!=Errore nell'invio dell'email!
+Maximum mail number has been reached: %u:=E' stato raggiunto il numero limite delle email da spedire: %u:
+Mailer will be stopped now...=il mailer verra' spento ora...
+Error stopping mailer!=Errore di arresto del mailer!
+Mailer stopped=Il mailer e' stato spento
+Compressing logfile \"%s\"...=Comprimo il file di log "%s"...
+Be sure to have write permission on output file!=Assicurati di avere i permessi di scrittura sul file del corpo del messaggio!
+Mail will be sent anyway, but without attachment!=L'email verra' comunque spedita, ma senza l'allegato!
+#
+# IPFIRE-wall 0.98.6: filtri
+setup the filter:\n[type \"help\" (+return) for the list of the available keywords.]=Imposta il filtro.\n[Digita "help" seguito da invio per ottenere una lista di parole chiave.]
+No filter will be applied.=Non verra` applicato alcun filtro.
+KEYWORDS:=
+POLICY:=
+DIRECTION: =
+PROTOCOL:=
+ADDRESS TRANSLATION:=
+ nat (all nat/masq), snat, dnat, masquerade.=
+STATE:=
+ state (matches all stateful rules/packets)=
+       setup, setupok, est, finwait, closewait, lastack, timewait, closed.=
+       stateless (in conjunction with specific flags, to show=
+       the specific states and the stateless packets together.=
+KEYWORDS followed by a VALUE:=
+POSITION IN THE RULES LIST:=
+IP ADDRESS:=
+ sip x.y.z.w,  dip a.b.c.d; mysip, mydip (for rules)=
+            addr h.i.l.m, (for packets only, matches any between src and dst.)=
+PORTS (for tcp and UDP):=
+ sport x, dport y, port a (for packets only, matches any between src and dst.)=
+EXAMPLES:=
+The following shows the packets/rules in the output direction=
+with protocol tcp, destination ip 192.168.0.2, accepted by the firewall=
+(or a permission rule if one is filtering on rules), and passing through=
+the \"eth0\" network interface:=
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

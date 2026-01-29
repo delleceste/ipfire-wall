@@ -1,0 +1,39 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<link rel="stylesheet" href="info.css" type="text/css" /> 
+<head>
+	<title></title>	
+</head>
+
+			
+<body>
+
+<h3>Maximum number of log entries</h3>
+
+<div id="content">
+
+
+<p>
+
+As it happens with the NAT and <em>state</em> tables, when the <em>log level between user and
+ kernel</em> is set to <strong>Smart Log: only unseen packets</strong>, for each information 
+entry sent to the <em>firewall console</em> to notify a filtering or Nat action 
+ a table is created and memorized, so that <em>the same information</em>
+	 is not sent again to the user for a certain period of time.
+
+</p>
+
+<p>
+	The number of maximum <cite>log entries</cite> is tunable here. When it is reached, 
+	no more packets are notified to userspace and you might experience a silence period 
+	in the firewall console, until another entry decays and is removed from the internal 
+	list.
+</p>
+
+
+</div> <!-- id="content" -->	
+
+</body>
+
+</html>

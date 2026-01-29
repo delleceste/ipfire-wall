@@ -1,0 +1,59 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<link rel="stylesheet" href="help.css" type="text/css" /> 
+<head>
+	<title></title>
+	
+	
+	
+</head>
+			
+<head>
+	<title></title>	
+</head>
+			
+<body>
+
+<h3>Input network device</h3>
+
+<div id="content">
+
+<p>
+Click on the arrow in the <em>combo box</em> to view a list of available 
+<em>network devices</em>.
+</p>
+<p>
+The network devices with a <cite>plugged</cite> network patch are the devices really 
+up and running, while those <cite>unplugged</cite> are not up at the moment, but they 
+were probably <em>manually</em> added in the past by the user.
+
+
+</p>
+<p>
+	If the device you intend to specify is not in the list, you can type 
+	its name and add it, if you know that the interface will come up at a 
+	certain moment and you want to apply the rule to that interface.<br/>
+	This is for instance the case of the <em>dynamic <strong>ppp</strong></em> 
+	connections through a <em>modem</em>, which become available after 
+	dialing the <em>Internet Service Provider</em> phone number.
+</p>
+<p>
+	The <em>point to point</em> internet connections, such as those provided by 
+	a classical <em>Internet Service Provider</em> via a traditional <em>56k or DSL</em> 
+	modem, are usually named <cite>ppp</cite> and so probably the dynamic network 
+	interface created by the linux kernel is something named like <strong>ppp0</strong>, 
+	or <strong>ppp1</strong>, if you have more than one of such connections.
+</p>
+
+<p>
+	<em>IP tunnels</em> usually create interfaces named like <cite>tun0</cite> or 
+		<cite>tunX</cite>, where X is a number.
+</p>
+
+
+</div> <!-- id="content" -->	
+
+</body>
+
+</html>

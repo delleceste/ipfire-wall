@@ -1,0 +1,133 @@
+body
+{
+	background-color:rgb(244, 243, 243);
+	margin:3px;
+	padding:1px;
+	font-size:11pt;
+}
+
+p, div
+{
+	margin:2px;
+}
+
+ul
+{
+	display:block;
+	margin-bottom:5px;
+	margin-left:2px;
+	margin-right:2px;
+	padding:0px;
+	list-style-position:outside;
+	list-style-type:lower-roman;
+}
+
+.info
+{
+	margin-top:1px;
+	margin-left:0px;
+	font-size:10pt;
+}
+
+.sublist 
+{
+	font-size:10pt;
+	color:rgb(78,78,39);
+	margin-left:5px;
+	list-style-position:outside;
+	list-style-type:lower-roman;
+}
+
+li
+{
+	display:block;
+	margin:0px;
+	padding:0px;
+	margin-bottom:6px;
+
+}
+
+.sublist > li
+{
+	margin:5px;
+	padding:7px;
+}
+
+.componentTitle
+{
+	color:rgb(97,97,75);
+	font-size:12pt;
+	font-style:normal;
+	text-align:center;
+	font-weight:bold;
+	margin:8px;
+}
+
+.description
+{
+	color:rgb(78,78,39);
+	font-size:9pt;
+	font-style:italic;
+	text-align:justify;
+	margin:12px;
+}
+
+#title
+{
+	color:rgb(97,97,75);
+	font-variant:small-caps;
+	font-size:14pt;
+	font-style:normal;
+	text-align:center;
+	font-weight:bold;
+	margin:15px;
+}
+
+
+h3
+{
+	font-size:18pt;
+	font-style:normal;
+	text-align:center;
+	font-weight:bold;
+}
+
+h5, h4
+{
+	font-size:16px;
+	font-style:normal;
+	text-align:center;
+	font-weight:bold;
+}
+
+.currentItem
+{
+	font-weight:bold;
+	color:rgb(67,67,26);
+	margin:2px;
+	font-size:11pt;
+}
+
+.curveItemHidden > a
+{
+	font-size:9px;
+	color:gray;
+}
+
+.curveItemVisible > a
+{
+	font-size:10px;
+	color:green;
+	text-decoration:underline;
+}
+
+/* link vistitati o non ancora visitati */
+a:link
+{
+	color:rgb(78,78,39);
+}
+
+a:visited
+{
+	color:rgb(88%,88%,89%);
+}

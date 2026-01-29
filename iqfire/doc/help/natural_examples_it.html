@@ -1,0 +1,99 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<link rel="stylesheet" href="help.css" type="text/css" /> 
+<head>
+	<title>Editor del linguaggio naturale</title>
+</head>
+
+			
+<body>
+
+
+
+<div id="content">
+
+<h3>Premessa</h3>
+<p>
+  Il linguaggio naturale consente di esprimere in modo molto semplice e "<cite>naturale</cite>"
+  le regole che si vogliono applicare al proprio <em>firewall</em>. Si ricorda che il linguaggio
+  naturale interpreta solamente le regole di <em>filtro</em>. Per le regole di <em>NAT</em>, 
+  &egrave; necessario procedere con il metodo di creazione di regole tradizionale.
+</p>
+
+<p>
+  Ogni regola consta di un <em>verbo</em> atto ad esprimere un'<em>azione</em>, ad esempio di
+  permesso o di negazione del traffico di rete. Il verbo <em>va posto sempre in principio di
+  periodo</em> affinch&eacute; il firewall possa  correttamente interpretare e separare le frasi.
+  <br/>La lista dei verbi compresi da <cite>iqfirewall</cite> &egrave; disponibile <a class="fastlink" href="action://naturalhelp/verbs/." 
+      title="verbi che esprimono le azioni del firewall">qui</a>.
+</p>
+
+<p>
+  Ogni regola deve rispettare una <em>sintassi</em>. Ad esempio, specificando la parola chiave
+  <cite>intervallo</cite>, il processore del linguaggio naturale si aspetter&agrave; di trovare
+  in seguito una coppia di indirizzi ip (o porte).
+  <br/>Inoltre, costituisce sempre buona norma scrivere regole che non diano adito ad 
+  ambiguit&agrave;: si indichino sempre le parole chiave <cite>sorgente</cite> e <cite>destinazione
+  </cite> di fronte a indirizzi e porte. <br/> In alcuni casi semplici il linguaggio naturale
+  capisce e interpreta anche frasi ambigue, avvertendo l'utente con dei messaggi.
+  
+</p>
+
+<h3>Esempi d'uso del linguaggio naturale</h3>
+
+<h4>Semplici regole di <em>ingresso</em> e <em>uscita</em></h4>
+
+<p>
+<ul>
+  <li><em>consenti il traffico in ingresso dall'indirizzo ip 192.168.0.1 verso la porta 22</em></li>
+  <li><em>blocca i pacchetti in ingresso dall'ip 192.168.0.0/255.255.255.0 verso le porte destinazione diverse dalla 22</em></li>
+  <li><em>nega il traffico in ingresso da 10.0.0.11</em></li>
+  <li><em>permetti il traffico verso la porta 80</em></li>
+  <li><em>lascia uscire il traffico verso la porta 80</em><br/>si noti che "<cite>lascia uscire</cite>" sottintende il traffico in <em>uscita</em></li>
+  <li><em>blocca le connessioni in ingresso provenienti dall'interfaccia ppp0 verso la porta 22 del protocollo tcp, indirizzo destinazione 158.110.28.25
+blocca tutto il traffico in ingresso  attraverso l'interfaccia ppp1</em></li>
+  <li><em>blocca tutto il traffico in ingresso  attraverso l'interfaccia ppp1</em></li>
+</ul>
+Si noti che, quando non specificato, l'interprete assume come protocollo il <strong>tcp</strong>.
+</p>
+
+<h4>Regole di <em>ingresso</em> e <em>uscita</em> con intervalli e liste di indirizzi e porte</h4>
+
+<p>
+<ul>
+<li><em>permetti l'ingresso ai pacchetti proven</em></li>
+<li><em>consenti il traffico in ingresso verso le porte destinazione diverse da 21,22 e 23, ip destinazione diverso da 10.0.0.1 e 10.10.0.0 e porte sorgente all'esterno dell'intervallo 21 - 24</em></li>
+<li><em>permetti l'ingresso ai pacchetti provenienti dagli indirizzi 191.168.0.1, 192.168.0.33, 192.168.0.11 e 192.168.0.1 verso la porta 22 del servizio ssh attraverso l'interfaccia di rete eth1</em></li>
+<li><em>consenti il traffico in ingresso proveniente da 10.0.0.1/255.0.0.0 verso la porta 53 udp, indirizzo destinazione 1.0.1.1/24</em></li>
+<li><em>consenti il traffico in ingresso proveniente da 10.0.0.1/255.0.0.0 verso la porta 53 udp, indirizzo destinazione 1.0.1.1/24 per la workstation di Pippo, Pluto e Minnie</em>. Si noti la possibilit&agrave; di commentare <cite>all'interno della regola</cite> vari aspetti della regola stessa;</li>
+<li><em>consenti il traffico in ingresso proveniente dagli indirizzi 10.0.0.1, 10.0.0.3 e 10.0.0.8 e porte destinazione nell'intervallo tra 10 e 20</em></li>
+<li><em>consenti il traffico in ingresso proveniente dagli indirizzi 10.0.0.1, 10.0.0.3 e 10.0.0.8 e porte destinazione fuori dall'intervallo tra 10 e 20</em></li>
+<li><em></em></li>
+<li><em></em></li>
+<li><em></em></li>
+<li><em></em></li>
+<li><em></em></li>
+</ul>
+</p>
+
+<h4>Regole di <em>inoltro</em> (<em>forward</em>) con intervalli e liste di indirizzi e porte</h4>
+
+<p>
+<ul>
+<li><em>inoltra il traffico dall'intervallo di indirizzi sorgente 10.0.0.1-10.0.0.5 all'indirizzo  10.0.0.111, porta sorgente esterna all'intervallo 22 e 25 e porta destinazione qualsiasi</em></li>
+<li><em>inoltra il traffico dall'intervallo di indirizzi sorgente 10.0.0.1-10.0.0.5 all'indirizzo  10.0.0.111, porta sorgente qualsiasi, porta destinazione fuori dall'intervallo 22-25</em>. Si noti l'uso esplicito (e facoltativo) della parola <em>qualsiasi</em>; </li>
+<li><em>non inoltrare il traffico dagli indirizzi sorgente 10.0.0.1, 10.0.0.5 e 10.0.0.11 all'indirizzo destinazione  10.0.0.111, porta sorgente qualsivoglia, porta destinazione fuori dall'intervallo 22-25, interfaccia di rete di uscita ppp0, interfaccia di ingresso ppp1</em></li>
+<li><em>non inoltrare il traffico dagli indirizzi sorgente diversi da 10.0.0.1, 10.0.0.5 e 10.0.0.11 all'indirizzo destinazione  diverso da 10.0.0.111, porta sorgente qualsivoglia, porta destinazione fuori dall'intervallo 22-25, interfaccia di rete di uscita ppp0, interfaccia di ingresso ppp1</em></li>
+</ul>
+</p>
+
+</div>
+
+<div>
+
+<p>Torna alla <a href="browserHelp://natural_language" title="Indietro alla pagina di help del linguaggio naturale">pagina principale</a> dell'help.</p>
+
+<div>
+
+</body>

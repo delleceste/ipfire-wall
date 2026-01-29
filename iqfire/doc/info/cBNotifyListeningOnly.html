@@ -1,0 +1,44 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<link rel="stylesheet" href="info.css" type="text/css" /> 
+<head>
+	<title></title>	
+</head>
+
+			
+<body>
+
+<h3>Notify attempts to connect to active services only</h3>
+
+<div id="content">
+
+<p>
+
+Your host usually has a set of services active and listening on a determined 
+<em>service access point</em>, i.e. a particular <em>port number</em>.
+Hackers are usually interested in addressing their attacks towards active services,
+ such as a <strong>spyware</strong> and other malicious software that might be running 
+on your machine and <em>listening</em> on a particular port number.
+
+</p>
+
+<p>
+	For <strong>TCP</strong> connections, <em>iqfire-wall</em> is able to 
+	recognize what services are actually listening on your machine and 
+	warn you only when there is an attempt to connect to an <strong>active</strong> 
+	one.
+</p>
+
+<p>
+	On a host directly connected to the <em>Internet</em>, this option should reduce the 
+	amount of warnings for packets without an associated filter rule to the essential ones: 
+	those directed to the active services in your box.
+</p>	
+
+
+</div> <!-- id="content" -->	
+
+</body>
+
+</html>

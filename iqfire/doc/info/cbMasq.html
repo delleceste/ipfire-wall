@@ -1,0 +1,63 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<link rel="stylesheet" href="info.css" type="text/css" /> 
+<head>
+	<title></title>	
+</head>
+
+			
+<body>
+
+<h3>Masquerade</h3>
+
+<div id="content">
+
+<p>
+
+Masquerading a connection means changing the source address of a packet 
+to let it appear as coming from a source different from the real address.
+With this kind of <em>source nat</em> it is possible, for multiple hosts in 
+a private <em>local area network</em>, to connect to the external <em>Internet</em>
+ through a <em>gateway</em>. <br/>
+The <em>gateway</em> must be configured to <em>masquerade</em> the connections passing 
+through the <em>network interface connected to the Internet</em>. In this way, all the 
+packets originating from the internal network, with private addresses, are <em>masqueraded</em> 
+when passing through the <em>masquerade firewall/gateway</em> and can connect to the 
+external world, since they appear as if they were sent from the gateway, not from a 
+private addressed machine.
+
+</p>
+
+<p>
+	As to the internal implementation, a masqueraded connection requires an 
+	<em>associated table</em> to remember the firewall that an <em>outgoing 
+	masqueraded packet</em> must be <em><strong>de</strong>masqueraded</em>
+	when coming back from the external world.
+</p>
+
+<p>
+	To read further on about <em>masquerade</em>, here you can find a link to an
+	 external page. <cite>Masquerade</cite> is a terminology introduced with linux to describe 
+	a particular kind of <em>source nat</em>, and is implemented inside the linux kernel.
+	<ul>
+	<li><a href="http://www.faqs.org/docs/linux_network/x-087-2-ipmasq.html" title="http://www.faqs.org/docs/linux_network/x-087-2-ipmasq.html">
+		IP Masquerade and Network Address Translation</a>;</li>	
+	</ul>
+</p>
+
+<p>
+	The following links are more related to <em>ipfire-wall/iqfire-wall</em> 
+	Network Address Translation ans Masquerade implementation/usage:
+	<ul>
+		<li><a href="http://www.giacomos.it/ipfire/nat.html" title="http://www.giacomos.it/ipfire/nat.html">Network address and port translation</a>;</li>
+		<li><a href="http://www.giacomos.it/ipfire/scenarios.html" title="http://www.giacomos.it/ipfire/scenarios.html">Network address and port translation scenarios</a>, will provide sample situations in which NAT can be used;</li>
+	</ul>
+</p>
+
+
+</div> <!-- id="content" -->	
+
+</body>
+
+</html>

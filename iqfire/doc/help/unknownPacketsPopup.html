@@ -1,0 +1,97 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<link rel="stylesheet" href="info.css" type="text/css" /> 
+<head>
+	<title></title>	
+</head>
+
+			
+<body>
+
+<h3>Packets without a permission or denial rule</h3>
+
+<div id="content">
+
+<p>
+In this popup window <em>iqfire-wall</em> reports all the packets arrived to the 
+firewall that do not satisfy any rule: not a permission one nor a denial one. 
+
+
+</p>
+
+<p>
+For this reason, no <strong>explicit</strong> decision could have been taken and, 
+in cases like these, the <strong>default policy is applied</strong>. The <em>default 
+policy</em> is decided by the administrator of the computer in the <a href="action://showconfigurationwidget" title="Show the settings window">settings configuration window</a> of <em>iqfire-wall</em>.
+</p>
+
+<p>
+	Some different actions can be taken here:
+	<ul>
+	<li>close the window with the usual <em>x</em> button on the title: this 
+		<em>ignores all the information gathered</em>;</li>
+	<li>click on the <em>Ignore All</em> button, that directly adds <strong>all</strong> 
+	the items to the list of the <em>already notified items list</em> and avoid that the 
+	same information is shown again when another identical packet arrives to the firewall;</li>
+	<li><em>select one or more items</em> and choose one of the options provided by 
+	the <strong>four radio buttons</strong> below:
+	<ul>	
+		<li><em>Ask again</em>: ignore the information contained in the selected item(s);</li>
+		<li><em>Accept</em>: transform the item into a <strong>permission</strong> rule.
+		This takes all the fields in the item and builds a rule starting from 
+		them. Before adding a rule you can edit the items to change some values, like 
+		adding a <em>netmask</em> of an internet address or setting to <cite>any</cite> 
+		some field (right click on a column and click on the <cite>Any...</cite> 
+		menu item);</li>
+		<li><em>Block</em>: transform the item into a <strong>denial</strong> rule.
+		This works as the case above, but blocks the packets that match the new rule;</li>
+		<li><em>Ignore</em>: add the item 
+			 to the list of the <em>already notified items list</em> 
+		and avoid that the 
+		same information is shown again when another identical 
+			packet arrives to the firewall;</li>
+	</ul>
+	</ul>
+</p>
+<h3>Notes</h3>
+
+<p>
+	You can <em>select all<em> the items by checking the <em>checkbox</em> <cite>All</cite>.
+	You can <em>deselect all</em> the items <em>unchecking the <cite>All</cite> 
+	checkbox</em>.
+</p>
+<p>
+	Double click on any column you like to change its contents.
+	For instance, you could desire to substitute the address <cite>192.168.0.2</cite> to 
+	an interval <cite>192.168.0.0-192.168.0.10</cite> or <cite>192.168.0.0/255.255.255.0</cite>, or set to <cite>any</cite> one of the fields 
+	you are not interested in.
+</p>
+
+<p>
+	Notice that, when no items are selected (i.e. when the popup first appears) the 
+	<em>radio buttons</em> at the bottom of the window are disabled.
+	You have to select one or more items to enable them.
+	When you select one or more items the <em>text</em> in the <strong>Ignore All</strong> 
+	button changes into <strong>Apply</strong>. Actually, the meaning of the button changes
+	 and <strong>Apply</strong> indicates that you must press that button if you want to 
+	  apply the option chosen in one of the radio buttons.
+</p>
+
+<p>
+	Moving the mouse through the items will provide a <strong>packet summary</strong> in 
+	<em>html format</em> which is displayed in the <a href="action://showinfopanel" title="Show the information panel if hidden">informational panel</a> above.
+</p>
+<p>
+	<em>Selecting or clicking</em> on an item will display once the summary in the 
+	<a href="action://showinfopanel" title="Show the information panel if hidden">informational panel</a> above and won't change anymore with the mouse moves
+	 over the other items.
+</p>
+
+
+
+</div> <!-- id="content" -->	
+
+</body>
+
+</html>

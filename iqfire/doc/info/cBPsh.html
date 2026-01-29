@@ -1,0 +1,41 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<link rel="stylesheet" href="info.css" type="text/css" /> 
+<head>
+	<title></title>	
+</head>
+
+			
+<body>
+
+<h3>The <em>push</em> flag</h3>
+
+<div id="content">
+
+<p>
+The <em>Push</em> flag, like the <em>Urgent</em> flag, is made to ensure that the data is given the priority (that it deserves) and is processed at the sending or receiving end. <em>This particular flag is used quite frequently at the beginning and end of a data transfer</em>, affecting the way the data is handled at both ends.
+
+
+</p>
+
+<p>
+The <em>Push</em> bit makes sure the data segment is handled correctly and given the appropriate <em>priority</em> at both ends of a virtual connection. 
+</p>
+
+<p>
+When a host sends its data, it is temporarily queued in the TCP buffer, a special area in the memory, until the segment has reached a certain size and is then sent to the receiver.<br/>
+While this procedure works well in most cases, there are a lot of instances where this <em>
+queueing</em> of data is undesirable because any delay during queuing can cause problems to the waiting application. A simple example would be a TCP stream, e.g <em>real player</em>, where data must be sent and processed (by the receiver) immediately to ensure a smooth stream without any cut offs.
+</p>
+
+<p>
+	This information has been partially taken from <br/><a href="http://www.firewall.cx/tcp-analysis-section-4.php" title="http://www.firewall.cx/tcp-analysis-section-4.php">TCP Analysis - Section 4: TCP Flag Options</a>.<br/>
+	You can also read the <em>ipfire-wall</em> document<br/> <a href="http://www.giacomos.it/ipfire/rulefields.html" title="visit the web page http://www.giacomos.it/ipfire/rulefields.html">Rule fields explained (an outline of TCP/IP protocol)</a>, available also in <a href=http://www.giacomos.it/ipfire/rulefields_it.html" title="visit the web page http://www.giacomos.it/ipfire/rulefields_it.html">italian</a>.
+</p>
+
+</div> <!-- id="content" -->	
+
+</body>
+
+</html>

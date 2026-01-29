@@ -1,0 +1,44 @@
+# MAILER OPTIONS
+
+# FROM 
+FROM=pippo@pluto.it
+
+# TO
+TO=minnie@pippo.it
+
+# CARBON COPY
+CC=paperino@pippo.it
+
+# THIS WILL APPEAR AS SUBJECT
+SUBJECT=MAIL DI IPFIRE
+
+# THE INTRODUCTION TO THE EMAIL.
+MAIL_INTRO=Mail di ipfire-wall. Contiene statistiche sul suo funzionamento.
+
+# THE BODY OF THE MAIL
+MESS_BODY_FILE=./body
+
+# ENABLE THE ATTACHMENT (SEE OPTION BELOW)
+ATTACH_ENABLED=YES
+
+# If ATTACH_FILENAME=filename is specified, 
+# filename will be sent as attachment,
+# without compression.
+# Otherwise, if ATTACH_FILE=YES is specified but
+# no ATTACH_FILENAME=... is given, logfile will
+# be compressed and copied into current directory
+# and finally sent by email.
+# ATTACH_FILENAME=/home/giacomo/IPFIRE/allowed
+
+# Simple Mail Transfer Protocol Host
+SMTP_HOST=mail.pippo.it
+
+# SMTP PORT (DEFAULT: 25)
+SMTP_PORT=25
+
+# THE LOCATION OF THE MAILER 'SMTPclient' IN YOUR 
+# FILE SYSTEM.
+MAILER_PATH=/usr/local/bin/SMTPclient
+
+# THE LOCATION OF THE EXECUTABLE 'bzip2'
+BZIP2_PATH=/usr/bin/bzip2

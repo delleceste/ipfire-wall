@@ -1,0 +1,58 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<link rel="stylesheet" href="info.css" type="text/css" /> 
+<head>
+	<title></title>	
+</head>
+
+			
+<body>
+
+<h3>The TCP <em>SYN</em>chronization flag</h3>
+
+<div id="content">
+
+<p>
+
+The tcp <em>SYN</em> flag is used to <strong>initialize a connection</strong>.
+<br/>
+If it is the only flag set to true, the packet represents the <em>first</em> 
+packet in a connection, i.e. a <em>connection request</em>.
+<br/>
+If instead it is set to true <em>together with the ack</em> flag, it represents 
+a <em>connection accepted</em> packet, in response to a previous <em>connection request</em>.
+
+</p>
+<p>
+	For example, if you require a web page with your browser, an outgoing 
+	 <em>connection request</em> is sent and an incoming <em>connection accepted</em> 
+	 response packet is expected.
+</p>
+
+<h3>Observation</h3>
+
+<p>
+	Enabling the <strong>syn</strong> check here and choosing <strong>On</strong> in the 
+		radio button nearby is a good idea to <em>allow a <cite>well initiated</cite> 
+		tcp connection</em>.
+	Actually, all TCP connections should start with the syn flag on and all other flags off. 
+	Imposing this on your rule should guarantee that the connection is initiated 
+	cleanly.
+	<br/>To check against all this flags, you should enable all the other check boxes 
+	and select <strong>off</strong> for all the other flags except <strong>syn</strong>.
+	<br/>
+	Moreover, this advanced packet filtering based on the verification of the 
+	<strong>syn</strong> tcp flag <em>requires a stateful rule</em> to work correctly after 
+	the connection has been setup.<br/>
+	Actually, if the first packet is accepted thanks to the <em>syn</em> flag set to 
+	true, it is necessary to associate a <em>state table</em> to the new connection to 
+	guarantee the data transmission in both directions.
+</p>
+
+
+</div> <!-- id="content" -->	
+
+</body>
+
+</html>

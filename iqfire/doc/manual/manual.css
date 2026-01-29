@@ -1,0 +1,126 @@
+html, p, h3, h2, li, a
+{
+  font-family:"Tahoma sans-serif verdana sans";
+}
+
+html
+{
+	background-color:rgb(251,251,251);
+	margin:5px;
+	padding:1px;
+	font-size:9pt;
+}
+
+
+body
+{
+	background-color:rgb(251,251,251);
+	margin:5px;
+	padding:1px;
+}
+
+
+h3, h2
+{
+  font-size:18pt;
+  font-weight:bold;
+  margin-bottom:20px;
+  margin-top:25px;
+}
+
+h2
+{
+	text-align:center;
+	
+}
+
+#linuxDay
+{
+	color:rgb(50,150,55);
+}
+
+p
+{
+	text-align:justify;
+	font-size:9pt;
+	font-family:tahoma,verdana,sans-serif;
+}
+
+
+
+li, ul
+{
+	text-align:justify;
+	font-size:9pt;
+	font-family:tahoma,verdana,sans-serif;
+}
+
+ul
+{
+	margin:5px;
+	padding:3px;
+}
+
+img
+{
+	display:none;
+}
+
+th
+{
+	text-align:justify;
+	font-weight:bold;
+	font-size:8pt;
+	font-family:tahoma,verdana,sans-serif;
+}
+
+td
+{
+	padding:2px;
+	text-align:justify;
+	font-size:8pt;
+	font-weight:normal;
+	font-family:tahoma,verdana,sans-serif;
+}
+
+
+.footnote
+{
+	float:bottom;
+	font-size:8pt;
+	font-family:tahoma,verdana,sans-serif;
+}
+
+.policy
+{
+	text-decoration:underline;
+}
+
+/* link vistitati o non ancora visitati */
+a:link
+{
+	color:rgb(10%,10%,20%);
+}
+
+a:visited
+{
+	color:rgb(15%,15%,25%);
+}
+
+.alignedRight
+{
+	float:right;
+	text-align:right;
+	font-size:9pt;
+	font-weight:bold;
+}
+
+.accept
+{
+	color:green;
+}
+
+.blocked
+{
+	color:red;
+}

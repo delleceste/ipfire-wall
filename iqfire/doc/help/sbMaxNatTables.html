@@ -1,0 +1,51 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<link rel="stylesheet" href="info.css" type="text/css" /> 
+<head>
+	<title></title>	
+</head>
+
+			
+<body>
+
+<h3>Set the max table entries</h3>
+
+<div id="content">
+
+<p>
+
+For each <em>Network address translation</em> applied to a packet, the kernel
+ uses a dynamic table to remember the data associated to the <em>Nat</em> operation 
+on that packet. 
+
+</p>
+
+<p>
+Click on the arrows in the <em>spinbox</em> to change the value of the maximum
+ number of NAT tables that you want to allow in the kernel internal tables. 
+
+
+</p>
+
+<p>
+	Remember that, when the number of the NAT tables reaches the maximum allowed, 
+	<strong>NAT will stop working until one or more among the allocated entries 
+	expires</strong> and the memory associated is freed.
+</p>
+
+<p>
+	At the moment, the event mentioned above is logged through the <em>system logger</em> 
+	only.
+</p>
+
+<p>
+	Tune the number according to the amount of NAT traffic you expect in your network.
+</p>
+
+
+</div> <!-- id="content" -->	
+
+</body>
+
+</html>

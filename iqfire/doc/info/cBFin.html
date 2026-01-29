@@ -1,0 +1,55 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<link rel="stylesheet" href="info.css" type="text/css" /> 
+<head>
+	<title></title>	
+</head>
+
+			
+<body>
+
+<h3>The <em>fin</em>ished flag</h3>
+
+<div id="content">
+
+<p>
+This flag is used to tear down the virtual connections created using the flag <em>syn</em>, so 
+because of this reason, the FIN flag always appears when the last packets are exchanged between a connection.
+</p>
+
+<p>
+It is important to note that when a host sends a FIN flag to close a connection, it may continue to receive data until the remote host has also closed the connection, although this occurs only under certain circumstances. Once the connection is teared down by both sides, the buffers set aside on each end for the connection are released.
+
+</p>
+
+<h3>Closing a connection</h3>
+
+<p>
+	<strong>host A</strong> ---- <em>data transfer</em> ----&gt; <strong>host B</strong>
+	<br/>
+	<strong>host A</strong> ---- <strong>FIN,ACK</strong> ----&gt; <strong>host B</strong>
+	<br/>
+	<strong>host A</strong> &lt;---- <strong>ACK</strong> ---- <strong>host B</strong>
+	<br/>
+	<strong>host A</strong> &lt;---- <strong>FIN, ACK</strong> ---- <strong>host B</strong>
+	<br/>
+	<strong>host A</strong> ---- <strong>ACK</strong> ----&gt; <strong>host B</strong>
+	<br/>
+</p>
+
+<p>
+	As you can see, the finalization of the communication recalls the <stong>tcp full duplex</strong>
+	nature.
+</p>
+<p>
+	This information has been partially taken from <br/><a href="http://www.firewall.cx/tcp-analysis-section-4.php" title="http://www.firewall.cx/tcp-analysis-section-4.php">TCP Analysis - Section 4: TCP Flag Options</a>.<br/>
+	You can also read the <em>ipfire-wall</em> document<br/> <a href="http://www.giacomos.it/ipfire/rulefields.html" title="visit the web page http://www.giacomos.it/ipfire/rulefields.html">Rule fields explained (an outline of TCP/IP protocol)</a>, available also in <a href=http://www.giacomos.it/ipfire/rulefields_it.html" title="visit the web page http://www.giacomos.it/ipfire/rulefields_it.html">italian</a>.
+</p>
+
+
+</div> <!-- id="content" -->	
+
+</body>
+
+</html>

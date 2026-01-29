@@ -1,0 +1,162 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<link rel="stylesheet" href="help.css" type="text/css" /> 
+<head>
+	<title>Editor del linguaggio naturale</title>
+</head>
+
+			
+<body>
+
+
+
+<div id="content">
+
+<h3>Dizionario</h3>
+
+<h4>Quick start</h4>
+<p>Pagine guida per le azioni e la sintassi:</p>
+<ul>
+  <li><a class="fastlink" href="action://naturalhelp/syntax/." title="Regole di sintassi">regole di sintassi</a></li> <li><a class="fastlink" href="action://naturalhelp/verbs/." 
+      title="verbi che esprimono le azioni del firewall">verbi</a></li>
+  <li><a  class="fastlink" href="browserHelp://natural_examples_it" title="Esempi di regole di linguaggio naturale">esempi di regole di linguaggio naturale</a></li>
+</ul>
+
+<h3>Editor del linguaggio naturale</h3>
+<p>
+
+In questo paragrafo <em>iqfire wall</em> presenta e descrive il suo editor del <em>linguaggio 
+naturale</em>. Il testo elaborato in questo ambito &egrave; atto ad esprimere in linguaggio 
+semplice e immediato le regole del filtro dei pacchetti.
+
+</p>
+
+<p>
+  &Egrave; possibile digitare nel riquadro alla Vostra sinistra del testo semplice.
+  Esso esprimer&agrave; le regole che desiderate applicare al vostro filtro di 
+  pacchetti. L'applicazione di alcune facili <em>regole</em> consentir&agrave; all'utente di 
+  personalizzare in modo naturale  e spontaneo il proprio <em>firewall</em>.
+</p>
+
+<h3>Osservazione importante</h3>
+<p>
+  In <em>iqfire-wall</em> la creazione e la modifica 
+  delle regole mediante l'<a href="action://showruletree" title="Albero delle Regole">albero
+  delle regole</a> e del <em>linguaggio naturale</em> avviene in ambiti 
+  separati:
+  <ul>
+    <li>le regole introdotte mediante il <em>linguaggio naturale</em> sono visibili 
+    in <em>sola lettura</em> nell'albero, e sono colorate in verde o in
+    rosso a seconda della loro azione, di permesso o blocco rispettivamente;</li>
+    <li>dall'albero delle regole non &egrave; pertanto possibile modificare o eliminare
+     regole introdotte con il linguaggio naturale;</li>
+    <li>le regole dell'albero non sono convertibili in regole di linguaggio naturale, 
+     e rimangono modificabili e cancellabili solamente dall'albero stesso;</li>
+    <li>le modifiche alle regole derivanti dal linguaggio naturale si effettuano 
+      operando sul testo nell'editor a sinistra.</li>
+  </ul>
+</p>
+
+<h3>Osservazione importante (II)</h3>
+<p>
+  Attualmente, <em>iqfire-wall</em> supporta unicamente <strong>regole di filtro</strong>,
+  nelle direzioni <em>ingresso, uscita e forward</em>. <strong>Non</strong> sono altres&igrave;
+  comprese le regole di <em>NAT</em>.
+</p>
+
+<h3>Regole per un uso corretto e non ambiguo del <cite>linguaggio naturale</cite></h3>
+
+<h4>Le azioni, espresse da un verbo</h4>
+
+<p>
+Ogni azione (<cite>consenti</cite>, <cite>nega</cite>, <cite>permetti</cite>, ..) 
+  viene espressa da un <strong>verbo</strong> che 
+      <em>&egrave; d'uopo porre in principio di periodo</em>. Ad esempio:
+      "<cite><em>Blocca</em> il traffico verso la porta 22 del protocollo tcp</cite>" 
+      rappresenta una buona regola. Non sarebbe invece consentita una frase del tipo 
+      "<cite>Il traffico verso la porta 22 deve essere bloccato</cite>".
+      La lista dei verbi disponibili e associabili ad una azione precisa 
+      &egrave; disponibile <a href="action://naturalhelp/verbs/." 
+      title="verbs understood by natural language">qui</a> ed &egrave; ordinata 
+      alfabeticamente. Avendone appreso il significato, &egrave; possibile cliccare sul
+      verbo colorato e in grassetto per <em>aggiungerlo automaticamente</em> al testo.
+</p>
+
+<h4>Le regole sintattiche</h4>
+
+<p>
+  Il <cite>linguaggio naturale</cite> di <cite>iqfirewall</cite> detta alcune regole <cite>sintattiche</cite>,
+  necessarie al corretto funzionamento del sistema e alla chiarezza del testo stesso.
+  Ad esempio, utilizzando l'azione <cite>trasmetti</cite>, &egrave; necessario 
+  specificare <cite>trasmetti da... a</cite>, come a esempio:
+  "<cite>trasmetti il traffico dall'indirizzo 192.168.0.1 all'indirizzo 192.168.0.3</cite>.
+  Le regole sintattiche imposte da iqfirewall sono peraltro in linea con il buonsenso e 
+  la necessit&agrave; di pervenire a una formulazione chiara e semplice del testo.
+  Le regole sintattiche sono internamente applicate dal <cite>linguaggio naturale</cite>
+  mediante complesse <em>espressioni regolari</em>. Le regole sono documentate in 
+  ordine <cite>pseudo</cite> alfabetico <a href="action://naturalhelp/syntax/." 
+  title="Regole di sintassi">qui</a>.
+
+</p>
+
+<h4>Sostantivi, o nomi semplici</h4>
+<p>
+Accanto alle stringenti regole di sintassi, il linguaggio naturale applicato a 
+<em>iqfire-wall</em> comprende un insieme di nomi semplici. Essi vengono semplicemente
+considerati come sono e tradotti nel significato assunto nel contesto del filtro di pacchetti.
+Anche i nomi sono catalogati alfabeticamente e sono consultabili mediante un semplice 
+<a href="action://naturalhelp/names/." title="Parole chiave speciali">dizionario</a>.
+</p>
+
+<h3>Suggerimenti</h3>
+
+<ul>
+<li>
+  Mentre si scrive il testo del <em>linguaggio naturale</em>, si consiglia di chiudere 
+  il <strong>pannello informativo</strong> qui sopra, agendo sull'icona raffigurante un
+  bulbo di lampadina nella barra degli strumenti. Questo pannello di <strong>help</strong>,
+  al contrario, pu&ograve; essere ridimensionato e ingrandito a piacere;
+  </li>
+  
+ <li>
+  navigando all'interno delle pagine del 
+  <a href="action://naturalhelp/names/." title="Dizionario dei sostantivi">dizionario</a>,
+   delle <a href="action://naturalhelp/syntax/." 
+  title="Regole di sintassi">regole di sintassi</a> o dei <a href="action://naturalhelp/verbs/." 
+      title="verbi che esprimono le azioni del firewall">verbi</a>, &egrave; possibile cliccare
+      su un elemento (rappresentato in grassetto e in colore) per aggiungerlo al testo del 
+      linguaggio naturale. Diviene pertanto possibile configurare il proprio 
+      firewall con pochi click.
+ </li>
+</ul>
+
+<h3>Esempi</h3>
+<p>
+  Di seguito vengono proposti alcuni esempi di proposizioni accettate e comprese dal firewall.
+  &Egrave; possibile prendere spunto da queste per costruire il proprio insieme di regole basate
+  sul linguaggio naturale.
+  <ul>
+    <li>consenti l'ingresso ai pacchetti con indirizzo sorgente nell'intervallo 192.168.0.1 192.168.0.11 e indirizzo destinazione 192.168.0.110  192.168.0.210</li>
+<li>consenti l' ingresso indirizzo sorgente 10.0.0.1 verso l'intervallo da 10.0.0.1 a 10.0.0.111</li>
+<li>trasmetti il traffico da 10.0.0.1 a 10.0.0.115</li>
+<li>trasmetti il traffico da 10.0.0.1 a 10.0.0.115,10.0.0.116</li>
+<li>consenti il traffico in ingresso verso le porte diverse da 21,22 e 23 dalla porta sorgente 21</li>
+<li>consenti il traffico in ingresso verso le porte destinazione diverse da 21,22 e 23, ip destinazione 10.0.0.4 e 10.0.0.5 dalla porta sorgente 21 e dall'indirizzo ip nell'intervallo tra 10.0.0.100 e 10.0.0.102</li>
+
+  </ul>
+</p>
+
+<h3>Altre risorse</h3>
+<p>
+  Ulteriori informazioni si possono acquisire dalle pagine del <a href="manual://natural_language"
+  title="Manuale sul linguaggio naturale, in inglese">manuale</a> o in <em>Internet</em>, all'
+  indirizzo <a href="http://www.giacomos.it/iqfire/index.html">http://www.giacomos.it/iqfire/index.html</a>
+  
+</p>
+
+</div> <!-- id="content" -->	
+
+</body>
+
+</html>

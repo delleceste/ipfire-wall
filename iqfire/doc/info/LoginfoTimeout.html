@@ -1,0 +1,56 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<link rel="stylesheet" href="info.css" type="text/css" /> 
+<head>
+	<title></title>	
+</head>
+
+			
+<body>
+
+<h3>Timeout of the log entries in kernel space</h3>
+
+<div id="content">
+
+<p>
+
+When a packet is printed on the firewall console and the <em>Log level between 
+user/kernel</em> option is set to <strong>Smart Log: only unseen packets</strong> 
+(on this window, in the section <cite>Verbosity level in kernel/user communication</cite>),
+an entry for that packet is allocated in the kernel space and, until that entry is alive 
+in the firewall memory, the packet is not printed anymore on the console.
+
+
+</p>
+
+<p>
+	This feature avoids that identical information is repeated and sent between
+ 	the user and kernel spaces, and reduces the load caused by the console 
+	printing system.
+</p>
+
+<p>
+	Tune this period to obtain a good compromise between performance and 
+	the need to view more or less often the same packet information.
+</p>
+
+<p>
+	The default setting is <em>20 seconds</em> and this implies that, for instance,
+	if the console prints a packet information like:
+</p>
+
+<p>
+	<strong>[OK 17]IN:  [eth0] |TCP| 140.105.4.3:http-alt-->140.105.5.83:60322 |P|A|EST[me -> all the world!]</strong>
+</p>
+
+<p>
+	the <strong>same</strong> information will be repeated after this <em>timeout</em> 
+	has elapsed, if the connection above is still alive, obviously.
+</p>
+
+</div> <!-- id="content" -->	
+
+</body>
+
+</html>

@@ -1,0 +1,49 @@
+Gli script ubuntu-package.sh e ubuntu-package-source.sh creano rispettivamente 
+
+- un pacchetto deb da installare sulla versione di ubuntu supportata in quel
+  momento;
+
+- un pacchetto generico per ubuntu che crea un pacchetto che scompatta i
+  sorgenti in /usr/src e li compila eseguendo ./install
+
+esempi d'uso:
+
+* ubuntu-package.sh:  ./ubuntu-package.sh ubuntu/8.10 ipfire-wall-0.99.4ubuntu_8.10_i386
+
+  ubuntu/8.10 deve contenere una directory DEBIAN con i file necessari
+  (control, preinst, postinst, prerm...)
+  ipfire-wall-0.99.4ubuntu_8.10_i386 sara` la cartella a partire dalla quale
+  verra` creato il deb con
+
+  dpkg-deb -b ipfire-wall-0.99.4ubuntu_8.10_i386
+
+  Lo script preparato assume che ci siano i binari compilati sulla macchina
+  che esegue esattamente la distribuzione debian 8.10 (in questo caso la 8.10)
+  - ipfire iqfire iqfire-listener e libipfire-common -
+  Per quanto riguarda il modulo del kernel invece, si assume che esso verra`
+  compilato nella macchina destinazione. Questo rende il pacchetto meno
+  sensibile agli aggiornamenti del software, che spesso rinnovano molto di
+  frequente le release del kernel.
+
+* ubuntu-package-source.sh: ./ubuntu-package-source.sh ubuntu/source ipfire-wall-0.99.4ubuntu_source_i386
+
+  ubuntu/source deve contenere una directory DEBIAN con i file necessari
+  (control, preinst, postinst, prerm...)
+  ipfire-wall-0.99.4ubuntu_source_i386  sara` la cartella a partire dalla
+  quale verra` creato il deb con
+
+  dpkg-deb -b ipfire-wall-0.99.4ubuntu_source_i386
+
+_NOTE_:
+
+- ubuntu-package.sh: VA ESEGUITO SULLA MACCHINA UBUNTU per cui verra`
+  distribuito (es. se preparo un .deb per ubuntu 8.10 devo copiare tutta la 
+  directory IPFIRE-wall, compilare a mano ipfi, iqfire, iqfire-listener e 
+  kernel, e poi eseguire lo script come nell'esempio sopra).
+
+- ubuntu-package-source.sh: prepara un pacchetto con i sorgenti tutti da
+  compilare e quindi puo` essere generato ovunque indipendentemente dalla
+  distribuzione in uso.
+
+
+

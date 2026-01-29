@@ -1,0 +1,51 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<link rel="stylesheet" href="info.css" type="text/css" /> 
+<head>
+	<title></title>	
+</head>
+
+			
+<body>
+
+<h3>Refresh speed of the system tray icon</h3>
+
+<div id="content">
+
+<p>
+
+The system tray icon of <em>iqfire-wall</em> indicates the status of the firewall,
+when the animation is enabled.
+
+</p>
+<p>
+In particular, every <em>Refresh speed of the animation</em> <strong>milliseconds</strong>, 
+two rectangles are drawn over the icon. One is green, and represents the <em>allowed</em> 
+packets filtered in that time interval, and the other is red, representing the <em>blocked</em>
+ packets. Each rectangle has the height <em>proportional to the number of filtered packets
+ in the specified interval</em>.
+</p>
+
+<p>
+	The user, observing the <em>system tray activity</em>, has an idea of the state 
+	of the firewall at each instant.
+</p>
+
+<p>
+	Of course, drawing very often over the icon requires a bit of cpu calculations and this 
+	might not be efficient for older systems: tune the animation speed to obtain a good 
+	compromise between a good looking animation and a good performance of your system.
+</p>
+
+<p>
+	A good value for a recent system could be around 800 milliseconds, older systems might like 
+	an interval of one second or more.
+</p>
+
+
+</div> <!-- id="content" -->	
+
+</body>
+
+</html>

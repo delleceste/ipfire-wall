@@ -1,0 +1,62 @@
+# DOC lascia entrare::consente il traffico in ingresso
+lascia entrare;;lasciare entrare::ALLOW INPUT::consente il traffico in ingresso{ENDRULE}
+
+non permettere;;non consentire;;non autorizzare;;non lasciar passare;;non lasciare passare;;non si permetta;;non si autorizzi;;non si lasci passare;;non sia autorizzato::DENY{ENDRULE}
+# DOC non::nega l'azione seguente, ad esempio: non permettere, non consentire, non trasmettere
+non lasciare entrare;;non consentire in ingresso;;non aprire;;non accettare;;non deve essere consentito l'ingresso;;non permettere l'ingresso;;non permettere l'accesso;;non consentire l'accesso::DENY INPUT{ENDRULE}
+
+
+non lasciare uscire;;non consentire in uscita;;non consentire l'uscita;;non permettere l'uscita;;non accettare in uscita;;non lasciare passare in uscita::DENY OUTPUT{ENDRULE}
+
+# DOC consenti in ingresso;;consenti l'accesso::consente il traffico in ingresso
+consenti in ingresso;;consenti l'accesso::ALLOW INPUT{ENDRULE}
+
+# DOC apri;;aprire;;::si utilizza per concedere traffico in ingresso alla macchina
+apri;;aprire;;::ALLOW INPUT{ENDRULE}
+
+# DOC fai entrare::consente il traffico in ingresso
+fai entrare;;::ALLOW INPUT{ENDRULE}
+
+# DOC lascia uscire::consente il traffico in uscita dall'host
+lascia uscire;;lasciare uscire::ALLOW OUTPUT{ENDRULE}
+
+# DOC consenti in uscita;;consenti l'uscita::consente il traffico in uscita
+consenti in uscita;;consenti l'uscita;;consentire in uscita;;consentire l'uscita::ALLOW OUTPUT{ENDRULE}
+
+# DOC fai uscire::consente il traffico in uscita
+fai uscire;;::ALLOW OUTPUT{ENDRULE}
+
+# DOC accetta;;accettare::permette il traffico specificato
+accetta;;accettare::ALLOW{ENDRULE}
+
+# DOC 
+permetti;;lascia passare;;deve essere consentito;;consentire;;consenti;;permetti il traffico::ALLOW::generico verbo per consentire il traffico{ENDRULE}
+
+# DOC nega;;negare;;deve essere negato::blocca il traffico specificato in seguito
+nega;;negare;;deve essere negato;;non consentire::DENY{ENDRULE}
+
+# DOC blocca;;bloccare::blocca il traffico specificato nel seguito della regola. Si utilizza per traffico <strong>in ingresso</strong> o <strong>in uscita</strong>, non per <strong>l'inoltro dei pacchetti</strong>
+blocca;;bloccare::DENY{ENDRULE}
+
+# DOC impedire;;impedisci::blocca il traffico specificato nel seguito della regola
+impedire;;impedisci::DENY{ENDRULE}
+
+# DOC rifiuta;;rifiutare::nega il traffico che viene specificato nella proposizione
+rifiuta;;rifiutare::DENY{ENDRULE}
+
+# DOC inoltra::azione di <strong>forward</strong> da un indirizzo ip o lista o intervallo ad altro ip o lista o intervallo
+# DOC trasmetti::azione di <strong>forward</strong> da un indirizzo ip o lista o intervallo ad altro ip o lista o intervallo{ENDRULE}
+trasmetti;;inoltra::ALLOW FWD::azione di <strong>forward</strong>{ENDRULE}
+
+# DOC non trasmettere;;non inoltrare::azione di <strong>negazione di forward</strong> da un indirizzo ip o lista o intervallo ad altro ip o lista o intervallo
+non trasmettere;;non inoltrare::DENY FWD::blocca il <strong>forward</strong> da una sorgente verso una destinazione{ENDRULE}
+
+# DOC 
+chiudi;;chiudere::DENY INPUT{ENDRULE}
+
+# DOC 
+mappa::DNAT{ENDRULE}
+
+# per rompiscatole
+non bloccare;;non impedire;;non rifiutare::ALLOW{ENDRULE}
+non bloccare in ingresso;;non impedire in ingresso::ALLOW INPUT{ENDRULE}

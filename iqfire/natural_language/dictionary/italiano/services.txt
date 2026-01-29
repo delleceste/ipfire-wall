@@ -1,0 +1,9 @@
+# used by ServiceProcessor
+# each line contains 3 fields: 
+# 1. list of keywords separate by ;;
+# 2. substitution
+# 3. Description.
+# 
+# NOTE: write all lower case because natural text is transformed into lower case
+#
+emule;;il mulo;;el mulo;;del mulo::{tcp porta destinazione 4099}{udp porta destinazione 5003}::Apre le porte tcp 4099 e udp 5003 standard di eMule creando due regole distinte.

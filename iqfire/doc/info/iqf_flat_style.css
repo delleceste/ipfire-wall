@@ -1,0 +1,45 @@
+// @name   IQfire Flat
+// 
+// @description  Flat panels and buttons style. Test
+// @author	Giacomo S.
+// @date	9/12/2007
+
+body
+{
+	background-color:rgb(80%, 70%, 90%);
+	margin:2px;
+	padding:1px;
+}
+
+h3
+{
+	font-size:7px;
+	font-style:italic;
+}
+
+img
+{
+	float:right;
+	color:black;
+}
+
+.policy
+{
+	text-decoration:underline;
+}
+
+/* link vistitati o non ancora visitati */
+a:link
+{
+	color:blue;
+}
+
+a:visited
+{
+	color:rgb(88%,88%,89%);
+}
+
+p
+{
+	text-align:justify;
+}

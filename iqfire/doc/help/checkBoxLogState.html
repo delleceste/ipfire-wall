@@ -1,0 +1,44 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<link rel="stylesheet" href="info.css" type="text/css" /> 
+<head>
+	<title></title>	
+</head>
+
+			
+<body>
+
+<h3>Log based on the connection state</h3>
+
+<div id="content">
+
+<p>
+
+This option provides yet less information to the console: not only 
+identical packets aren't sent through the user/kernel communication 
+channel, but only packets <em>with different states</em> are shown.
+
+</p>
+
+<p>
+	This means you will see for a connection
+ 	only a packet notification per state: setup, setup ok, 
+ 	established, fin wait, time wait, close wait.. and so on.
+</p>
+
+<p>
+Of course, the same information is presented <em>again</em> after 
+the <strong>log timeout</strong> has elapsed.
+To tune such timeout, you must be <strong>root</strong> and change 
+the settings in the <a href="action://showconfigurationwidget" 
+title="Go to the configuration widget">Configuration page</a>, section 
+<strong>Advanced</strong>.
+</p>	
+
+
+</div> <!-- id="content" -->	
+
+</body>
+
+</html>

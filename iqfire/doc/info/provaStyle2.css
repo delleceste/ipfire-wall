@@ -1,0 +1,61 @@
+// @description Altro stile ben fatto
+// @author Pippo
+//@date 9/12/2007
+// @name Stile Prova
+
+
+body
+
+
+{
+	background-color:rgb(97%, 93%, 100%);
+	margin:2px;
+	padding:1px;
+	border-color:white;
+	border-width:1px;
+}
+
+ul
+{
+	display:block;
+	margin:2px;
+	padding:1px;
+}
+
+li
+{
+	display:block;
+	margin:2px;
+	padding:1px;
+}
+
+h3
+{
+	font-size:7px;
+	font-style:normal;
+	text-align:center;
+}
+
+.curveItemHidden > a
+{
+	font-size:9px;
+	color:gray;
+}
+
+.curveItemVisible > a
+{
+	font-size:10px;
+	color:green;
+	text-decoration:underline;
+}
+
+/* link vistitati o non ancora visitati */
+a:link
+{
+	color:blue;
+}
+
+a:visited
+{
+	color:rgb(88%,88%,89%);
+}

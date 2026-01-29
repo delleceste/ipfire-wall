@@ -1,0 +1,55 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<link rel="stylesheet" href="info.css" type="text/css" /> 
+<head>
+	<title></title>	
+</head>
+
+			
+<body>
+
+<h3>Tune the excursion of the firewall activity indicators</h3>
+
+<div id="content">
+
+<h4>Activity representation in the <em>system tray icon</em>.</h4>
+
+<p>
+The activity of the firewall represented in the system tray icon works as follows.
+<br/>
+Each time the <em>system tray icon</em> is refreshed:
+<ul>
+<li>the number of packets processed in the period elapsed after the last refresh took place;</li>
+<li>the mean of the packets processed in each period is calculated.</li>
+</ul>
+
+At this point, the number of packets received in the latest period is compared with the mean, and 
+the indicator is drawn with a magnitude proportional to this comparison.
+
+
+</p>
+
+<h4>Tuning the mean adjust factor.</h4>
+<p>
+  Given the principle of functioning described above, one can easily understand that 
+  in the majority of the cases, in which slots of time with low load alternate with 
+  slots with much traffic, the indicator would vary between 0% and 100%, being 0
+  when the flow is low (much lower than the mean), and 100% when higher than the mean.
+</p>
+
+<p>
+  Adjusting this factor with a value between 2 and 4 will help to obtain a distribution 
+  of the values of the indicators more significant and smooth.
+</p>
+<p>
+  Try to vary this factor as you like and see immediately (without need to click on the <strong>Apply</strong> 
+  button on the bottom of this window) the effects on the indicators.
+</p>
+
+
+</div> <!-- id="content" -->	
+
+</body>
+
+</html>

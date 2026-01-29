@@ -1,0 +1,6 @@
+`allowed.base` contains the fundamental rules needed to make immediately
+work IPFIRE on your linux box. Remember that this ruleset allows anything out 
+from the local machine, and lets in only ssh connections. 
+It is an easy way to start. See readme in root package directory and read docs.
+ 
+ Giacomo S.

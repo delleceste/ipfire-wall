@@ -1,0 +1,86 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<link rel="stylesheet" href="info.css" type="text/css" /> 
+<head>
+	<title></title>
+	
+	
+	
+</head>
+			
+<head>
+	<title></title>	
+</head>
+			
+<body>
+
+<h3>Destination IP address</h3>
+
+<div id="content">
+
+<p>
+The <strong>destination IP address</strong> identifies the 
+<strong>sender</strong> of a packet sent over the network.<br/>
+An <strong>IP address</strong> is a unique identifier used by computers 
+to communicate with each other on a <strong>computer network</strong>,
+using the <strong>internet protocol (IP)</strong> standard.
+Some addresses are intended to be unique in the whole <em>Internet</em>, 
+other are unique in a more restricted context, such as a home or an
+enterprise, or a university (<em>local or private addresses</em>).
+
+</p>
+
+<h4>Representation</h4>
+<p>
+	An <strong>IP address</strong> is represented by four decimal
+ 	numbers (<strong>octets</strong>) separated by a dot. Each decimal number ranges from
+	<strong>0</strong> to <strong>255</strong>.<br/>
+	Examples are <strong>192.168.0.1</strong> or <strong>147.131.40.11</strong>.
+</p>
+
+<h4>Classes of addresses</h4>
+<p>
+	All the possible <strong>IP addresses</strong> are grouped in 
+	<strong>classes of networks</strong>:
+	<ul>
+	<li><strong>class A</strong>: the first octet ranges from 1 to 126;</li>
+	<li><strong>class B</strong>: the first octet ranges from 128 to 191;</li>
+	<li><strong>class C</strong>: the first octet ranges from 192 to 223;</li>
+	<li>The class D is not currently used.</li>
+	</ul>
+
+	<ul>Special meanings of some addresses:
+	<li>The <strong>special address starting from 127</strong> represents
+         the local computer, independently from the real network, and it is 
+	mainly used for testing purposes;</li>
+	<li>The <strong>special addresses starting from 224</strong> are 
+	reserved for particular uses, such as <strong>multicasting</strong>.
+</p>
+
+<p>
+Machines which are not connected to the outside world need not to have 
+globally unique IP addresses. The <a href="http://tools.ietf.org/html/rfc1918">RFC 1918</a>
+ defines the ranges of addresses for <strong>private networks</strong>.
+ These addresses are never routed and belong to the following intervals:
+
+<ul>
+	<li><strong>10.0.0.0 - 10.255.255.255</strong>, for class A;</li>
+	<li><strong>172.16.0.0 - 172.31.255.255</strong>, for class B;</li>
+	<li><strong>192.168.0.0 - 192.168.255.255</strong>, for class C;</li>
+</ul>
+
+</p>
+
+<h4>Other resources</h4>
+<p> 
+	To access other web resources and more details about <strong>internet 
+	addresses</strong>, go to the <a href="manual://ip.html">IP manual page</a> or read an <a href="manual://rulefields.html">overview of the 
+	TCP/IP protocol</a>, always in the <a href="manual://welcome.html">manual</a> section of iqFirewall.
+</p>
+
+</div> <!-- id="content" -->	
+
+</body>
+
+</html>

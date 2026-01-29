@@ -1,0 +1,172 @@
+#!/bin/bash
+set -eu
+
+
+PREFIX=
+BASE_INSTALLDIR=${PREFIX}/usr/share
+BINDIR=${PREFIX}/usr/bin
+SHAREDOCDIR=${PREFIX}/usr/share/doc
+SHAREAPPDIR=${PREFIX}/usr/share/applications
+LIBDIR=${PREFIX}/usr/lib
+ETCDIR=${PREFIX}/etc
+KSRCDIR=/usr/src/ipfire-wall/kernel
+
+ok()
+{
+	echo -e  "\t\e[1;32mOk\e[0m"
+}
+
+fail() 
+{
+	echo -e  "\n\e[1;31mFailed \e[1;31m:(\e[0m"
+	exit 1
+}
+
+kernel_successfully_built()
+{
+  echo -e "\n\e[1;32m*\e[0m successfully built \e[4mipfire\e[0m kernel module!"
+  echo -e "\e[1;32m*\e[0m Congratulations!\n"
+}
+
+fail_gcc_check() 
+{
+	echo -e  "\n\e[1;31m*\e[0m compiler version check failed."
+	echo -e "\e[1;31m*\e[0m This means that you have upgraded (or downgraded?) your compiler since you"
+	echo -e "\e[1;31m*\e[0m installed the system, or that you have built the kernel with a compiler "
+	echo -e "\e[1;31m*\e[0m having a different version from the current one."
+	echo -e "\e[1;31m*\e[0m Cannot continue: ipfire-wall's kernel module must be compiled with the same"
+	echo -e "\e[1;31m*\e[0m gcc compiler used to build you running linux kernel."
+	exit 1
+}
+
+install_kernel_module()
+{
+	echo -e "\n\e[1;33m* \e[0mThe kernel module seems not to be installed in your system"
+	echo -e "  Install the package \e[1;32mipfirewall-kernel\e[0m to have your firewall"
+	echo -e "  ready for use."
+}
+
+final_message()
+{
+	echo -e "\e[1;32m* \e[0mTo start the firewall, type as root:"
+	echo -e "\e[1;37m  /etc/init.d/rc.ipfire start\e[0;37m <+ return>."
+	
+	echo -e "\e[1;32m* \e[0mTo stop the firewall, type as root:"
+	echo -e "\e[1;37m  /etc/init.d/rc.ipfire stop\e[0;37m <+ return>."
+	echo -e ""
+	echo -e "\e[1;32m* \e[0mEach user can start the firewall interface by the"
+	echo -e "  start menu clicking the entry located at:"
+	echo -e "  \e[1;30m[start] -> Internet -> IqFirewall Network Firewall\e[0m"
+	echo -e ""
+	echo -e "\e[1;32m* \e[0mTo autostart the firewall execution at the user"
+	echo -e "  session startup (with KDE or GNOME), start IQFirewall, go to"
+	echo -e "  \e[1;30mSettings menu -> Configure the Firewall Interface ->"
+	echo -e "  tick \"Automatically start with your desktop session\"\e[0m."
+}
+
+create_rc_links()
+{
+			
+	if [ -x ${ETCDIR}/rc0.d ]; then
+		echo -e "link: ${ETCDIR}/init.d/rc.ipfire -> ${ETCDIR}/rc0.d/K30ipfire"
+	ln -sf ${ETCDIR}/init.d/rc.ipfire ${ETCDIR}/rc0.d/K30ipfire
+	fi
+		
+	if [ -x ${ETCDIR}/rc6.d ]; then
+		echo -e "link: ${ETCDIR}/init.d/rc.ipfire -> ${ETCDIR}/rc6.d/K30ipfire"
+		ln -sf ${ETCDIR}/init.d/rc.ipfire ${ETCDIR}/rc6.d/K30ipfire
+	fi
+	
+	if [ -x ${ETCDIR}/rc2.d ]; then
+		echo -e "link: ${ETCDIR}/init.d/rc.ipfire -> ${ETCDIR}/rc2.d/S80ipfire"
+		ln -sf ${ETCDIR}/init.d/rc.ipfire ${ETCDIR}/rc2.d/S80ipfire
+	fi
+		
+	if [ -x ${ETCDIR}/rc3.d ]; then
+		echo -e "link: ${ETCDIR}/init.d/rc.ipfire -> ${ETCDIR}/rc3.d/S80ipfire"
+		ln -sf ${ETCDIR}/init.d/rc.ipfire ${ETCDIR}/rc3.d/S80ipfire
+	fi
+		
+	if [ -x ${ETCDIR}/rc.d ]; then
+		echo -e "rc.ipfire -> directory \e[1;33mrc.d\e[0m\n"
+		cp ipfi/rc.ipfire ${ETCDIR}/rc.d
+		chmod +x ${ETCDIR}/rc.d/rc.ipfire	
+	fi	
+		
+			
+}
+
+action="$1"
+self="$(basename "$0")"
+
+if [ "$action" == "configure" ]; then
+
+echo -e "\e[1;32m* Configuring package \""$self"\""
+
+echo -e  "\e[1;32m* \e[0mBuilding ipfire-wall kernel module"
+echo -e  "\e[1;33m* \e[0mshould it fail, check that the packages \e[4mlinux-headers\e[0m and \e[4mbuild-essential\e[0m"
+echo -e  "\e[1;33m* \e[0mare correctly installed"
+echo -e  "\e[1;33m* \e[0mThis can be done via \e[4msynaptic\e[0m graphical package manager, searching for "
+echo -e  "\e[1;33m* \e[0m\e[4mlinux-headers\e[0m and \e[4mbuild-essential\e[0m packages and installing them,"
+echo -e  "\e[1;33m* \e[0mor via \e[4mapt-get\e[0m executing \"sudo apt-get install build-essential linux-headers-x.y.z\""
+echo -e  "\e[1;33m* \e[0mwhere x, y and z reflects the \e[4mbuild-essential\e[0m package name (for ubuntu 8.10 its name is"
+echo -e  "\e[1;33m* \e[0m\"linux-headers-2.6.27-7\", for example."
+echo -e  "\e[1;32m* \e[0mPlease wait while compiling \e[4mipfi\e[0m kernel module..."
+
+echo -e "  - building compiler compatibility check utility: "
+
+CURRENTDIR=`pwd`
+
+(cd $KSRCDIR/gcc-check &&  gcc -o gcc_version_check gcc_version_check.c && ok) || fail
+echo -e  "   - checking C compiler version compatibility:"
+($KSRCDIR/gcc-check/gcc_version_check "`cat /proc/version`" && ok && rm -f $KSRCDIR/gcc-check/gcc_version_check) || fail_gcc_check
+
+echo -e "  - building \e[4mipfire\e[0m kernel module:"
+(cd $KSRCDIR && make && make install && kernel_successfully_built && make distclean) || fail
+
+echo -e "\e[1;32m* \e[0mBacking to directory \""$CURRENTDIR"\" to perform final tasks."
+cd $CURRENTDIR
+
+echo -e  "\e[1;32m* \e[0mDoing post installation configuration...\e[0m"
+echo -e -n  "\e[1;32m* \e[0mInstalling startup links...\t"
+
+(create_rc_links && ok) || fail
+
+
+echo -e -n  "\e[1;32m* \e[0mInstalling iqfirewall administrator's launchers..."
+	  which kdesu && (echo -e -n "\e[1;32m*\e[0m  \"kdesu\" found: using it to launch iqfire-wall as root"  \
+		&& cp ${BASE_INSTALLDIR}/iqfire/config/iqfire-root-kde.desktop ${SHAREAPPDIR} && ok || fail)  \
+		|| (which gksu && (echo -e -n "\e[1;32m*\e[0m  \"gksu\" found: using it to launch iqfire-wall as root"  \
+		&& cp ${BASE_INSTALLDIR}/iqfire/config/iqfire-root-gnome.desktop ${SHAREAPPDIR} && ok || fail) )
+	
+	
+	  echo -e -n  "\e[1;32m* \e[0mCreating documentation symbolic links in ${SHAREDOCDIR}/iqfire...\t"
+	  (ln -sf ${BASE_INSTALLDIR}/iqfire/doc ${BASE_INSTALLDIR}/doc/iqfire && \
+	   ln -sf ${BASE_INSTALLDIR}/ipfire/doc ${BASE_INSTALLDIR}/doc/ipfire && ok) || fail
+
+echo -e  -n "\e[1;32m* \e[0mGenerating kernel module dependencies...\t"
+(depmod -ae && ok) || fail
+
+echo -e  -n "\e[1;32m* \e[0mTrying a sample kernel module loading (\"\e[0;37mmodprobe ipfi\"\e[0m)...\t"
+(modprobe ipfi && ok) || fail
+
+echo -e  -n "\e[1;32m* \e[0mTrying a sample kernel module unloading (\"\e[0;37mmodprobe -r ipfi\e[0m\")..."
+(modprobe -r ipfi && ok) || fail
+
+echo -e "\n\e[1;32m*\e[0m Successfully installed iqfire-wall for "
+echo -e "  for ubuntu/kubuntu linux"
+
+final_message
+
+echo -e ""
+echo -e "\e[1;32m* \e[0m-------------------------------------------------------------------------------"
+echo -e "\e[1;32m* \e[0mWikipedia at http://ipfire-wall.wiki.sourceforge.net/"
+echo -e "\e[1;32m* \e[0mDiscussion forums at http://sourceforge.net/forum/?group_id=149121"
+echo -e "\e[1;32m* \e[0mProject home page on the developer web site: http://www.giacomos.it/iqfire/index.html"
+echo -e "  and http://www.giacomos.it/ipfire/index.html"
+echo -e "\e[1;32m* \e[0mubuntu/kubuntu specific installation guide at http://www.giacomos.it/iqfire/ubuntu.html"
+echo -e "\e[1;32m* \e[0m-------------------------------------------------------------------------------"
+echo -e "\n"
+
+fi
+

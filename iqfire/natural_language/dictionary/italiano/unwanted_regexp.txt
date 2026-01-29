@@ -1,0 +1,6 @@
+# each regexp to be removed in a separate line
+# escaped version please.
+#
+# remove 1- 1) 23- 23* at the beginning of a line
+# ^ always signifies the start of the string (http://doc.trolltech.com/4.4/qregexp.html)
+(?:^|\n){1,1}[0-9]{1,2}[\.\)\-\*\s+]+

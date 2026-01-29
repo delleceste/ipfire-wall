@@ -1,0 +1,27 @@
+# Regular expressions to be captured.
+# definitions that are used inside $_REGEXP{} are taken from regexps.def
+
+# Generic IP address: simple or with netmask, or interval
+($_REGEXP{IP_REGEXP}(?:[/\-]{0,1}(?:(?:$_REGEXP{IP_REGEXP})|(?:[3][0-2]|[1-2][0-9]|[0-9]))){0,1})::GENERIC_IP{ENDREGEXP}
+
+# Separate ips
+# 2
+($_REGEXP{IP_REGEXP}(?:[,;e\s+]{1,1})$_REGEXP{IP_REGEXP})::2GENERIC_IPS{ENDREGEXP}
+
+
+($_REGEXP{IP_REGEXP})::IP_ADDRESS{ENDREGEXP}
+
+($_REGEXP{PORT_REGEXP}(?:(?:[-])(?:$_REGEXP{PORT_REGEXP})){0,1})::GENERIC_PORT{ENDREGEXP}
+
+($_REGEXP{PORT_REGEXP})::PORT_REGEXP{ENDREGEXP}
+
+($_REGEXP{IF_REGEXP})::IF_REGEXP{ENDREGEXP}
+
+($_REGEXP{FWD})::FWD_REGEXP{ENDREGEXP}
+
+($_REGEXP{ANY})::ANY_REGEXP{ENDREGEXP}
+
+# tcp flags
+
+
+

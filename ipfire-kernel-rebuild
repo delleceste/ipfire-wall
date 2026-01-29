@@ -1,0 +1,109 @@
+#!/bin/bash
+
+KERNELSRCDIR=/usr/src/IPFIRE-wall/kernel
+
+# some print utilities directly taken from the install.sh script
+
+ok()
+{
+	echo -e  "\t\e[1;32mOk\e[0m"
+}
+
+fail() 
+{
+	echo -e  "\n\e[1;31mFailed \e[1;31m:(\e[0m"
+	exit 1
+}
+
+fail_unloading_module()
+{
+	echo -e "   \e[1;31m* failed: \e[1;4;35mhint\e[0m: close ipfire-wall or iqfire-wall if running and run again the script\e[0m\n" 
+	exit 1
+}
+
+
+fail_gcc_check() 
+{
+	echo -e  "\n\e[1;31m*\e[0m compiler version check failed."
+	echo -e "\e[1;31m*\e[0m This means that you have upgraded (or downgraded?) your compiler since you"
+	echo -e "\e[1;31m*\e[0m installed the system, or that you have built the kernel with a compiler "
+	echo -e "\e[1;31m*\e[0m having a different version from the current one."
+	echo -e "\e[1;31m*\e[0m Cannot continue: ipfire-wall's kernel module must be compiled with the same"
+	echo -e "\e[1;31m*\e[0m gcc compiler used to build you running linux kernel."
+	exit 1
+}
+
+# end of print utilities taken from install.sh
+
+if [ "${USER}" != "root" ]; then
+  echo -e "\n\e[1;31m*\e[0m Only root is able to run this script. "
+  echo -e "\e[1;31m*\e[0m Execute it as root or type \"sudo ipfire-kernel-rebuild\" in ubuntu/kubuntu systems\n"
+  exit 1
+fi
+
+echo -e -n "\n\e[1;32m* \e[0mRebuilding ipfire-wall kernel module for the kernel: "
+echo -e "\e[0;32m " `uname -r` "\e[0m\n"
+
+
+if [ `ps -ef | grep "iqfire" | grep -v grep | wc -l` -ne "0" ]; then
+          echo -e "\n\e[1;31m* \e[0m the program \"iqfire\" is running. Please close the application and try again.\n"
+          exit 1
+fi
+
+# check that the compiler version used to build the kernel exactly matches the version of the 
+# current gcc compiler:
+echo -e  "* Performing pre installation tasks:"
+  echo -e	 "  - checking that the compiler version used to build the kernel matches the current gcc version..."
+  echo -e -n "    - building the tester:"
+  if [ -e $KERNELSRCDIR/gcc-check/gcc_version_check ]; then
+    echo -e -n "    - removing old binary gcc-version-check before (re)building it"
+    rm -f $KERNELSRCDIR/gcc-check/gcc_version_check
+  fi
+  
+  (cd $KERNELSRCDIR/gcc-check && gcc -o gcc_version_check gcc_version_check.c && ok) || fail_gcc_check
+  echo -e  "    - checking versions..."
+  ($KERNELSRCDIR/gcc-check/gcc_version_check "`cat /proc/version`" && ok && rm -f $KERNELSRCDIR/gcc-check/gcc_version_check) || fail
+
+echo -e -n  "1. Changing directory: going into kernel sources..."
+	(cd $KERNELSRCDIR && ok) || fail
+	echo -e -n "Gone into: "
+	pwd
+	
+	echo -e -n  "2. \e[1;4;32mBuilding\e[0m the kernel module..."
+	(cd $KERNELSRCDIR && make clean && make) || fail
+	echo -e "   Successfully built the kernel module\n"
+	
+	echo -e  "3. \e[1;4;32mInstalling\e[0m the kernel module..."
+	(cd $KERNELSRCDIR && make install) || fail
+	echo -e "   Successfully installed the kernel module\n"
+	
+	echo -e  -n "4. Trying a sample kernel module loading..."
+	(modprobe ipfi && ok) || fail
+	
+	echo -e  -n "5. Trying a sample kernel module unloading..."
+	(modprobe -r ipfi && ok) || fail_unloading_module
+	
+	echo -e ""	
+	echo -e "\e[1;32m:)) \e[0mSuccessfully installed the kernel module and"
+	echo -e "    all the tools to run your console interface personal firewall!"
+	echo -e ""
+	echo -e "\e[1;4;32mNOTES\e[0m:"
+	echo -e "\e[1;32m* \e[0mTo start the firewall, type as root:"
+	echo -e "\e[0m  /etc/init.d/rc.ipfire start\e[0;37m <+ return>."
+	
+	echo -e "\e[1;32m* \e[0mTo stop the firewall, type as root:"
+	echo -e "\e[0m  /etc/init.d/rc.ipfire stop\e[0;37m <+ return>."
+	echo -e ""
+	echo -e "\e[1;32m* \e[0mEach user can start the firewall interface by the"
+	echo -e "  start menu clicking the entry located at:"
+	echo -e "  \e[1;30m[start] -> Internet -> IqFirewall Network Firewall\e[0m"
+	
+	echo -e "--------------------------------------------------------------------------------"
+	echo -e "\e[1;4;33mIMPORTANT\e[0m: Should you upgrade your kernel (installing a new kernel image"
+	echo -e "           or rebuilding the kernel), run ipfire-kernel-rebuild again to rebuild the"
+	echo -e "           ipfire-wall kernel module."
+	echo -e "           For this purpose, a copy of the kernel sources has been installed into the "
+	echo -e "           directory \e[1;4;37m/usr/src/ipfire-wall\e[0m. Do not remove it."
+	echo -e "--------------------------------------------------------------------------------"
+	
+	

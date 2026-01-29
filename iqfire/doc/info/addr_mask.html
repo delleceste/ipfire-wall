@@ -1,0 +1,55 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<link rel="stylesheet" href="info.css" type="text/css" /> 
+<head>
+	<title></title>
+	
+	
+	
+</head>
+			
+			
+<body>
+
+<h3>Address Mask</h3>
+
+<div id="content">
+	
+<p>
+	Computer networks that use the <em>internet protocol</em> 
+	use the concept of <strong>subnetwork</strong> to divide the 
+	<em>address space</em> into ranges of <strong>logical addresses</strong>.
+	A <strong>subnet</strong> is identified by its <strong>base address</strong> and the <strong>subnet mask</strong>.
+</p>
+<p>
+	Specifying here an <strong>address and netmask</strong> pair allows 
+ 	to declare an interval of addresses to which the rule must be 
+	applied. <br/>
+	In fact, <strong>iqfirewall</strong> converts a couple <strong>IP/
+	netmask</strong> into an interval of <strong>IP</strong>s.
+</p>
+
+<p>
+	For instance:
+	<ul>
+		<li>192.168.0.0/255.255.255.0 is equivalent to 
+			192.168.0.0-192.168.0.255, and</li>
+		<li>192.168.0.0/255.255.255.248 is equivalent to
+			192.168.0.0-192.168.0.7</li>
+	</ul>
+</p>
+
+<p>
+	If you need to learn more about <strong>subnetworks</strong> and 
+	<strong>netmasks</strong> you can read the <a href="manual://ip.html">
+	IP addresses manual page</a>, which contains external web links
+	 treating such argument.
+</p>
+
+
+</div> <!-- id="content" -->	
+
+</body>
+
+</html>

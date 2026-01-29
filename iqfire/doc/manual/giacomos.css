@@ -1,0 +1,336 @@
+html
+{
+	background-color:rgb(255,251,242);
+	margin:10px;
+	padding:5px;
+	max-width:900px;
+}
+
+#banner
+{
+	//float:left;
+/* 	display:block; */
+}
+
+div[id='banner_gi']
+{
+ 	display:block; 
+	text-align:center;
+	border:thin rgb(180,161,115) solid;
+	background-color:rgb(245,239,221);
+	margin:5px;
+/* 	max-width:676px; */
+}
+
+div[id='sysinfo']
+{
+ display:none; 
+	position:relative;
+	float:right;
+/* 	display:block; */
+	font-size:12pt;
+	color:black;
+	border-style:solid;
+	border-width:thin;
+	border:thin rgb(180,161,115) solid;
+/* 	background-color:rgb(98%,98%,97%); */
+	background-color:rgb(245,239,221);
+	padding:5px;
+	margin-left:7px;
+	margin-right:7px;
+	width:5cm;
+	max-height:58px;
+}
+
+div[id='sysinfo'] p
+{
+	padding:2px;
+}
+
+div[id='linuxday2006'] p, a
+{
+	font-size:8pt;
+	font-weight:normal;
+}
+
+
+/* link vistitati o non ancora visitati */
+a:link
+{
+	color:rgb(25,19,1);
+	font-size:12pt;
+}
+
+a:visited
+{
+	color:rgb(35,29,11);
+	font-size:12pt;
+}
+
+div[id='main_content']
+{
+	display:block;
+	
+}
+
+div[id='main_content'] a, div[id='main_content'] p, li
+{
+	font-size:10pt;
+	font-family:sans, sans-serif;
+}
+
+#contenuto
+{
+	display:block;
+	font-size:12pt;
+}
+
+.elemento_laterale
+{
+	display:block;
+	border:thin rgb(180,161,115) solid;
+	padding:5px;
+	margin:5px;
+	background-color:rgb(245,239,221);
+	width:5cm;
+}
+
+.elemento_laterale_linux_day
+{
+	display:block;
+	border:thin rgb(180,161,115) solid;
+	padding:5px;
+	margin:5px;
+	background-color:rgb(245,239,221);
+	width:8cm;
+	font-size:7pt;
+}
+
+
+
+.elemento_laterale a, .elemento_laterale p
+{
+	font-size:10pt;
+}
+
+.elemento_laterale_linux_day a, .elemento_laterale_linux_day  p
+{
+	font-size:7pt;
+	font-weight:normal;
+}
+
+
+div[id='menu_laterali']
+{
+/* 	display:block; */
+/* 	position:relative; */
+	float:right;
+}
+
+div[id='frame_temporanei']
+{
+	//display:block;
+	//position:relative;
+	float:right;
+}
+
+div[id='menu_riassunto']
+{
+	/*position:absolute;
+	right:0.5cm;
+	top:3cm;*/
+}
+
+div[id='area_privata']
+/* Sulla pagina privata.php */
+{
+	display:block;
+}
+
+div[id='ipfire']
+{
+	display:block;
+/* 	position:absolute; */
+/* 	right:0.5cm; */
+/* 	top:16.2cm; */
+	text-align:left;
+	text-decoration:none;	
+}
+
+div[id='ipfire'] p, div[id='ipfire'] a
+{
+	font-size:11pt;
+}
+
+div[id='google']
+{
+	display:block;
+/* 	position:absolute; */
+/* 	right:0.5cm; */
+/* 	top:20.1cm; */
+}
+
+div[id='gif_natale']
+{
+	display:block;
+/* 	position:absolute; */
+/* 	right:6.5cm; */
+/* 	top:3cm; */
+}
+
+img[id='xmas']
+{
+		height:50.1mm;
+		width:42.1mm; 
+}
+
+div[id='auguri']
+{
+	display:block;
+	/*position:absolute;
+	right:6.5cm;
+	top:10cm;*/
+	text-decoration:blink;
+}
+
+/*table[id="google_form"]*/
+#google_form
+{
+	max-width:2.5cm;
+}
+
+.elemento_laterale > a
+{
+	display:block;
+	color:rgb(25,19,1);
+}
+
+.elemento_laterale > p
+{
+	display:block;
+/* 	color:rgb(42%,20%,40%); */
+	color:black;
+	font-size:13pt;
+	font-weight:bold;
+	text-decoration:none;
+	text-transform:capitalize;
+	text-align:center;
+	font-family:sans,sans-serif,serif;
+}
+
+
+p[id='new_ipfire']
+{
+	display:inline;
+	color:black;
+	font-size:11pt;
+	text-decoration:blink;
+}
+
+a[id='new_ipfire_link']
+{
+	display:inline;
+}
+
+.elemento_laterale label
+{
+	color:rgb(25,19,1);
+	margin:2px;
+	font-size:11pt;
+	font-weight:bold;
+	text-align:justify;
+}
+
+.elemento_laterale input
+{
+	margin:5px;
+}
+
+/* cambio colore passando sopra col mouse ai menu' laterali */
+.elemento_laterale:hover
+{
+/* 	background-color:rgb(217,208,186); */
+	background-color:rgb(240,234,216);
+}
+
+div[id='recensione_iglu'] p, div[id='recensione_iglu']  a
+{
+	font-size:10pt;
+	font-weight:bold;
+}
+
+div[id='counter']
+{
+ 	display:none; 
+	position:absolute;
+	right:0.5cm;
+	top:24.6cm; 
+	font-size:15pt;
+}
+
+#banner > p
+{
+	font-size:14pt;
+	color:rgb(25,19,1);
+	text-align:justify;
+	margin:1px;
+}
+
+img
+{
+	display:block;
+	border:thin rgb(180,161,115) solid;
+	margin:5px;
+	padding:3px;
+	height:223px;
+/* 	width:53.1mm; */
+}
+
+#footnotes  p
+{
+	display:block;
+	color:black;
+	max-width:10cm;
+}
+
+.table_admin
+{
+	font-size:12pt;
+	color:black;
+	margin:5px;
+	padding:5px;
+	background-color:rgb(245,239,221);
+}
+
+.table_admin th
+{
+	font-weight:bold;
+	text-align:left;
+	padding:7px;
+	margin:7px;
+}
+
+.table_admin td
+{
+	text-align:left;
+	padding:7px;
+	margin:7px;
+}
+
+a[id='rss_href']
+{
+	font-size:10pt;
+	text-decoration:none;
+	display:inline;
+	color:black;
+}
+
+img[id='rss_img']
+{
+	width:16px;
+	height:16px;
+	border:none;
+	display:inline;
+	margin:0px;
+	padding:0px;
+}

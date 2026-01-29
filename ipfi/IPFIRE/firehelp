@@ -1,0 +1,86 @@
+
+_IPFIRE-wall HELP
+Written by Giacomo Strangolino - (C) 2005
+
+Read html documentation for details and more help readability.
+See _carefully_ README in main IPFIRE directory.
+
+Visit and check for software and documentation updates:
+_www.giacomos.it/ipfire
+
+Write to:
+_jacum@libero.it
+or
+_delleceste@gmail.com
+for any question or bug!
+
+
+_IPFIRE startup.
+
+IPFIREwall can be started from any command line prompt. When launched, IPFIRE reads a configuration file named options and located in the subdirectory IPFIRE of user's home folder. There default configuration options reside and are applied if no correction is given by specifying command line directives. A list of argument options follows:
+Unprivileged user options.
+
+_-dns INTEGER
+    Enables blacksite rules. User can add a line to the file named blacksites and located in IPFIRE directory indicating the name of an Internet site, and firewall will block any connection towards that node. It is necessary for this to work that output UDP connections towards dns service (port 53) are enabled. See rule fields explanation or rule adding for further information. This option must be followed by an integer in seconds indicating the refresh time of name resolving. Every INTEGER seconds, resolver wakes up and reloads blacklist rules in kernel rewriting also configuration file blacklist. A reasonable interval is some hours.
+    A tipical line in blacksites file might be:
+    www.badsite.com . 
+_-nodns
+    Disables dns resolution and so updating of blacklisted sites. 
+_-log INTEGER
+    Indicates the logging level of user interface. Integer can be in the rank between 0 and 7. If loglevel is less than 6, translation operations are not shown in user interface. Else if loglevel is less than 5, only implicit responses and denial verdicts are logged. Else if INTEGER is less than 3, only implicit responses are logged. Rather than acting on this parameter, administrator should act on loguser parameter, which sets kernel _- user communication. 
+_-allowed alternative_namefile
+    Specify an alternative file for permission rules database. Permission rules will be read/written to this file.
+_-blacklist namefile
+    Specify an alternate file for denial rules database. 
+_-blacksites namefile
+    Specify an alternate file to look for the list of blocked Internet sites. 
+_-translation namefile
+    Specify an alternate file to look for the list of translation rules. Only root can apply translation rules. 
+_-quiet
+    User interface will not do any pinting on console of information received from kernel space. Such information is anyway sent on netlink socket. 
+daemon or _-daemon
+    Detach userspace firewall interface from local console and run in background, continuing to print output to terminal. 
+quiet_daemon or _-quiet_daemon
+    Detach userspace firewall interface from local console and run in background, stopping to print output to terminal. 
+_-services
+    Port numbers are resolved in the name of the corresponding service. Services are read by getservbyname() from the system file /etc/hosts , and dynamically loaded into memory. In this way, all calls to resolving function lookup in memory allocated vector, not in file, assuring high performance in resolving process. As a result, you will read in console the name of the service, e.g. www instead of the port number. 
+_-noservices
+    Leaves information about ports in numeric form. 
+
+Administrative options.
+_-noflush
+    This option tells firewall not to delete rules from lists when user interface exits. This is useful for loading firewall at startup with administrator's rules and leaving then users to apply their policies and watch network traffic. Normal users' rules will be added at the tail of already loaded kernel lists at startup, and deleted when interface goes off. Note that IPFIRE is born to run on a linux desktop environment, and so only one user interface can be loaded at time. 
+flush or _-flush
+    Starts up user interface only with the aim of removing rules previously loaded. This can happen when system goes down or when root decides to stop firewall. 
+_-kloglevel INT
+    Sets kernel log level of system logging (i.e. syslog, or messages). It's not used for now, and so leave it be. Anyway, INT can be between 0 and 7 (3 bits).
+_-loguser INT
+    This is an important issue: sets the logging level of messages going from kernel to userspace. If all packets were logged, atomic kernel context would send up to userspace a lot of packets in a short time, overloading IPFIRE interface. The best setting is 1: it's called smart logging and only packets which are not already been sent to userspace reach interface. Anyway,
+    INT = 0 means no packet will be sent to user (no logging, fast).
+    INT = 1 means smartlog: only new packets are sent.
+    INT >= 6: all packets and information is sent to user.
+    INT >= 4: negative verdicts are sent.
+    INT >= 5: positive and negative responses are sent
+    INT >= 2: implicit responses are sent.
+    Remember that only options 1 and 6 have been tested.
+    See here for further implications about logging. 
+_-logfile namefile
+    Log to file namefile instead of default in options file. 
+_-clearlog
+    Log file will be cleared before new information is written.
+_-allstate
+    All rules in firewall will be treated as stateful, independently of the fact they have the field state set or not.
+_-user
+    This option allows unprivileged users to insert their own rules into kernel firewall. It is usally combined with load flag. 
+_-nouser
+    This option explicitly disallows unprivileged users to insert their own rules into kernel firewall. 
+load or _-load
+    This flag causes interface to load rules into firewall and then exit immediately. It is useful to startup firewall and then leave users the chance to add their rules. For this to work, user option must be set in configuration file or specified in command line. 
+rc or _-rc
+    This flag is the same as load, but just little information is printed at startup. If you don't want much information on terminal at load time, such as when launching ipfire from an rc script, specify rc instead of load. 
+_-rmmod
+    When user interface exits, it unloads kernel module. This is useful at shutdown time, when system is restored to its state before firewall was loaded. If user interface goes off and module remains loaded in kernel space, rules will be flushed (unless _-noflush was given), and responses will always be unknown (0) from then on. So, default policy will be applied after no matching rule is found. See modifying default policy for details. 
+
+Note that command line options can be given with "_-" or "/" as first character. Options with a meaning concerning the state of the program can be given without leading "_-" or "/", as load.
+Command line options overwrite default options and directives loaded from configuration file options.
+

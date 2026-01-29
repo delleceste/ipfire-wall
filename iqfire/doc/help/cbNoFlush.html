@@ -1,0 +1,69 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<link rel="stylesheet" href="info.css" type="text/css" /> 
+<head>
+	<title></title>	
+</head>
+
+			
+<body>
+
+<h3>Leave rules loaded at exit</h3>
+
+<div id="content">
+
+<p>
+If you enable this feature, then when <strong>ipfire-wall or iqfire-wall</strong> 
+exits, it leaves all the rules loaded into the kernel, including the kernel module.
+
+</p>
+
+<p>
+	Note that this option is fundamental to let the other users configure 
+	the firewall by themselves, while respecting the <strong>administrator's</strong>
+	decisions.
+</p>
+
+<h3>Note</h3>
+<p>
+	This option affects also the command line interface <strong>ipfire-wall</strong>.
+	<br/>
+	If you leave the rules loaded, then each unprivileged user's rule will be 
+	added to the end of the root ruleset, thus granting the administrator's 
+	policies to have the first priority.
+</p>
+
+<p>
+	On the other hand, if this feature is disabled, when the user interface is turned off
+	all the rules are removed and this means:
+	<ul>
+	<li>no rules are loaded: the default policy (normally <strong>block</strong>) is applied;</li>
+	<li>every normal user can add his own rules (if allowed in the check box above) and they will be
+		the only rules consulted. </li> 
+	</ul>
+</p>
+
+<h3>Important note</h3>
+
+<p>
+	It is important that the administrator configures the firewall <em>as root</em> 
+	only adding the policies strictly affecting the <em>system services that require 
+	a network connection and the other fundamental services which <strong>in every 
+	circumstance</strong> he wants to be applied, let's say from system startup to
+	system shutdown</em>.
+	
+</p>
+
+<p>
+	For every other kind of service, especially those specific to the normal 
+	users of the computer, let each unprivileged user configure his own policies.<br/>
+	Moreover, normal user's policies <strong>are always removed from the firewall</strong>
+	when the user interface (be it <em>ipfire-wall or iqfire-wall</em>) is turned off.
+</p>
+
+</div> <!-- id="content" -->	
+
+</body>
+
+</html>

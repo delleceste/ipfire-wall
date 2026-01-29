@@ -1,0 +1,150 @@
+# Giacomo Strangolino 
+# jacum@libero.it
+
+CC = gcc
+LD = ld -lc
+OUTPROGNAME = ipfire
+FLAGS = -Wall -O3  -g
+RULENAME_FLAGS = -DENABLE_RULENAME
+#KDIR    := /lib/modules/$(shell uname -r)/build
+INCPATH = -Isrc/includes -Ig_getcharlib
+VPATH = src:src/includes:g_getcharlib
+LIBDIR += .
+LIBS += -lipfire_common 
+
+# Where to look for dependencies
+
+OBJS =  obj/interface.o obj/ipfire_userspace.o obj/interface_functions.o \
+	obj/mailer.o obj/resolver.o obj/semafori.o  \
+	obj/g_getcharlib.o src/print_utils.c
+	
+SRCS =  src/ipfire_userspace.c src/interface.c src/interface_functions.c \
+	src/libnetl.c src/mailer.c src/resolver.c src/semafori.c src/utils.c \
+	g_getcharlib/g_getcharlib.c src/languages.c 
+
+default: message commonlib objs ipfire
+
+ipfire: objs
+	$(CC) $(FLAGS) $(RULENAME_FLAGS) $(INCPATH)  -o $@ $(OBJS) -L$(LIBDIR) $(LIBS)
+	@echo 
+	@echo Digitare ./$(OUTPROGNAME) per avviare IPFIRE.
+	@echo
+
+message:
+	@echo
+	@echo compilazione di IPFIRE in corso con il supporto per i nomi alle regole.
+	@echo Digitare make all_no_rulename per disabilitare i nomi delle regole.
+	@echo
+# Prepariamo il file build.h con le informazioni su sistema e la data di compilazione
+	@echo
+	@echo Scrittura della data di compilazione e del tipo di sistema...
+	echo "" > src/includes/build.h
+	printf "/* Compilation system and compilation date.\n * Written by Makefile (userspace) */\n#define _BUILD_DATE \"%s %s %s %s %s %s\"\n#define _BUILD_SYS \"%s %s %s\"\n\n" `date`  `uname -sro` > src/includes/build.h
+	@echo
+	@echo Ok. Compilazione dei sorgenti...
+	@echo	
+
+obj/ipfire_userspace.o: ipfire_userspace.c ipfire_userspace.h src/includes/interface.h
+	$(CC) $(FLAGS) $(RULENAME_FLAGS) $(INCPATH) -c -o $@ $< -L$(LIBDIR) $(LIBS)
+
+objs :  obj/semafori.o obj/ipfire_userspace.o obj/interface.o obj/interface_functions.o  obj/resolver.o  \
+	obj/utils.o obj/mailer.o obj/g_getcharlib.o
+#	$(CC) $(FLAGS) $(RULENAME_FLAGS) $(INCPATH) -c -o $@ $< 
+
+obj/mailer.o : mailer.c mailer.h interface.h ipfire_userspace.h languages.h
+	$(CC) $(FLAGS) $(RULENAME_FLAGS) $(INCPATH)  -c -o $@ $< 
+
+obj/languages.o: languages.c languages.h colors.h ipfire_userspace.h
+	$(CC) $(FLAGS) $(RULENAME_FLAGS) $(INCPATH) -c -o $@ $< 
+
+obj/interface.o: interface.c interface.h libnetl.h ipfire_userspace.h g_getcharlib/g_getcharlib.h interface.h \
+	semafori.h mailer.h languages.h
+	$(CC) $(FLAGS) $(RULENAME_FLAGS) $(INCPATH) -c -o $@ $< 
+
+obj/interface_functions.o :interface_functions.c ipfire_userspace.h libnetl.h g_getcharlib/g_getcharlib.h interface.h \
+	mailer.h languages.h
+	$(CC) $(FLAGS) $(RULENAME_FLAGS) $(INCPATH) -c -o $@ $<
+
+obj/libnetl.o : libnetl.c libnetl.h
+	$(CC) $(FLAGS) $(RULENAME_FLAGS) $(INCPATH) -c -o $@ $<
+
+obj/resolver.o : resolver.c resolver.h semafori.h
+	$(CC) $(FLAGS) $(RULENAME_FLAGS) $(INCPATH) -c -o $@ $< 
+
+obj/semafori.o : semafori.c semafori.h ipfire_userspace.h
+	$(CC) $(FLAGS) $(RULENAME_FLAGS) $(INCPATH) -c -o $@ $<
+
+
+obj/g_getcharlib.o : g_getcharlib/g_getcharlib.c g_getcharlib/g_getcharlib.h
+	$(CC) $(FLAGS) $(RULENAME_FLAGS) $(INCPATH) -c -o $@ $<
+
+obj/utils.o : utils.c colors.h log_codes.h languages.h utils.h
+	$(CC) $(FLAGS) $(RULENAME_FLAGS) $(INCPATH) -c -o $@ $< 
+obj/print_utils.o : print_utils.c utils.c utils.h languages.h 
+
+#objs:	
+#$(CC) $(FLAGS) $(RULENAME_FLAGS) -c $(SRCS) $<
+
+.c.o:
+	$(CC) $(FLAGS)  $(INCPATH)  $(RULENAME_FLAGS) -c -o $*.o $<
+
+commonlib: 
+	$(CC)  -shared -Wl,-soname,libipfire_common.so $(RULENAME_FLAGS)  $(FLAGS) -o libipfire_common.so src/common.c src/libnetl.c src/languages.c src/utils.c 
+
+all_no_rulename: message2 unset_rulename  
+
+unset_rulename : 
+	$(CC) $(FLAGS)  $(SRCS) -o ipfire
+
+message2 :
+	@echo
+	@echo compilazione di IPFIRE in corso senza il supporto per i nomi alle regole...
+	@echo
+		
+install:
+	sh scripts/install.sh
+	@echo installazione in corso...
+	@echo copia dei file delle impostazioni e delle regole nella propria home directory...
+	cp IPFIRE ~/ -r
+	@echo copia della documentazione html nella directory IPFIRE della tua home...
+	cp ../doc ~/IPFIRE -r
+	@echo
+	@echo copia della cartella contenente il mailer nella directory IPFIRE della tua home...
+	cp mailer ~/IPFIRE -r
+	@echo
+	@echo Compilazione del mailer - Copyright c 1997 Ralf S. Engelschall 
+	@echo Copyright c 2000, 2001 Davide Libenzi 
+	@echo Vedi send-mail-1.2.0/smtpclient_main.c
+	@echo
+	cd send-mail-1.2.0 &&  gcc -o SMTPclient *.c
+	@echo
+	@echo Attenzione - le operazioni seguenti falliranno se non sei amministratore... 
+	@echo
+	@echo Copia di SMTPclient in /usr/local/bin...
+	cp send-mail-1.2.0/SMTPclient /usr/local/bin
+	@echo Fatto. 
+	@echo
+	@echo Puoi eseguire IPFIRE digitando ./ipfire da questa directory o semplicemente
+	@echo ipfire se lo amministratore ha precedentemente installato lo eseguibile nel sistema.
+	@echo Ricorda di leggere la documentazione nella tua cartella home/IPFIRE/doc, iniziando
+	@echo da index.html.
+	@echo
+	@echo buon divertimento.
+	@echo Giacomo S. giugno-novembre 2005
+	@echo delleceste@gmail.com
+	@echo Visita www.giacomos.it/ipfire e dintorni
+	@echo Leggi attentamente il file readme e la documentazione nella tua home directory
+	@echo dentro la cartella IPFIRE.
+	@echo 
+	@echo copia del file di esempio nella directory root/IPFIRE - fallir� se non sei amministratore
+	cp IPFIRE/allowed.base /root/IPFIRE/allowed
+	@echo copia dello eseguibile in /sbin/ipfire - fallir� se non sei amministratore -...
+	cp ipfire /sbin/
+	@echo
+
+clean:
+	@echo Rimozione dei file oggetto.
+	rm obj/*.o
+	rm mailer/SMTPclient
+	@echo Rimozione di ipfire - eseguibile.
+	rm ipfire	

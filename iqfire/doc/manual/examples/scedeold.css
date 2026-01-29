@@ -1,0 +1,209 @@
+html
+{
+	background-color:rgb(80%, 70%, 90%);
+	margin:10px;
+	padding:5px;
+	width:800px;
+	height:600px;
+}
+
+#menu_laterale
+{
+	display:block;
+	position:absolute;
+	left:20px;
+	width:100px;
+}
+
+/* link vistitati o non ancora visitati */
+a:link
+{
+	color:white;
+	font-weight:bold;
+	font-size:12pt;
+}
+
+a:visited
+{
+	color:rgb(88%,88%,89%);
+	font-weight:bold;
+	font-size:12pt;
+}
+
+#back
+{
+	border:thin white solid;
+	margin-bottom:5px;
+	padding:8px;
+	text-align:right;
+	font-size:11pt;
+}
+
+#back img
+{
+	display:none;
+	float:left;
+	position:relative;
+	top:-4px;
+	margin:0px;
+	padding:0px;
+}
+
+#title
+{
+	display:block;
+	font-size:18pt;
+	font-weight:bold;
+	text-transform:uppercase;
+	margin:2px;
+} 
+
+#naturalista
+{
+	text-transform:none;
+	font-size:15pt;
+	font-style:italic;
+	font-weight:normal;
+}
+
+#foglie_fiori_frutti
+{
+/* 	clear:left; */
+	display:block;
+	width:25cm;
+}
+
+img
+{
+	margin-left:25px;
+	border:thin white solid;
+	border-color:gray;
+	max-width:720px;
+}
+
+#img1
+{
+	float:left;
+	height:310px;
+	padding:30px;
+}
+
+#img2
+{
+/* 	display:block; */
+	/*position:absolute;
+	left:19.2cm;
+	top:17.2cm;*/
+	float:right;
+	width:232px;
+/* 	height:309px; */
+	margin:10px;
+	margin-left:15px;
+	margin-bottom:12px;
+}
+
+#img3
+{
+/* 	display:block; */
+	width:450px;
+/* 	clear:left; */
+/* 	clear:right; */
+}
+
+p
+{
+	width:25cm;
+	color:#445544;
+}
+
+#note
+{
+/* 	float:left; */
+/* 	clear:right; */
+}
+
+#content
+{
+	border:thin white solid;
+}
+
+#content p, #content div, #content dl,  #content ul
+{
+	font-size:12pt;
+	width:740px;
+	padding:14px;
+	text-align:justify;
+}
+
+#descrizione
+{
+	display:block;
+/* 	width:18cm; */
+	text-align:justify;
+	font-size:12pt;
+	font-family:Tahoma, sans, sans-serif;
+}
+
+h3
+{
+	text-transform:uppercase;
+	font-size:12pt;
+	font-weight:bold;
+	padding:12px;
+}
+
+h4
+{
+	text-transform:uppercase;
+	font-size:10pt;
+	font-weight:bold;
+	padding-top:5px;
+}
+
+#bibliografia
+{
+	font-size:10pt;
+	color:gray;
+	font-family: Tahoma, sans, sans-serif;
+}
+
+#bibliografia em
+{
+	font-weight:bold;
+	font-style:normal;
+}
+
+#bibliografia strong
+{
+	font-size:12pt;
+	font-variant:small-caps;
+	color:black;
+}
+
+#validation
+{
+	display:inline;
+}
+
+#validation img
+{
+	padding:10px;
+	border-style:none;
+}
+
+.footnote
+{
+	display:block;
+	font-size:12pt;
+}
+
+em
+{
+	font-weight:bold;
+	font-style:normal;
+}
+
+#foot_jumps
+{	
+	display:block;
+}

@@ -1,0 +1,12 @@
+#!/bin/bash
+set -eu
+
+echo -e "\e[1;32m*\e[0m Installing the iqfire-wall Linux firewall."
+echo -e "\e[1;33m*\e[0m Should it fail, check the dependencies and in case execute apt-get install with the packages:"
+echo -e "\e[1;33m*\e[0m kdelibs5, konsole (version 4.1.x or above) or konsole-kde4, libqwt5-qt4, libqwt5-qt4-dev,"
+echo -e "\e[1;33m*\e[0m libqt4-core or libqtcore4, libqt4-gui or libqtgui4, libqt4-dev, libstdc++6, linux-headers-generic,"
+echo -e "\e[1;33m*\e[0m build-essential, gcc, g++"
+echo -e "\n"
+echo -e "\e[1;32m* \e[0mPlease read all the messages displayed during and at the end of"
+echo -e "\e[1;32m* \e[0mthe installation process..."
+echo -e "\n"

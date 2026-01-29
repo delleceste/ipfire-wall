@@ -1,0 +1,53 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<link rel="stylesheet" href="info.css" type="text/css" /> 
+<head>
+	<title></title>	
+</head>
+
+			
+<body>
+
+<h3>Filter on the IP address</h3>
+
+<div id="content">
+
+<p>
+
+Click on the combo box and choose among the options:
+
+<ul>
+	<li>not to filter the packet on the IP address (<strong>ANY</strong>).
+	This means that the filter rule will not consider at all the internet
+	address;</li>
+	<li>filter on the basis of the internet address, be it source or destination: with this 
+	option it is enough that the address provided matches any between the <em>source
+ 	address or the destination address</em>(<strong>SOURCE OR
+		DESTINATION</strong>);</li>
+ 	<li>filter on the basis of the <strong>source</strong> network address
+		(<strong>SOURCE</strong>);</li>
+ 	<li>filter on the basis of the <strong>destination</strong> address
+	(<strong>DESTINATION</strong>);</li>
+ 	<li>filter on the basis of <strong>both</strong> 
+	the <strong>destination</strong> address <strong>and</strong> source 
+	address (<strong>SOURCE AND
+		DESTINATION</strong>). In this case, two boxes will appear on the right 
+	of this combo box to let you fill in the two addresses you want to filter on.</li>
+</ul>
+
+</p>
+
+<p>
+	Remember that you will have to provide a complete and correct 
+	IP address, in the form <strong>x.y.w.z</strong>, where x, y, w and 
+	z are integers between 0 and 255 (IPv4 address syntax).
+	Partial matches (e.g. 192.168.0 or 192.168.1.) are not allowed because
+	 the filtering is done on the numeric address, not on its string representation.
+</p>
+
+</div> <!-- id="content" -->	
+
+</body>
+
+</html>

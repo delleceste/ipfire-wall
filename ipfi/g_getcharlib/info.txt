@@ -1,0 +1,33 @@
+Funzione g_getchar per l'input output non bufferizzato e per la cattura dei caratteri speciali di funzione, controllo, 
+frecce, pagina-su, pagina-giu'... come definito in g_getcharlib.h.
+
+* compilazione
+
+linux:
+
+gcc -o chars arrows.c g_getcharlib.c [-Wall]
+
+windows (cygwin)
+
+gcc -o chars arrows.c g_getcharlib.c -DWINDOWS [-Wall]
+
+*
+
+Software libero.
+
+Per l'utilizzo della libreria si includa il file g_getcharlib.c nella compilazione dei sorgenti.
+Per usufruire delle funzionalita', si invochi g_getchar() al posto della getchar() tradizionale.
+Il file "arrows.c" contiene il main di test.
+
+In caso di necessita', per modificare il tempo d'attesa dei caratteri dallo standard input, si agisca
+sulla definizione: 
+
+#define uSLEEP_INTERVAL 15 
+
+alla riga 30 di g_getcharlib.h, impostando il numero di microsecondi desiderato.
+
+Software libero.
+
+Giacomo Strangolino
+Aprile 2005
+jacum@libero.it

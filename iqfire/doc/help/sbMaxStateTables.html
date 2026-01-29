@@ -1,0 +1,53 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<link rel="stylesheet" href="info.css" type="text/css" /> 
+<head>
+	<title></title>	
+</head>
+
+			
+<body>
+
+<h3>Maximum number of state tables</h3>
+
+<div id="content">
+
+<p>
+
+Click on the arrows or type a number to represent the maximum number of 
+state tables that the kernel is allowed to create before dropping any 
+new connection request.
+
+</p>
+
+<h3>Note</h3>
+<p>
+	When the number of state entries (i.e. the connections allowed 
+	by a <em>stateful rule</em>) reaches this number, no more stateful 
+	connections will be allowed, and you might experience that no new 
+	communications can be created until one or more <em>NAT entries</em> 
+	timeout and are deleted from the kernel list.
+</p>
+
+<h3>Loopback rules and stateful rules</h3>
+<p>
+	Keeping the <em>loopback</em> rules (for packets generated <em>and</em> destinated 
+	to the <em>local host</em>) <strong>stateless</strong>, as in the <em>default 
+	configuration of the policies</em> (the one loaded when you first installed 
+	iqfire-wall) is strongly recommended, because in most cases you always want to 
+	allow the traffic between applications running on the local host.
+</p>
+<p>
+	Many graphical interfaces require the loopback communication and so keep the 
+	related rules off the state machine, so that in case it saturates as described 
+	above, the local communication between the applications running on your host 
+	are not affected.
+</p>
+
+
+</div> <!-- id="content" -->	
+
+</body>
+
+</html>

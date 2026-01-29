@@ -1,0 +1,42 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<link rel="stylesheet" href="info.css" type="text/css" /> 
+<head>
+	<title></title>	
+</head>
+
+			
+<body>
+
+<h3>Maximum number of state tables</h3>
+
+<div id="content">
+
+<p>
+
+For each new connection tracked by the state machine, an associated <em>state table</em> is 
+created inside the kernel.
+<br/> This has been done to prevent <em>denial of service attacks</em>, that would create a 
+huge amount of state tables entries that would saturate the system memory.
+</p>
+
+<p>
+	Keep in mind that, if you make large use of stateful rules, which actually is 
+	encouraged, the firewall will allow at most this number of connections at a time.
+	If a new connection is requested and the number of state entries has reached the 
+	maximum allowed, <em>the new connection will be dropped</em>.
+	<br/>So it is important to <strong>tune this number to the amount of traffic 
+	expected in your network</strong> keeping it a bit higher than the maximum 
+	peak possible in your computer network. A first period of observation could be a 
+	good choice to finally tune this number to the optimum.
+</p>
+
+
+
+
+</div> <!-- id="content" -->	
+
+</body>
+
+</html>

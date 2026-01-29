@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<link rel="stylesheet" title="Light Maroon" href="iqfire-web.css" type="text/css" />
+<link rel="stylesheet" href="iqfire-web-blue.css" title="Light ice" type="text/css" /> 
+<head>
+	<title></title>
+	
+	
+	
+</head>
+			
+<head>
+	<title>The console</title>	
+</head>
+			
+<body>
+
+<div id="banner">
+<h3 id="banner">IqFIRE-wall: a graphical linux firewall for your desktop</h3>
+</div>
+	
+	
+<div id="menu">
+
+<ul id="globalnav">
+
+  <li><a href="./index.html" class="here">Home</a>
+  <ul>
+	  <li><a href="http://www.giacomos.it/index.php">Giacomo's home</a></li>
+	    <li><a href="iqfire_installation.html" class="here">iqfire-wall installation</a></li>
+	  <li><a href="http://www.giacomos.it/ipfire/index.html">ipfire-wall project</a></li>
+  </ul>
+  </li>
+  <li><a href="console.html" class="here">Console</a></li>
+<!-- rule tree -->
+ <li><a href="ruletree.html">Rule tree</a>
+  </li>
+
+<li><a href="ruleview.html">Rule view</a></li>
+
+<li><a href="stats.html">Statistics</a></li>
+<li><a href="installation.html">Installation</a></li>
+<li><a href="download.html">Download</a></li>
+
+</ul>
+
+</div> <!-- id="menu" -->	
+
+<div id="content">
+	
+<h3>Installation</h3>
+
+<p>
+
+This is the <strong>iqFirewall</strong> console.
+It shows the packets processed by the firewall, together with their associated response.
+</p>
+
+
+<ul>
+	<li>An accepted packet starts with <strong>OK</strong>, followed by the number of the 
+	rule applied;</li>
+	
+	<li>A blocked packet starts with an <strong>X</strong>, followed by the number of the 
+	rule applied;</li>
+	
+	<li>A line starting with <strong>?</strong> represents a packet without a matching rule,
+	to which the <a href="manual://defaultPolicy.html">firewall default policy</a> is applied.</li>
+
+</ul>
+The information in each line represents:
+<ol>
+
+	<li>the packet direction throught the firewall;</li>
+	<li>the network device involved;</li>
+	<li>the <a href="manual://protocol.html">transport protocol</a> type;</li>
+	<li>the source <a href="manual://ip.html">ip address</a>;</li>
+	<li>the source <a href="manual://port.html">port</a>;</li>
+	<li>the destination <a href="manual://ip.html">ip address</a>;</li>
+	<li>the destination <a href="manual://port.html">port</a>;</li>
+	<li>the <a href="manual://state.html">state</a> of the connection;</li>
+	<li>for the tcp protocol, the <a href="manual://tcpFlags.html">flags</a> of the TCP connection;</li>
+	<li>the <a href="manual://ruleName.html">name</a> of the rule applied;</li>
+</ol>
+	
+</div> <!-- content -->
+
+<div class="footnote">
+<p> <strong class="note">Note:</strong> given the colors used by the console to represent
+  the packets, it is advised to use the <strong>white on black</strong> <em>konsole</em> scheme.
+</p>
+
+</div>
+</body>
+
+</html>

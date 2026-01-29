@@ -1,0 +1,85 @@
+#!/bin/bash
+
+FAIL_LOG=/tmp/ipfire.fail.log
+
+if [ `id -u` -ne 0 ]; then
+  echo -e "\n\e[1;31m*\e[0m Only root is able to run this script. "
+  echo -e "\e[1;31m*\e[0m Execute it as root or type \"sudo ipfire-kernel-rebuild\" in ubuntu/kubuntu systems\n"
+  exit 1
+fi
+
+fail() 
+{
+	echo -e  "\e[1;31mFailed \e[1;31m\e[0m"
+	echo ""
+	echo -e "\e[1;31m*\e[0m \e[1;4;37mipfire-wall\e[0m module failed to load\e[0m"
+	echo -e "\e[1;33m*\e[0m consider running \e[1;4;37mipfire-kernel-rebuild\e[0m to correct the problem,"
+	echo -e "\e[1;33m*\e[0m especially if you have upgraded the kernel image or rebuild the linux kernel."
+	# for userspace
+	echo "Module load failed" > $FAIL_LOG
+	exit 1
+}
+
+success()
+{
+  if [ -e $FAIL_LOG ]; then
+    echo -e "\e[1;32m*\e[0m ipfire kernel module successfully loaded again, after a failure"
+    rm -f $FAIL_LOG
+  fi
+}
+
+case "$1" in
+    start)
+	    echo -e -n "\n\e[1;37mstarting \e[1;32mIPFIRE\e[1;37m: \e[0m"
+            (/usr/bin/ipfire -rc -user && success) || fail
+	    ;;
+    stop)
+	    echo -e -n "\n\e[1;35mstopping the firewall: \e[00m"
+	    (/usr/bin/ipfire -rc -rmmod -flush && success) || fail
+	    ;;
+    restart)
+	    $0 stop && sleep 1 &&  $0 start || exit 1
+	    ;;
+    force_stop)
+    	   echo -e "\n\e[1;31mstopping ipfire-wall terminating its execution if necessary...\e[0m"
+	   (killall -INT ipfire && sleep 1 && $0 stop) || exit 1
+	   ;;
+    force_restart)
+    	   echo -e "\n\e[1;31mstopping ipfire-wall terminating its execution if necessary...\n and \e[1;32mrestarting it\e[0m..."
+	   (killall -INT ipfire && sleep 1 && $0 stop && $0 start) || exit 1
+	   ;;
+    reload)
+    
+	     echo -e -n "- stopping ipfire or iqfire if running... "
+	    if [ `ps aux | grep ipfire | grep -v grep | wc -l` -ne 0 ]; then
+	      echo -e -n " (ipfire) " && ( killall -INT ipfire && echo -e "[\e[1;32mok\e[0m]\n\e[1;33m* \e[0mwait a moment...\n" && sleep 1) || echo -e "[\e[1;31mfailed\e[0m]"
+	      
+	    elif  [ `ps aux | grep iqfire | grep -v grep | wc -l` -ne 0 ]; then
+	      echo -e -n " (iqfire) " && ( killall -INT iqfire && echo -e "[\e[1;32mok\e[0m]\n  \e[1;4;35mwarning\e[0m: the user of iqfirewall might have lost unsaved data\n\e[1;33m* \e[0mwait a moment..." && sleep 1) || echo -e "[\e[1;31mfailed\e[0m]"
+	      
+	    else
+	      echo -e "\t[\e[1;4;32mnone running\e[0m]";
+	      
+	    fi
+	    echo -n -e "- unloading the kernel module\t"
+	    (modprobe -r ipfi && echo -e "\t\t[\e[1;32mok\e[0m]") || echo -e "[\t\t\e[1;31mfailed\e[0m]"
+	   
+	    
+	    
+	    echo -n -e "- restarting ipfire...\t"
+	    ($0 start && echo -e "\n\e[1;32m*\e[1;37m ok, all done\e[0m") || echo -e "\n\e[1;31m* \e[0msomething failed\e[0m"
+	    
+	  ;;
+
+    *)
+	    echo "Usage: $0 {start|stop|reload|restart|force_stop|force_restart}"
+	    echo "* restart works if the userspace program is not running: removes module and"
+	    echo "  reloads the administrator's rules;"
+	    echo "* reload does not care if the userspace program (ipfire or iqfire) is running:"
+	    echo "  - unloads the kernel module;"
+	    echo "  - stops ipfire or iqfire if running;"
+	    echo "  - reloads the kernel module and the administrator's rules."
+	    exit 1
+esac
+
+exit 0

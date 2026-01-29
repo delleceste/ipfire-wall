@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE html 
+     PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="it" lang="it"><head>
+	<link rel="stylesheet" href="schede.css" type="text/css" />
+	<title>  IPFIREwall: Simple and Friendly IPv4 packet filter and Network Address Translation </title>
+</head>
+
+<body>
+<!--  - - - - - - - - - -   	TITOLO 		- - - - - - - - - - - - - -->
+<div id="title" > <p> IPFIRE<em id="page" >wall </em> </p> 
+</div>
+
+<div id="back">
+	
+	<div id="back_intro" >
+		<a href="http://www.giacomos.it/ipfire/index.html" >Introduction to IPFIRE-wall </a>
+	</div>
+	
+	<div id="back_index" >
+		<a href="http://www.giacomos.it/ipfire/fireindex.html" > Index </a>
+	</div>
+	<div id="home_giacomo" >
+		<a href="http://www.giacomos.it"  > Homepage di Giacomo</a>
+	</div>
+	<div id="download_intro">
+		<a href="http://www.giacomos.it/ipfire/IPFIREwallGuidaInstallazionePrimoUtilizzo.pdf"
+			title="Introduzione a IPFIRE-wall: installazione e primo utilizzo, in italiano.">
+			Scarica un'introduzione a IPFIRE-wall (in italiano): guida all'installazione e primo utilizzo</a>
+	</div>
+	
+	<div id="download_presentazione">
+		<a href="http://www.giacomos.it/ipfire/presentazione.odp"
+			title="Presentazione di IPFIRE-wall in formato open document (Openoffice.org impress, Linux Day ottobre 2006, Udine)">
+			Scarica una presentazione di IPFIREwall</a>
+	</div>	
+	<p>
+		In this page you will find the links to the official <strong>IPFIRE-wall</strong> web manual.<br/>
+		To access it, you need an active Internet connection.<br/>
+		The documentation has been updated and corrected on march, 2007.
+	</p>
+	
+</div>	
+
+<div id="content" >
+
+	<h3> IPFIRE-wall </h3>
+	
+	<h3> Introduction. </h3>
+	
+	<p> <em>IPFIRE</em>wall is an IP packet filter also capable of doing <em> Network Address
+		Translation </em> and <em> IP Masquerading </em>. 
+		It is written in C language and was born in a GNU/Linux environment.<br/>
+                In particular it was originally
+		built inside the linux kernel 2.6.12.3 (the latest available at that moment),
+                although such version is now no more supported because of the lack of the 
+                RCU framework which is now required to run the packet filter. <br/>
+                It has been developed since June 2005.
+               </p>
+   <h4> Infrastructure and peculiarities. </h4>
+		<p>
+ 		IPFIRE-wall infrastructure is made up of two layers:
+		the upper one runs in userspace and the lower inside the kernel. Filtering and translation 
+                actually happen
+ 		in kernel context, while logging and user commands are handled in the userspace interface. <br/>
+		Communication between the two worlds takes place by means of the <em>netlink</em>
+		socket communication. In this way, it is possible for users to watch detailed information
+		about packet flowing and firewall filtering, at different levels of verbosity. <br/>
+		The framework is studied to allow the administrator to load his own filtering rules,
+		which cannot be altered by unprivileged users, and to let also normal users personalize and
+		make secure their own network activity. In the practise, the root user sets up a minimal 
+		network environment, with the most essential rules for filtering and address translation.
+		In a second stage, having IPFIREwall been setup and configured by the administrator,
+		<em>each workstation's user</em> adds his own rules to personalize his needs.<br/>
+		For instance, a tipical scenario would be represented by the parent (administrator), which
+		applies some control denying the connections towards some specific addresses and protecting
+		the computer against incoming connections. <br/>
+		In such an environment, the children can be left playing with IPFIREwall and the linux 
+		internetworking, and safely learn how them work.
+		<br/>
+		Each user's rules are stored in three different configuration files: the first contains the denial
+		rules, the second the permission ones, the third the translation rules. <br/>
+		The logical flow of the algorithm goes as follows:<br/>
+		the packet filter first reads the <em>denial</em> rules: if a match is found, the packet
+		being observed
+		is <em>explicitly dropped</em>, then IPFIREwall looks up among the <em>permission</em> rules:
+		if a correspondence is found, the packet is <em>explicitly allowed</em>. If no match happens, then
+		default policy is applied. To learn about setting and reading the default policy, see 
+                the <a href="http://www.giacomos.it/ipfire/kmload.html">
+		kernel module loading</a> chapter or the <a href="http://www.giacomos.it/ipfire/proc.html">/proc interface</a> chapter.
+		<br/>
+		Continuing with our discussion, we have to say that just the <em>root</em> user
+                is allowed to apply the <em>network translation rules</em>.<br/>
+		The administrator might want to load his rules at startup, and then leave users turn on their
+		own firewall to add their rules or just to watch what is going on in network/transport layer,
+		just as we told a few lines above.
+		Every unprivileged user, when shutting down the firewall interface, flushes his rules from
+		kernel lists, naturally leaving previously loaded administrator's ones. A normal user does not
+		have the right to alter root's settings, nor has the capability of modifying some critical firewall
+		variables, such as dynamic rules timers of translation tables timers, or again the maximum
+		number of entries allowed inside the dynamic kernel lists storing each data structure. 
+                Settings as these are critical from both the
+		security and the efficiency perspective and must be carefully tuned by the administrator.
+		Global settings are stored in another configuration file, and memorize the names
+		of the files listing the rules, the logging level, and some other options such as 
+                the port service resolution, the
+		blacklisted sites, and so on...
+		</p>
+		   <h4> A simple state machine. </h4>
+		<p>
+		IPFIRE is also able to keep the <em>state</em> of a connection (although the state machine
+                implemented is very simple), creating a table for
+		each connection which is looked up before consulting the static rule lists. Thanks to this option,
+		reverse field match is possible and so it is not compulsory for the users to insert one rule and
+		the corresponding one with inverted parameters. For instance, one can let a packet go out
+		from the local machine and then the firewall recognizes it when a reply comes back from the 
+                remote node as an already allowed communication.
+                </p>
+               <h4> Blocking Internet addresses from their names. </h4>
+		<p>
+		As pointed out, IPFIRE can hold a list of <em>Internet sites</em> which
+		must be <em>blocked</em> by the firewall.
+		Userspace
+		interface resolves periodically blacklisted Internet names and updates denial rules both
+		locally (on configuration files) and in kernel lists. In this way, it is very easy to apply
+		a simple form of <em>parental
+		control</em> over Internet web sites.
+
+		From the version <em>0.98.4</em> on, adding and removing the internet addresses to be
+		blocked by their name has become very easy, since the IPFIREwall <em>user interface</em>
+		has made a new interactive menu available to the aim.
+		<br/>
+		While IPFIREwall is running and filtering, some statistics are made and in every
+                moment are ready to be shown to the user.
+                </p>
+                <h4> A simple tool to analyze the logs. </h4>
+                <p>
+                A subsequent analysis can be done
+		against log files by means of the utility called <em>analyzer</em>, which comes together
+		with IPFIRE sowtware. This utility, which comes with no warranties, automatically performs
+                the resolving of the IP addresses into the Internet names of the nodes involved
+		and further statistics about the firewall decisions.
+
+	</p>
+	
+	<h3> Index. </h3>
+	<ol>
+		<li> <a href="http://www.giacomos.it/ipfire/index.html" > Introduction. </a> </li>
+		<li> <a href="http://www.giacomos.it/ipfire/cmdline.html" > Starting up: command line options. </a> </li>
+		<li> <a href="http://www.giacomos.it/ipfire/configuration_files.html" > Configuration files. </a> </li>
+		<li> <a href="http://www.giacomos.it/ipfire/main_menu.html" > Main menu: options and rule adding/
+ 					deleting. </a> </li>
+		<li> <a href="http://www.giacomos.it/ipfire/interface.html" > Understanding interface output. </a> </li>
+		<h4> Advanced utilization. </h4>
+		<li> <a href="http://www.giacomos.it/ipfire/admin.html" > Administrative rights. </a> </li>
+		<li> <a href="http://www.giacomos.it/ipfire/rulefields.html" > Rule fields explained 
+							(an outline of TCP/IP protocol). </a> </li>
+		<li> <a href="http://www.giacomos.it/ipfire/rulefields_it.html" > IPFIRE: i campi delle regole: introduzione al 
+		protocollo di rete TCP/IP (in italiano!). </a> </li>
+		<li> <a href="http://www.giacomos.it/ipfire/stateful.html" > Stateful rules. </a> </li>
+		<li> <a href="http://www.giacomos.it/ipfire/ftp.html"> Passive FTP support.</a> </li>
+		<li> <a href="http://www.giacomos.it/ipfire/nat.html" > Network Address Translation - IP masquerading. </a> </li>
+		<li> <a href="http://www.giacomos.it/ipfire/outdnat.html">OUTPT Destination address translation (version >= 0.98.4)</a></li>
+		<li> <a href="http://www.giacomos.it/ipfire/logging.html" > Logging levels and implications. </a> </li>
+		<li> <a href="http://www.giacomos.it/ipfire/getsockopt.html" > getsockopt() interface. </a> </li>
+		<li> <a href="http://www.giacomos.it/ipfire/table_variables.html" > Kernel dynamic tables: timers and numerousness
+					management. </a> </li>
+		<li> <a href="http://www.giacomos.it/ipfire/kmload.html" > Kernel module loading and unloading. </a> </li>
+		<li> <a href="http://www.giacomos.it/ipfire/proc.html" > <em>/proc</em> interface for reading and changing default
+ 							firewall policy. </a> </li>
+ 		<h4> Buliding IPFIREwall. </h4>
+ 		<li> <a href="http://www.giacomos.it/ipfire/ubuild.html" > Building User Interface. </a> </li>
+ 		<li> <a href="http://www.giacomos.it/ipfire/kbuild.html" > Building kernel modules. </a> </li>
+ 		
+ 		<h4> Examples. </h4>
+ 		<li> <a href="http://www.giacomos.it/ipfire/scenarios.html" > Sample scenarios. </a> </li>
+ 		
+ 		<h4> Userspace programming </h4>
+ 		<li> <a href="http://www.giacomos.it/ipfire/usertopics.html" > Topics in userspace programming. </a> </li>
+ 		
+ 		<h4> Kernel space programming </h4>
+ 		<li> <a href="http://www.giacomos.it/ipfire/kstopics.html" > Topics in kernel space programming. </a> </li>
+ 		<li> <a href="http://www.giacomos.it/ipfire/kflow.html" > Brief instruction flow explanation. </a> </li>
+ 		
+ 		<h4> Testing </h4>
+ 		<li> <a href="http://www.giacomos.it/ipfire/test.html" > Port scanning with NMAP. </a> </li>
+ 		<li> <a href="http://www.giacomos.it/ipfire/performance.html" > Performance issues. </a> </li>
+ 		
+ 		<h4> Thanks and Bibliography </h4>
+ 		<li> <a href="http://www.giacomos.it/ipfire/thanks.html" > Thanks.... </a> </li>
+ 		<li> <a href="http://www.giacomos.it/ipfire/bibliography.html" > Bibliography. </a> </li>
+	</ol>	
+	
+	
+</div> <!-- content -->
+
+<div id="w3c" >
+	<p id="validation">
+ 	     <a href="http://validator.w3.org/check?uri=referer"><img
+   	       src="http://www.w3.org/Icons/valid-xhtml10"
+    	      alt="Valid XHTML 1.0!" height="31" width="88" /></a>
+	</p>
+</div>	
+    
+<div id="foot_jumps" >  
+ 	<a href="#title" title="top_of_page"> 
+		Top of page		
+	</a>  <br />
+	<a href="http://www.giacomos.it" title="foot_back_to_index"> 
+		Go to Giacomo's home page.		
+	</a>
+	<br/>
+	<a href="http://www.giacomos.it/ipfire/index.html" title="foot_next"> 
+		Back to the ipfire-wall index on the web.		
+	</a><br/>
+	<a href="mailto:delleceste@gmail.com" title="Write an email to Giacomo"> 
+		Contact the author.		
+	</a><br/><br/>
+</div>
+	
+</body>
+</html>

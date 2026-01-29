@@ -1,0 +1,45 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<link rel="stylesheet" href="info.css" type="text/css" /> 
+<head>
+	<title></title>	
+</head>
+
+			
+<body>
+
+<h3>Reset flag</h3>
+
+<div id="content">
+
+<p>
+The reset flag is used when a segment arrives that is not intended for the current connection. In other words, if you were to send a packet to a host in order to establish a connection, and there was no such service waiting to answer at the remote host, then the host would automatically reject your request and then send you a reply with the RST flag set. This indicates that the remote host has reset the connection.
+</p>
+
+<h3>Port scanning thanks to the reset flag</h3>
+<p>
+
+In most cases this <em>feature</em> is used by most hackers in order to scan hosts for <em>open</em> ports (i.e. services active on a machine). All modern port scanners (<cite>nmap</cite> for instance
+ are able to detect <em>open</em> or <em>listening</em> ports thanks to the <em>reset</em> flag.<br/>
+
+The method used to detect these active services bound to local ports
+ is very simple: when attempting to scan a remote host, a valid TCP segment is constructed 
+  with the <em>SYN</em> flag set to true and sent to the target host. If there is no 
+   service listening for incoming connections on the specific port, then the remote host 
+   will reply with <em>ACK</em> and <em>RST</em> flags set to true, and all the others set to
+   false. If, on the other hand, there is a service listening on the port, the remote host will 
+    construct a TCP segment with the <em>ACK</em> flag set. This is, of course, part of the standard
+     3-way handshake discussed in the <em>syn</em> section.
+
+Once the host scanning for open ports receives this segment, it will complete the 3-way handshake and then terminate it using the <em>FIN</em> flag, marking the specific port as "active".
+
+
+</p>
+
+
+</div> <!-- id="content" -->	
+
+</body>
+
+</html>

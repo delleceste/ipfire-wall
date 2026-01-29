@@ -1,0 +1,201 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<link rel="stylesheet" href="iqfire-web.css" type="text/css" /> 
+
+			
+<head>
+	<title>ipfire-wall/iqfire-wall Installation on debian systems</title>	
+</head>
+			
+<body>
+	
+<div id="banner">
+<h3 id="banner">IqFIRE-wall: a graphical linux firewall for your desktop: installation</h3>
+</div>
+
+<div id="menu">
+
+<ul id="globalnav">
+
+  <li><a href="./index.html">Home</a>
+ </li>
+  
+  <li><a href="console.html">Console</a>
+   </li>
+<!-- rule tree -->
+ <li><a href="ruletree.html">Rule tree</a></li>
+
+<li><a href="ruleview.html">Rule view</a>
+	</li>
+
+<li><a href="stats.html">Statistics</a>
+    	
+</li>
+<li><a href="installation.html" class="here">Installation</a>
+<ul>
+     	<li><a href="installation.html">Installing <em>iqfire-wall</em></a></li>
+	<li><a href="ubuntu.html">on <em>ubuntu</em></a></li>
+	<li><a href="debian.html" class="here">on <em>debian GNU/Linux</em></a></li>
+	<li><a href="configuration.html">Configure the firewall</a></li>
+   	</ul>
+
+</li>
+<li><a href="download.html">Download</a></li>
+
+</ul>
+
+</div> <!-- id="menu" -->
+
+<div id="content">
+
+
+<h3>Debian installation</h3>
+
+<p>
+
+The installation on debian system is quite similar to the installation discussed in the 
+<a href="ubuntu.html">ubuntu/kubuntu</a> part.<br/>
+Read carefully all the <strong>Requirements</strong> and then proceed to the 
+<a href="debian.html#debian-general">installation</a>.
+<br/>Good luck!
+
+</p>
+
+<h3>Requirements</h3>
+
+<h4>Theorically</h4>
+
+<p>
+  <ul>
+<li>Until the <strong>KDE4</strong> environment is not added to the <em>stable/testing or unstable</em>
+ <a href="http://www.debian.org">debian</a> distribution, you have to add to the software sources the 
+ repository that provides the 
+<strong>experimental</strong> packages;</li>
+	
+<li>install <strong>libqt4-core</strong>, <strong>libqt4-dev</strong>, 
+<strong>libqt4-gui</strong>, on which iqfire-wall is based;</li>
+
+<li>install the <strong>kdelibs5</strong> and <strong>kdelibs5-dev</strong> development files;</li>
+
+<li>install <strong>libqwt5-qt4 </strong>, <strong>libqwt5-qt4-dev</strong>, the libraries supporting the statistics plot, 
+called <a href="http://qwt.sourceforge.net/">Qwt - Qt Widgets for Technical Applications</a>;</li>
+
+<li>install <strong>linux-headers-2.6.xx</strong> where 2.6.xx is the number of
+the version of the kernel installed. If you are unsure of which kernel you are
+running, just type on a terminal the command <strong>uname -r</strong>;</li>
+
+  <ul>
+      <li>If you have already configured the kernel sources or compiled a kernel of your own, eventually 
+	downloaded from <a href="http://www.kernel.org">www.kernel.org</a>, then you should find the kernel
+	sources inside the directory <strong>/usr/src</strong>, or wherever you downloaded and configured them.<br/>
+	In this case, the upper step is not necessary and you should have the kernel sources already suiting the 
+	<strong>ipfire-wall</strong> kernel module compilation needs.</li>
+      <li>Remember that <strong>ipfire-wall</strong> kernel module only works on kernels of the series <strong>2.6.x</strong>,
+      where <strong>x</strong> should also be greater than <strong>18</strong>.</li>
+      <li><strong>ipfire-wall</strong> supports kernels up to <strong>2.6.24</strong>, or as indicated in the <strong>IPFIRE-wall-xx.yy.zz/ipfi/readme.txt</strong> text file, which contains information about the latest changes.</li>
+  </ul>
+
+</ul>
+
+<h4>Practically</h4>
+
+<p>
+Practically, you will need to edit a file and open a terminal to give some commands
+ to setup the required packages mentioned above, if they are not already installed:
+ 
+
+ <ul>
+
+  <li>become root executing <strong>su -</strong> and providing the root <em>password</em>;</li>
+
+  <li>as root, open the file
+      <strong>/etc/apt/sources.list</strong> with your favourite text editor, 
+	typically <strong>gedit</strong> or <strong>kwrite</strong>
+	or <strong>vim</strong> (a command line editor), and add the line 
+	<strong>deb http://ftp.de.debian.org/debian/ experimental main non-free contrib</strong>.<br/>
+	  To get some more information, one might be interested in reading the 
+	  <a href="http://pkg-kde.alioth.debian.org/experimental.html">The Debian KDE mantainers web site</a>;
+   </li>
+
+ 
+ <li>execute <strong>apt-get update</strong>, always as root: this reads the packages list from the <strong>experimental</strong>
+      branch of the debian repositories;</li>
+ 
+ <li>execute <strong>apt-get install libqt4-core libqt4-dev kdelibs5 kdelibs5-dev
+  libqwt5-qt4 libqwt5-qt4-dev</strong>.</li>
+  
+ </ul>
+
+Having satisfied these prerequisites, you should be ready to install <strong>iqfire-wall</strong>
+
+</p>
+
+
+<h3 id="debian-general">Debian, general instructions</h3>
+<p>
+ The installation instructions are very similar to those discussed into
+ the <a href="ubuntu.html#u7.10general">Ubuntu/Kubuntu, general instructions</a> web page.
+  They are reported here for completeness, read them carefully because some differences exists between the
+   debian and (k)ubuntu steps.
+</p>
+<p>
+The installation steps consist into <strong>downloading</strong> and <strong>installing</strong> iqfire-wall on your system.
+<strong>iqfire-wall</strong> is hosted on <a href="http://sourceforge.net/projects/ipfire-wall">sourceforge.net</a> 
+ since the creation of the project <strong>ipfire-wall</strong>.
+Actually, the project has the same name although the package <strong>IPFIRE-wall</strong> now contains <strong>iqfire-wall</strong> 
+too.
+
+<ul>
+  <li>Download the <strong>IqFIRE-wall sources</strong>:</li>
+  <ul>
+    <li>the <strong>.tar.gz package</strong> from <a href="http://sourceforge.net/projects/ipfire-wall">sourceforge.net</a>,
+    which represents the latest package of the firewall distribution, including 
+    <ul>
+      <li>the ipfire-wall kernel module;</li>
+      <li>the ipfire-wall console firewall (the console version, as it was until version 0.98.6); </li>
+      <li>the new <strong>iqfire-wall</strong> graphical user interface.</li>
+    </ul></li>
+
+  <li>the latest snapshot available, containing the most <strong>up to date</strong> modifications on the 
+  code of <strong>iqfire-wall</strong>, via the CVS 
+  <a href="http://sourceforge.net/projects/ipfire-wall">sourceforge.net</a> repository:
+  <ul>
+      <li>open a terminal in your linux desktop;</li>
+      <li>execute <em>cvs -d:pserver:anonymous@ipfire-wall.cvs.sourceforge.net:/cvsroot/ipfire-wall login</em></li>
+       <li>execute <em>cvs -z3 -d:pserver:anonymous@ipfire-wall.cvs.sourceforge.net:/cvsroot/ipfire-wall co -P IPFIRE-wall</em>
+	  </li>
+  </ul>
+  The so downloaded package, called <strong>IPFIRE-wall</strong>, contains the same parts described above: kernel part, ipfire-wall
+  console and iqfire-wall
+  </li>
+
+  </ul>
+  <li>if you downlaoded the <strong>.tar.gz package</strong>, unpack it the in a directory of your choice and extract it right clicking on 
+  the <strong>IPFIRE-wall-x.y.z.tar.gz</strong> icon and choosing the correct action to <strong> extract</strong> the 
+  <strong>.tar.gz</strong> archives or give the command <strong>tar -xzf IPFIRE-wall.x.y.z.tar.gz</strong> from the 
+  command line;</li>
+  <li>open a terminal and change directory into IPFIRE-wall's: <strong>cd /directory/of/download/IPFIRE-wall-x.y.z</strong>;</li>
+  <li>build and install the firewall launching the script <strong>install.sh</strong> with the command <strong>./install.sh debian</strong>, 
+   and confirming with the key <strong>return</strong> at the first installer question.</li>
+  <li>Remember the parameter <strong>debian</strong> when launching the install script on <strong>debian</strong>;</li>
+
+<li>If something <strong>fails</strong>, read the <a href="ubuntu.html#requirements">Requirements</a> once again to be sure you did
+ not forget to install a needed dependency.</li>
+<li>If you go to your desktop panel and click on the applications menu (<strong>menu K</strong> on KDE or <strong>Applications</strong> 
+ on Gnome), you should find a launcher for <strong>iqfire-wall</strong> under the <strong>Internet</strong> submenu. Click on it 
+ to launch <strong>iqfire-wall</strong>;</li>
+ <li>optionally, you can <strong>drag</strong> with the mouse the icon above and <strong>drop</strong>
+ it into the desktop workspace to create a 
+  <strong>launcher inside your desktop</strong>.</li>
+
+<li>To later <strong>reinstall</strong> iqfire-wall, re-run the script <em>install.sh</em> as above, adding the parameter 
+  <strong> clean</strong> to the invocation command.</li>
+</ul>
+
+</p>
+
+</div>
+</body>
+
+</html>
