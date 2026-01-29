@@ -14,44 +14,33 @@
 
 #include "g_getcharlib.h"
 
-struct termio savetty, setty;
+struct termios savetty, setty;
 /* bloccare i segnali prima di chiamare le funzioni ioctl()! */
 
 /* salva lo stato del terminale */
-int g_save_term()   /* da chiamare all'inizio! */
-{
-  if(ioctl(0, TCGETA, &savetty) < 0)
-    {
-      perror("\e[1;31mErrore di ioctl: ");
-      return -1;
+struct termios orig_termios;
+
+int g_save_term() {
+    if(tcgetattr(STDIN_FILENO, &orig_termios) < 0) {
+        perror("tcgetattr");
+        return -1;
     }
-  return 1;
+    return 1;
 }
 
-/* imposta I/O non bufferizzato */  
-int g_set_term()
-{
-  if(ioctl(0, TCGETA, &setty) < 0)
-    goto error;
-  setty.c_lflag &= ~ICANON;
-  setty.c_lflag &= ~ECHO;
-  if(ioctl(0, TCSETAF, &setty) < 0)
-    goto error;
-  return 1;
- error:
-  perror("\e[1;31mErrore di ioctl!\e[1;37m");
-  return -1;
+int g_set_term() {
+    struct termios t;
+    if(tcgetattr(STDIN_FILENO, &t) < 0) return -1;
+    t.c_lflag &= ~(ICANON | ECHO); // non-canonical, no echo
+    t.c_cc[VMIN] = 1;  // read at least 1 byte
+    t.c_cc[VTIME] = 0; // no timeout
+    if(tcsetattr(STDIN_FILENO, TCSANOW, &t) < 0) return -1;
+    return 1;
 }
 
-/* ripristina lo stato del terminale salvato da save_term() */
-int g_reset_term()
-{ 
-  if(ioctl(0, TCSETAF, &savetty) < 0)
-    {
-      perror("\e[1;31mErrore di ioctl: ");
-      return -1;
-    }
-  return 1;
+int g_reset_term() {
+    if(tcsetattr(STDIN_FILENO, TCSANOW, &orig_termios) < 0) return -1;
+    return 1;
 }
 
 /* restituisce il carattere letto da stdin, con codici particolari 

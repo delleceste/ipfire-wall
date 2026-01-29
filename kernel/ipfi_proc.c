@@ -5,10 +5,6 @@
 #include <linux/seq_file.h>
 #include <linux/uaccess.h>
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,24)
-  #include "includes/ipfi_netl.h"
-#endif
-
 static struct proc_dir_entry *ipfire_procent, *procdir;
 static char procentry_line[PROCENTRY_DATA_LEN];
 
