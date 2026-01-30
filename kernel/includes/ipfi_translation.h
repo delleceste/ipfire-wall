@@ -28,72 +28,58 @@ struct pkt_manip_info
 	direction:4; /* 4 bits as in ipfire_rule */
 };
 
+struct nat_key {
+    __be32 src_ip;
+    __be32 dst_ip;
+    __be16 src_port;
+    __be16 dst_port;
+    u8 proto;
+};
+
+struct nat_entry_common {
+    struct nat_key key;
+
+    u8 state;
+    u8 direction:4, external:4;
+
+    struct rhash_head node;
+    struct rcu_head rcu;
+    struct timer_list timer;
+
+    unsigned int id;
+
+#ifdef ENABLE_RULENAME
+    char rulename[RULENAMELEN];
+#endif
+    char in_devname[IFNAMSIZ];
+    char out_devname[IFNAMSIZ];
+};
+
 /* the table contains information about destination adddress
  * translated connections. The list of dnatted tables must be
  * checked on arrival of a packet on the interface interested.
  */
-struct dnatted_table
-{
-	__u32 old_saddr;
-	__u16 old_sport;
-	__u32 old_daddr;
-	__u16 old_dport;
-	__u32 new_daddr;
-	__u16 new_dport;
-	
-	__u32 our_ifaddr;
+struct dnat_entry {
+    struct nat_entry_common nat_common;
 
-	__u8 direction:4,external:4;
-	__u8 protocol;
-	
-	/* From version 0.98.2 on, we keep the state of the NAT tables, just to
-	 * apply the correct timeouts on them.
-	 */
-	__u8 state;
+    __be32 new_daddr;
+    __be16 new_dport;
 
-	unsigned int id;
-	unsigned int position;
-
-	char in_devname[IFNAMSIZ];
-	char out_devname[IFNAMSIZ];
-#ifdef ENABLE_RULENAME
-	char rulename[RULENAMELEN];
-#endif	
-	struct timer_list timer_dnattedlist;
-	struct list_head list;
-	/* RCU */
-	struct rcu_head dnat_rcuh;
+    __u32 our_ifaddr;
 };
 
 /* the table contains information about source adddress
  * translated connections. The list of snatted tables must be
  * checked on arrival of a packet on the interface interested.
  */
-struct snatted_table
+struct snat_entry
 {
-	__u32 old_saddr;
-	__u16 old_sport;
-	__u32 old_daddr;
-	__u16 old_dport;
-	__u32 new_saddr;
-	__u16 new_sport;
+    struct nat_entry_common nat_common;
 
-	__u8 direction:4,external:4;
-	__u8 protocol;
-	__u8 state;
-	
-	unsigned int id;
-	unsigned int position;
+    __be32 new_saddr;
+    __be16 new_sport;
 
-	char in_devname[IFNAMSIZ];
-	char out_devname[IFNAMSIZ];
-#ifdef ENABLE_RULENAME
-	char rulename[RULENAMELEN];
-#endif	
-	struct timer_list timer_snattedlist;
-	struct list_head list;
-	/* RCU */
-	struct rcu_head snat_rcuh;
+    __u32 our_ifaddr;
 };
 
 int init_translation(void);
@@ -198,8 +184,8 @@ int pre_de_dnat(struct sk_buff* skb, ipfire_info_t* packet);
  * its timer is updated and a pointer to it is returned.
  * See dnatted lookup function counterpart for further details.
  */
-struct snatted_table *
-lookup_snatted_table_n_update_timer(const struct snatted_table *sne, ipfire_info_t* info);
+struct snat_entry *
+lookup_snatted_table_n_update_timer(const struct snat_entry *sne, ipfire_info_t* info);
 
 int snat_dynamic_translate(struct sk_buff* skb, struct dnatted_table* dnt);
 
@@ -255,19 +241,19 @@ __u32 get_ifaddr(const struct sk_buff* skb);
 int get_ifaddr_by_skb(const struct sk_buff *skb, __u32* address);
 
 int 
-compare_snat_entries(const struct snatted_table* sne1, 
-				     const struct snatted_table* sne2);
+compare_snat_entries(const struct snat_entry* sne1,
+                     const struct snat_entry* sne2);
 			
 int pre_de_snat(struct sk_buff* skb, ipfire_info_t* packet);
 
 /* restores original source address (changed by snat/masq) in
  * the destination address of coming back packet. We are in pre-
  * routing hook. */
-int de_snat(struct sk_buff* skb, struct snatted_table* snt);
+int de_snat(struct sk_buff* skb, struct snat_entry* snt);
 
 int do_source_nat(struct sk_buff* skb, ipfire_rule* ipfr);
 
-int de_snat_table_match(struct snatted_table* snt, 
+int de_snat_table_match(struct snat_entry* snt,
 			struct sk_buff* skb, ipfire_info_t* packet);
 			
 

@@ -95,7 +95,7 @@ ipfire_rule translation_out;
 ipfire_rule masquerade_post;
 
 struct dnatted_table root_dnatted_table;
-struct snatted_table root_snatted_table;
+struct snat_entry root_snatted_table;
 
 extern unsigned long loginfo_lifetime;
 extern unsigned long max_loginfo_entries;
@@ -468,7 +468,7 @@ void get_struct_sizes(struct firesizes* fsz)
 	fsz->infosize = sizeof(ipfire_info_t);
 	fsz->cmdsize = sizeof(command);
 	fsz->statesize = sizeof(struct  state_table);
-	fsz->snatsize = sizeof(struct snatted_table);
+	fsz->snatsize = sizeof(struct snat_entry);
 	fsz->dnatsize = sizeof(struct dnatted_table);
 	fsz->loginfosize = sizeof(struct ipfire_loginfo);
 }
@@ -1441,11 +1441,8 @@ void print_nat_entries_memory_usage(void)
 			fwopts.max_nat_entries);
     IPFI_PRINTK("IPFIRE: size of a source nat table is %lu bytes.\nIPFIRE:"
             " total memory occupied by snat entries is %lu KB.\n",
-			sizeof(struct snatted_table),
-			(unsigned) ((fwopts.max_nat_entries *
-					sizeof(struct snatted_table)) / 1024));
-
-	IPFI_PRINTK("IPFIRE: destination nat entries lifetime is %lu seconds.\n",
+			sizeof(struct snatted_tablesnat_entryed) ((fwopts.max_nat_entries *
+					sizeof(struct snatted_table)snat_entry	IPFI_PRINTK("IPFIRE: destination nat entries lifetime is %lu seconds.\n",
 			fwopts.dnatted_lifetime);
 	IPFI_PRINTK("IPFIRE: max. number of entries is %lu.\n",
 			fwopts.max_nat_entries);
@@ -1663,7 +1660,7 @@ int send_dnat_tables(void)
 }
 
 int fill_snat_info(struct snat_info *sninfo,
-		const struct snatted_table *sntt)
+		const struct snat_entry *sntt)
 {
 	sninfo->saddr = sntt->old_saddr;
 	sninfo->daddr = sntt->old_daddr;
@@ -1713,8 +1710,8 @@ int send_ktables_usage(void)
 
 int send_snat_tables(void)
 {
-	extern struct snatted_table root_snatted_table;
-	struct snatted_table *st;
+	extern struct snat_entry root_snatted_table;
+	struct snat_entry *st;
 	struct snat_info *endmess;
 	struct snat_info *sn_info;
 	struct sk_buff *skb_to_user = NULL, *skb_to_user_endmess = NULL;

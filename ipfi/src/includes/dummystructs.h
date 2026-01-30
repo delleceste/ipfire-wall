@@ -41,7 +41,7 @@ struct dnatted_table
  * translated connections. The list of snatted tables must be
  * checked on arrival of a packet on the interface interested.
  */
-struct snatted_table
+struct snat_entry
 {
 	__u32 old_saddr;
 	__u16 old_sport;

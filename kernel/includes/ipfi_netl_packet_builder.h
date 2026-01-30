@@ -13,7 +13,7 @@ struct sk_buff* build_info_t_packet(const ipfire_info_t *info);
 
 struct sk_buff* build_dnat_t_packet(const struct dnatted_table *dt);
 
-struct sk_buff* build_snat_t_packet(const struct snatted_table *dt);
+struct sk_buff* build_snat_t_packet(const struct snat_entry *dt);
 
 struct sk_buff* build_dnat_info_packet(const struct dnat_info *dni);
 

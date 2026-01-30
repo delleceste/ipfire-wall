@@ -59,7 +59,7 @@ struct sk_buff *build_dnat_t_packet(const struct dnatted_table *dt)
   return skb_to_user;
 }
 
-struct sk_buff *build_snat_t_packet(const struct snatted_table *st)
+struct sk_buff *build_snat_t_packet(const struct snat_entry *st)
 {
   struct sk_buff* skb_to_user = NULL;
   skb_to_user = build_packet((void *) st, sizeof(*st));

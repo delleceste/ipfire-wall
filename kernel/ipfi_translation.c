@@ -39,7 +39,7 @@ extern int state_machine(const ipfire_info_t *info,
 extern unsigned int get_timeout_by_state(int protocol, int state);
 
 extern struct dnatted_table root_dnatted_table;
-extern struct snatted_table root_snatted_table;
+extern struct snat_entry root_snatted_table;
 
 extern struct ipfire_options fwopts;
 
@@ -143,17 +143,10 @@ int get_original_dest(struct sock *sk, int optval, void __user * user, int *len)
 
 	/* c. process data */
 	inet = (struct inet_sock *) sk;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,33)	
-	tmp_iit->iphead.saddr = inet->rcv_saddr;	/* bound local ipv4 addr */
-	tmp_iit->iphead.daddr = inet->daddr;	/* foreign ipv4 addr */
-	tmp_iit->transport_header.tcphead.source = inet->sport;
-	tmp_iit->transport_header.tcphead.dest = inet->dport;
-#else
 	tmp_iit->iphead.saddr = inet->inet_rcv_saddr;	/* bound local ipv4 addr */
 	tmp_iit->iphead.daddr = inet->inet_daddr;	/* foreign ipv4 addr */
 	tmp_iit->transport_header.tcphead.source = inet->inet_sport;
 	tmp_iit->transport_header.tcphead.dest = inet->inet_dport;
-#endif
 	tmp_iit->protocol = IPPROTO_TCP;
 
 //	IPFI_PRINTK("IPFIRE GETORIG COUPLE: %u.%u.%u.%u:%u-%u.%u.%u.%u:%u.\n", NIPQUAD(tmp_iit->iphead.saddr),
@@ -501,7 +494,7 @@ inline void update_dnat_timer(struct dnatted_table *dnt)
 }
 
 /* Must be called with the lock */
-inline void update_snat_timer(struct snatted_table *snt)
+inline void update_snat_timer(struct snat_entry *snt)
 {
 	unsigned int timeout = get_timeout_by_state(snt->protocol, snt->state);
 	mod_timer(&snt->timer_snattedlist,
@@ -1071,12 +1064,7 @@ int pre_denat_table_match(const struct dnatted_table *dnt,
 
 	if ((skb == NULL) || (dnt == NULL))
 		return network_header_null("pre_denat_table_match()", "skb or dnatted_table NULL!");
-
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,22)
-	iphead = skb->nh.iph;
-#else
 	iphead = ip_hdr(skb);
-#endif
 	if(iphead == NULL)
 		return network_header_null("pre_denat_table_match()", "IP header NULL!");
 
@@ -1088,8 +1076,7 @@ int pre_denat_table_match(const struct dnatted_table *dnt,
 		return -1;
 	netquad = get_quad_from_skb(skb);
 
-	if (!netquad.valid)
-	{
+        if (!netquad.valid) {
 		IPFI_PRINTK("IPFIRE: failed to get_quad_from_skb() in pre_denat_table_match()\n");
 		return -1;
 	}
@@ -1303,8 +1290,8 @@ int post_snat_dynamic(struct sk_buff *skb, ipfire_info_t * packet)
 /* SOURCE NAT OR MASQUERADING SECTION */
 
 	int
-compare_snat_entries(const struct snatted_table *sne1,
-		const struct snatted_table *sne2)
+compare_snat_entries(const struct snat_entry *sne1,
+                const struct snat_entry *sne2)
 {
 	return ((sne1->protocol == sne2->protocol) &&
 			(sne1->old_saddr == sne2->old_saddr) &&
@@ -1324,11 +1311,11 @@ compare_snat_entries(const struct snatted_table *sne1,
  * its timer is updated and a pointer to it is returned.
  * See dnatted lookup function counterpart for further details.
  */
-	struct snatted_table *
-lookup_snatted_table_n_update_timer(const struct snatted_table *sne, ipfire_info_t* info)
+        struct snat_entry *
+lookup_snatted_table_n_update_timer(const struct snat_entry *sne, ipfire_info_t* info)
 {
 	int counter = 0;
-	struct snatted_table *sntmp;
+        struct snat_entry *sntmp;
 	/* read lock on source nat tables */
 	rcu_read_lock_bh();
 	list_for_each_entry_rcu(sntmp, &root_snatted_table.list, list)
@@ -1353,11 +1340,11 @@ lookup_snatted_table_n_update_timer(const struct snatted_table *sne, ipfire_info
 }
 
 	int
-fill_snat_entry_net_fields(struct snatted_table *snentry,
+fill_snat_entry_net_fields(struct snat_entry *snentry,
 		const ipfire_info_t * original_pack,
 		const ipfire_rule * snat_rule)
 {
-	memset(snentry, 0, sizeof(struct snatted_table));
+        memset(snentry, 0, sizeof(struct snat_entry));
 	snentry->protocol = original_pack->iphead.protocol;
 	snentry->old_saddr = original_pack->iphead.saddr;
 	snentry->old_daddr = original_pack->iphead.daddr;
@@ -1411,15 +1398,15 @@ fill_snat_entry_net_fields(struct snatted_table *snentry,
 /* Callback function for freeing a SNAT entry */
 void free_snat_entry_rcu_call(struct rcu_head *head)
 {
-	struct snatted_table *snatt= 
-		container_of(head, struct snatted_table, snat_rcuh);
+        struct snat_entry *snatt=
+                container_of(head, struct snat_entry, snat_rcuh);
 	kfree(snatt);
 }
 
 
 void handle_snatted_entry_timeout(struct timer_list *t)
 {
-	struct snatted_table *snt_to_free = from_timer(snt_to_free, t, timer_snattedlist);
+        struct snat_entry *snt_to_free = from_timer(snt_to_free, t, timer_snattedlist);
 	//      IPFI_PRINTK("IPFIRE: timer expired for dnatted entry %d...", snt_to_free->position);
 	/* Acquire lock on source nat table */
 	spin_lock_bh(&snat_list_lock);
@@ -1431,7 +1418,7 @@ void handle_snatted_entry_timeout(struct timer_list *t)
 	spin_unlock_bh(&snat_list_lock);
 }
 
-void fill_timer_snat_entry(struct snatted_table *snt)
+void fill_timer_snat_entry(struct snat_entry *snt)
 {
 	unsigned timeo;
 	timeo = get_timeout_by_state(snt->protocol, snt->state);
@@ -1453,12 +1440,12 @@ int add_snatted_entry(ipfire_info_t * original_pack,
 		const ipfire_rule * snat_rule,
 		ipfire_info_t * packet)
 {
-	struct snatted_table *snatted_entry;
-	struct snatted_table *existing_entry;
+        struct snat_entry *snatted_entry;
+        struct snat_entry *existing_entry;
 	struct sk_buff *skb_to_user;
 	ipfire_info_t *ipfi_info_warn;
 	/* memory allocation for new entry */
-	snatted_entry = (struct snatted_table *) kmalloc(sizeof(struct snatted_table), GFP_ATOMIC);
+        snatted_entry = (struct snat_entry *) kmalloc(sizeof(struct snat_entry), GFP_ATOMIC);
 
 	if (fill_snat_entry_net_fields (snatted_entry, original_pack, snat_rule) < 0)
 	{
@@ -1641,7 +1628,7 @@ int snat_translation(struct sk_buff *skb, ipfire_info_t * packet)
 /* restores original source address (changed by snat/masq) in
  * the destination address of coming back packet. We are in pre-
  * routing hook. */
-int de_snat(struct sk_buff *skb, struct snatted_table *snt)
+int de_snat(struct sk_buff *skb, struct snat_entry *snt)
 {
 	struct pkt_manip_info mi;
 	/* destination address gets changed */
@@ -1650,7 +1637,7 @@ int de_snat(struct sk_buff *skb, struct snatted_table *snt)
 	return manip_skb(skb, 0, 0, snt->old_saddr, 0, mi);
 }
 
-int de_snat_table_match(struct snatted_table *snt,
+int de_snat_table_match(struct snat_entry *snt,
 		struct sk_buff *skb, ipfire_info_t * packet)
 {
 	net_quadruplet nquad;
@@ -1700,7 +1687,7 @@ success:
 int pre_de_snat(struct sk_buff *skb, ipfire_info_t * packet)
 {
 	int counter = 0, ret;
-	struct snatted_table *sntmp;
+        struct snat_entry *sntmp;
 	/* lock snat table */
 	rcu_read_lock_bh();
 	list_for_each_entry_rcu(sntmp, &root_snatted_table.list, list)
@@ -1794,13 +1781,13 @@ int free_snatted_table(void)
 {
 	struct list_head *pos;
 	struct list_head *q;
-	struct snatted_table *stl;
+        struct snat_entry *stl;
 	int counter = 0;
 	synchronize_net();
 	spin_lock_bh(&snat_list_lock);
 	list_for_each_safe(pos, q, &root_snatted_table.list)
 	{
-		stl = list_entry(pos, struct snatted_table, list);
+                stl = list_entry(pos, struct snat_entry, list);
 		if(del_timer(&stl->timer_snattedlist) )
 		{
 			list_del_rcu(&stl->list);
