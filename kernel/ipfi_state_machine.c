@@ -1,6 +1,6 @@
 #include "includes/ipfi_state_machine.h"
 
-int state_machine(const ipfire_info_t *info, int current_state, short reverse)
+int state_machine(const struct sk_buff *skb, int current_state, short reverse)
 {
 	unsigned short protocol;
 	unsigned short syn, ack, rst, fin;
@@ -8,17 +8,24 @@ int state_machine(const ipfire_info_t *info, int current_state, short reverse)
 
 	syn = ack = fin = rst = 0;
 
-	protocol = info->protocol;
+        protocol = skb->protocol;
 
-	if (protocol == IPPROTO_TCP)
-	{
-		syn = info->transport_header.tcphead.syn;
-		ack = info->transport_header.tcphead.ack;
-		rst = info->transport_header.tcphead.rst;
-		fin = info->transport_header.tcphead.fin;
-	}
-	else if(protocol == IPPROTO_UDP)
-	{
+        struct iphdr *iph;
+        iph = ip_hdr(skb);
+        if(iph != NULL) {
+          protocol = iph->protocol;
+          struct tcphdr tcphead;
+          struct tcphdr *p_tcphead = skb_header_pointer(skb, iph->ihl * 4, sizeof(struct tcphdr), &tcphead);
+
+          if (protocol == IPPROTO_TCP && p_tcphead)
+          {
+                syn = tcphead.syn;
+                ack = tcphead.ack;
+                rst = tcphead.rst;
+                fin = tcphead.fin;
+          }
+          else if(protocol == IPPROTO_UDP)
+          {
 		/* A minimal state machine for udp datagrams:
 		* 1st packet seen (UDP_NEW) and then established
 		*/
@@ -37,7 +44,7 @@ int state_machine(const ipfire_info_t *info, int current_state, short reverse)
 
 		return state;
 
-	}
+          }
 	else if(protocol == IPPROTO_ICMP)
 	{
 		state = ICMP_STATE;
@@ -188,19 +195,17 @@ int state_machine(const ipfire_info_t *info, int current_state, short reverse)
 	else if (rst)
 		state = CLOSED;
 
+        }
 	return state;
 
 }
 
 /* Sets the state inside the state structure. */
-int set_state(ipfire_info_t * info, struct state_table *entry,
-		short reverse)
+int set_state(const struct sk_buff* skb, struct state_table *entry, short reverse)
 {
 	int state;
-
 	/* Get the state */
-	state = state_machine(info, entry->state.state, reverse);
-
+        state = state_machine(skb, entry->state.state, reverse);
 	/* Set the state */
 	if(state == GUESS_CLOSING)
 		entry->state.state = CLOSED;
@@ -210,10 +215,7 @@ int set_state(ipfire_info_t * info, struct state_table *entry,
 		entry->state.state = ESTABLISHED;
 	else
 		entry->state.state = state;
-
-	info->st.state = state;
-
-	return 1;
+        return state;
 }
 
 

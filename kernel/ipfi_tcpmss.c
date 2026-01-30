@@ -3,7 +3,7 @@
 #include <linux/version.h>
 
 /* private manip function */
-int __tcpmss_mangle_packet(struct sk_buff *skb,  short unsigned int option, __u16 mss, ipfire_info_t *info);
+int __tcpmss_mangle_packet(struct sk_buff *skb,  short unsigned int option, __u16 mss);
 
 /* TCPOLEN_MSS: length of the tcp header mss option, from include/net/tcp.h 
  * TCPOPT_MSS: segment size negotiating, from include/net/tcp.h 
@@ -63,13 +63,8 @@ int tcpmss_mangle_packet(struct sk_buff *skb, short unsigned int tcpmss_option, 
   ret = __tcpmss_mangle_packet(skb, tcpmss_option, mss, info);
   
   /* __tcpmss_mangle_packet() might add the mss option */
-  if (ret > 0) 
-  {
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,22)
-	iph = skb->nh.iph;
-#else
+  if (ret > 0)  {
 	iph = ip_hdr(skb);
-#endif
 	/* socket buffer has been enlarged */
 	newlen = htons(ntohs(iph->tot_len) + ret);
 	csum_replace2(&iph->check, iph->tot_len, newlen);
@@ -78,7 +73,10 @@ int tcpmss_mangle_packet(struct sk_buff *skb, short unsigned int tcpmss_option, 
   return ret;
 }
 
-int __tcpmss_mangle_packet(struct sk_buff *skb, short unsigned int tcpmss_option, __u16 mss, ipfire_info_t *info)
+int __tcpmss_mangle_packet(struct sk_buff *skb,
+short unsigned int tcpmss_option,
+__u16 mss/*,
+ipfire_info_t *info*/)
 {
 	
 	struct tcphdr *tcph;
@@ -108,7 +106,7 @@ int __tcpmss_mangle_packet(struct sk_buff *skb, short unsigned int tcpmss_option
 	 * running over MTU, sending Frag Needed and breaking things
 	 * badly. --RR 
 	 *
-	 * (1) Cited from net/netfilter/xt_TCPMSS.c
+         * (1) Quoted from net/netfilter/xt_TCPMSS.c
 	 */
 	if (tcplen != tcph->doff * 4) 
 	{
@@ -116,13 +114,8 @@ int __tcpmss_mangle_packet(struct sk_buff *skb, short unsigned int tcpmss_option
 		return -1;
 	}
 
-	if(tcpmss_option == ADJUST_MSS_TO_PMTU)
-	{
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,31)
-	  struct dst_entry *dst_en = skb->dst;
-#else
+        if(tcpmss_option == ADJUST_MSS_TO_PMTU) {
 	  struct dst_entry *dst_en = skb_dst(skb);
-#endif
 	  net_mtu = get_net_mtu(iph->saddr);
 	  if(dst_mtu(dst_en) <= mtu_minlen)
 	  {

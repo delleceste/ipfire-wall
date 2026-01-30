@@ -12,11 +12,7 @@ struct sk_buff *build_packet(void *buf, int numbytes)
   if(skb_to_user == NULL)
     return NULL;
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3,6,0)
-  nlh = NLMSG_PUT(skb_to_user, 0, 0, 0, numbytes);
-#else
   nlh = nlmsg_put(skb_to_user, 0, 0, 0, numbytes, 0);
-#endif
 
   if(NLMSG_OK(nlh, NLMSG_LENGTH(numbytes)))
   {

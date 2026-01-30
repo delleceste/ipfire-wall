@@ -21,9 +21,8 @@ typedef struct
 /* returns 1 if a new entry is added, 0 if the skb data do not
  * contain ftp 227 information about ip and port, 
  * -1 if an error occurs */
-struct state_table* ftp_support(struct state_table* tentry, 
-			const struct sk_buff* skb,
-			ipfire_info_t* packet_info);
+struct state_table* ftp_support(struct state_table* tentry,
+                                const struct sk_buff* skb);
 
 /* if skb data contain ftp address and port, allocate and return the new entry
  * to be added to the dynamic tables list */

@@ -44,9 +44,8 @@ MODULE_DESCRIPTION("Passive FTP support module");
  * - check_state();
  * skb already checked in ipfi_response() against `NULL' value
  */
-struct state_table* ftp_support(struct state_table* tentry, 
-		const struct sk_buff* skb, 
-		ipfire_info_t* packet_info)
+struct state_table* ftp_support(struct state_table* tentry,
+                const struct sk_buff* skb)
 {	
 	char ftp_buffer[FTPBUF];
 	return packet_contains_ftp_params(skb, tentry, ftp_buffer);

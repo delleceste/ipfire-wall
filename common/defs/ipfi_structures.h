@@ -172,12 +172,12 @@ enum son_message
 };
 
 #define VERSION "1.99.9"
-#define LATEST_KERNEL_SUPPORTED "linux-2.6.38"
-#define CODENAME "\e[0;31mcolumbu\e[0m"
-#define _CODENAME "columbu"
+#define LATEST_KERNEL_SUPPORTED "linux-6.12"
+#define CODENAME "\e[0;31mlin\e[0m"
+#define _CODENAME "lin"
 #define AUTHOR "Giacomo S."
 #define AUTHOR_MAIL "\e[4mdelleceste@gmail.com\e[0m"
-#define FIREDATE "June 2005 -  April 2011"
+#define FIREDATE "June 2005 -  Jan 2026"
 
 /* Rule names will be long at most RULENAMELEN-1
  * characters. RULENAMELEN actually takes into 
@@ -243,6 +243,7 @@ enum son_message
 typedef struct {
 	char in_devname[IFNAMSIZ];
 	char out_devname[IFNAMSIZ];
+    net_device::dev_id in_idx, out_idx;
 } deviceparams;
 
 
@@ -284,7 +285,7 @@ typedef struct {		/* see linux/skbuff.h */
 		struct tcphdr tcphead;	/* tcp header */
 		struct udphdr udphead;
 		struct icmphdr icmphead;
-		struct igmphdr igmphead;
+        struct igmphdr igmphead;
 	} transport_header;
 	__u8 protocol;	/* packet protocol from driver. linux/ip.h, struct iphdr, protocol is __u8 */
 	__u16 direction:3,		/* in, out or forward */

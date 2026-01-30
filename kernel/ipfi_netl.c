@@ -1247,30 +1247,33 @@ int is_to_send(ipfire_info_t * info, const struct ipfire_options *fwopts)
  * ULONG_MAX is reached, without the need of writing
  * logu_id = in_sent_touser % ULONG_MAX.
  */
-void update_sent_counter(ipfire_info_t * info)
+unsigned long long update_sent_counter(int direction)
 {
-	switch (info->direction)
+        int sent = 0;
+        switch (direction)
 	{
 		case IPFI_INPUT:
-			info->logu_id = in_sent_touser;
+                        sent = in_sent_touser;
 			in_sent_touser++;
 			break;
 		case IPFI_OUTPUT:
-			info->logu_id = out_sent_touser;
+                        sent = out_sent_touser;
 			out_sent_touser++;
 			break;
 		case IPFI_FWD:
-			info->logu_id = fwd_sent_touser;
+                        sent = fwd_sent_touser;
 			fwd_sent_touser++;
 			break;
 		case IPFI_INPUT_PRE:
-			info->logu_id = pre_sent_touser;
+                        sent = pre_sent_touser;
 			pre_sent_touser++;
 			break;
 		case IPFI_OUTPUT_POST:
-			info->logu_id = post_sent_touser;
+                        sent = post_sent_touser;
 			post_sent_touser++;
 			break;
+                default:
+                  sent = 0;
 	}
 	kstats.sent_tou++;
 }
@@ -1288,7 +1291,9 @@ void update_sent_counter(ipfire_info_t * info)
  * return value, and updates some statistics.
  * The value returned is, again, the response obtained by ipfire_filter().
  */
-int iph_in_get_response(ipfire_info_t * ipfi_info, struct sk_buff* skb)
+int iph_in_get_response(struct sk_buff* skb, int direction,
+                const struct net_device *in,
+                const struct net_device *out)
 {
 	struct sk_buff* skb_touser;
 	int response = IPFI_DROP;
@@ -1296,12 +1301,12 @@ int iph_in_get_response(ipfire_info_t * ipfi_info, struct sk_buff* skb)
 	
 	
 	/* invoke engine function passing the appropriate rule lists */
-	if (ipfi_info->direction == IPFI_INPUT)
-		response = ipfire_filter(ipfi_info, &in_drop, &in_acc, &fwopts, skb);
-	else if (ipfi_info->direction == IPFI_OUTPUT)
-		response = ipfire_filter(ipfi_info, &out_drop, &out_acc, &fwopts, skb);
-	else if (ipfi_info->direction == IPFI_FWD)
-		response = ipfire_filter(ipfi_info, &fwd_drop, &fwd_acc, &fwopts, skb);
+        if (direction == IPFI_INPUT)
+                response = ipfire_filter(&in_drop, &in_acc, &fwopts, skb, direction, in, out);
+        else if (direction == IPFI_OUTPUT)
+                response = ipfire_filter(&out_drop, &out_acc, &fwopts, skb, direction, in, out);
+        else if (direction == IPFI_FWD)
+                response = ipfire_filter(&fwd_drop, &fwd_acc, &fwopts, skb, direction, in, out);
 	else
 		IPFI_PRINTK("IPFIRE: iph_in_get_response(): invalid direction!\n");
 	
@@ -1312,7 +1317,7 @@ int iph_in_get_response(ipfire_info_t * ipfi_info, struct sk_buff* skb)
 	/* decide according to loguser if to send or not feedback */
 	if ((userspace_data_pid) && (loguser_enabled) && (is_to_send(ipfi_info, &fwopts) > 0))
 	{
-		update_sent_counter(ipfi_info);
+                int sent = update_sent_counter(direction);
 		skb_touser = build_info_t_packet(ipfi_info);
 		if(skb_touser == NULL) /* shouldn't happen :r */
 		  IPFI_PRINTK("IPFIRE: failed to allocate memory for socket buffer in iph_in_get_response()\n");

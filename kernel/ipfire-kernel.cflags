@@ -1,1 +1,3 @@
 -std=c17
+
+-DENABLE_RULENAME=1

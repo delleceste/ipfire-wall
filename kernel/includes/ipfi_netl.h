@@ -80,7 +80,7 @@ is_to_send(ipfire_info_t* info, const struct ipfire_options* ipo);
 /* packets sent to userspace get the "logu_id" field incremented 
  * by one each time. If this counter exceeds ULONG_MAX, it 
  * has to be re-initialized to 0, to prevent overflow */
-void update_sent_counter(ipfire_info_t* info);
+unsigned long long update_sent_counter(int direction);
 
 int send_data_to_user(struct sk_buff *skb, pid_t destination_pid, struct sock* which_socket);
 
@@ -108,7 +108,7 @@ int nl_receive_outcome(struct sock* sknl_ipfi_data_rec);
  *
  * @return is, again, the response obtained by ipfire_filter().
  */
-int iph_in_get_response(ipfire_info_t* ipfi_info, struct sk_buff* skb);
+int iph_in_get_response(struct sk_buff* skb, int direction, const  struct net_device *in, const  struct net_device *out);
 
 /* sends an acknowledgement to userspace program 
  * before actuating a command */

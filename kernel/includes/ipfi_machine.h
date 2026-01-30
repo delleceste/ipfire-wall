@@ -20,7 +20,14 @@
  * and since then ftp becomes FTP_ESTABLISHED and all subsequent
  * checks will involve also source port. In FTP_DEFINED state in fact,
  * source port is not checked */
-#define FTP_ESTABLISHED 3 
+#define FTP_ESTABLISHED 3
+
+struct state {
+    __u8 reverse:1,
+    notify:1,
+        unused:6;
+    struct state_t state;
+};
 
 struct state_table
 {
@@ -53,9 +60,11 @@ struct state_table
 int init_machine(void);
 void fini_machine(void);
 
-int check_state(ipfire_info_t* packet, struct sk_buff* skb);
-int state_match(const ipfire_info_t* packet, const struct state_table* entry,
-	       short *reverse); 
+int check_state(struct sk_buff* skb, int direction);
+int state_match(const struct sk_buff* skb, const struct state_table* entry,
+                short *reverse, int direction,
+                const struct net_device *in,
+                const struct net_device *out);
 
 unsigned int get_timeout_by_state(int protocol, int state);
 
@@ -67,20 +76,23 @@ unsigned int get_timeout_by_state(int protocol, int state);
  * skb might be modified if mangling is required in input output or
  * forward directions - e.g. mss manipulation -.
  */
-int 
-ipfire_filter(ipfire_info_t* packet, 
-	      	  const ipfire_rule *denied, 
-		  const ipfire_rule *allowed, 
-		  const struct ipfire_options* ipfiopts,
-	     	  struct sk_buff* skb);
-		  
-int
-port_match(const ipfire_info_t* packet, 
-	   	   const ipfire_rule* r, short protocol);
+int ipfire_filter(
+    const ipfire_rule *denied,
+    const ipfire_rule *allowed,
+    const struct ipfire_options* ipfiopts,
+    struct sk_buff* skb,
+    int direction,
+    const struct net_device *in,
+    const struct net_device *out);
+
+int port_match(const  struct tcphdr *tcph, const struct udphdr *udph,
+               const ipfire_rule* r, short protocol);
 	   	   
-int 
-address_match(const ipfire_info_t* packet, 
-	      		  const ipfire_rule* r);
+int address_match(const struct iphdr *iph,
+                  const ipfire_rule* r,
+                  int direction,
+                  const struct net_device *in,
+                  const struct net_device *out);
 
 #ifdef ENABLE_RULENAME
 /* copies rulename from packet to state table */
@@ -96,27 +108,32 @@ inline void fill_packet_with_table_rulename(ipfire_info_t* packet,
 				     const struct state_table* stt);				  
 #endif
 
-inline int direction_filter(const ipfire_info_t * packet, const ipfire_rule * r);
+inline int direction_filter(int direction, const ipfire_rule * r);
 
-int device_filter(const ipfire_info_t * packet, const ipfire_rule * r);
+int device_filter(const ipfire_rule * r,
+                  const struct net_device *in,
+                  const struct net_device *out);
 
-int ipfi_tcp_filter(const ipfire_info_t *tcp_pack, const ipfire_rule* r);
+int ipfi_tcp_filter(const struct tcphdr *tcph, const ipfire_rule* r);
 
-int udp_filter(const ipfire_info_t *udp_pack, const ipfire_rule* r);
+int udp_filter(const struct udphdr *udph, const ipfire_rule* r);
 
-int icmp_filter(const ipfire_info_t *icmp_pack, const ipfire_rule* r);
+int icmp_filter(const struct icmphdr *icmph, const ipfire_rule* r);
 
-int ip_layer_filter(const ipfire_info_t *packet, const ipfire_rule* r);
+int ip_layer_filter(const  struct iphdr *iph, const ipfire_rule* r, int direction,
+                    const  struct net_device *in, const  struct net_device *out);
 
-int direct_state_match(const ipfire_info_t * packet, const struct state_table *entry);
+int direct_state_match(const  struct sk_buff *skb, const struct state_table *entry,
+                       const  struct net_device *in, const  struct net_device *out);
 	
-int reverse_state_match(const ipfire_info_t * packet, const struct state_table *entry);
+int reverse_state_match(const struct sk_buff *skb, const struct state_table *entry,
+                        const  struct net_device *in, const  struct net_device *out);
 
 /* keep_state */
-/* If a packet carries fields pertaining to a table already present
+/* If a skb carries fields pertaining to a table already present
  * in the state table list, then NULL is returned, to indicate to the
- * caller that the entry derived from `packet' does not have to be
- * added. If `packet' is a packet not seen, a new entry of the 
+ * caller that the entry derived from `skb' does not have to be
+ * added. If `skb' is a skb not seen, a new entry of the
  * "state_table" kind is returned. nflags is used
  * just for passive ftp support for now. 
  * keep_state is called by ipfire_filter with the rcu_read_lock
@@ -126,7 +143,11 @@ int reverse_state_match(const ipfire_info_t * packet, const struct state_table *
  *   will be deferred until the outermost RCU read-side critical section
  *   completes.'
  */
-struct state_table* keep_state(ipfire_info_t * packet, const ipfire_rule *rule);
+struct state_table* keep_state(const struct sk_buff *skb,
+                               const ipfire_rule* p_rule,
+                               int direction,
+                               const  struct net_device *in,
+                               const  struct net_device *out);
 
 /* Adds the new state table to the list. Takes a pointer to a memory allocated
  * structure.
@@ -144,7 +165,10 @@ reverse_transport_state_match(const ipfire_info_t * packet,
 
 /* fills in state table with network informations */
 int fill_net_table_fields(struct state_table *state_t,
-			  const ipfire_info_t * packet);
+                          const struct sk_buff *skb,
+                          int direction,
+                          const struct  net_device *in,
+                          const struct  net_device *out);
 
 int fill_state_info(struct state_info *stinfo, const struct state_table* stt);
 
@@ -165,8 +189,11 @@ void fill_timer_table_fields(struct state_table* state_t);
 void handle_keep_state_timeout(struct timer_list *t);
 
 /* compares two state table entries */
-int compare_state_entries(const struct state_table* s1,
-			  const struct state_table* s2);
+int compare_state_entries(const struct sk_buff *skb,
+                          const struct state_table* s2,
+                          const  struct net_device *in,
+                          const  struct net_device *out,
+                          int direction);
 			  
 /* scans root list looking for already present entries. 
  * Returns NULL if none is found, the pointer to the entry
@@ -175,15 +202,21 @@ int compare_state_entries(const struct state_table* s1,
  * to update timers here avoids putting another lock when
  * calling timer updating routine elsewhere. 
  */
-struct state_table *
-lookup_state_table_n_update_timer(const struct state_table *stt, int lock);
+struct state_table *lookup_state_table_n_update_timer(const struct sk_buff *skb,
+                                                      int lock,
+                                                      int direction,
+                                                      const  struct net_device *in,
+                                                      const  struct net_device *out);
 
 /* returns in *addr the internet address corresponding to 
  * ouput or input interface, depending on field "direction" of info 
  * info packet. This is good for in and out directions, where 
  * the context is clear when one says "my address". 
  */
-int get_ifaddr_by_info(const ipfire_info_t* pack, __u32* addr);
+int get_dev_ifaddr( __u32* addr,
+    int direction,
+    const  struct net_device *in,
+    const  struct net_device *out);
 
 /* returns in *addr the internet address having the name ifname */
 int get_ifaddr_by_name(const char* ifname, __u32* addr);
