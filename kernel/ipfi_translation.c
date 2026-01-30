@@ -25,6 +25,24 @@
 #include "includes/ipfi_machine.h"
 #include "includes/ipfi_netl_packet_builder.h"
 
+
+static const struct rhashtable_params dnat_ht_params = {
+    .key_len	= sizeof(struct nat_key),
+    .key_offset	= offsetof(dnat_entry, key),
+    .head_offset	= offsetof(dnat_entry, node),
+    .automatic_shrinking = true,
+};
+
+static const struct rhashtable_params snat_ht_params = {
+    .key_len	= sizeof(struct nat_key),
+    .key_offset	= offsetof(snat_entry, key),
+    .head_offset	= offsetof(snat_entry, node),
+    .automatic_shrinking = true,
+};
+
+struct rhashtable dnat_ht;
+struct rhashtable snat_ht;
+
 extern ipfire_rule translation_pre;
 extern ipfire_rule translation_post;
 extern ipfire_rule translation_out;
@@ -38,13 +56,13 @@ extern int state_machine(const ipfire_info_t *info,
 
 extern unsigned int get_timeout_by_state(int protocol, int state);
 
-extern struct dnatted_table root_dnatted_table;
-extern struct snat_entry root_snatted_table;
+extern struct dnat_entry root_dnat_entry;
+extern struct snat_entry root_snat_entry;
 
 extern struct ipfire_options fwopts;
 
-int dnatted_entry_counter = 0;
-int snatted_entry_counter = 0;
+int dnat_entry_counter = 0;
+int snat_entry_counter = 0;
 
 /* Lock for linked list */
 spinlock_t snat_list_lock;
@@ -69,11 +87,11 @@ static struct nf_sockopt_ops so_getoriginal_dst = {
 };
 
 	int
-get_orig_from_dnat_entry(const struct dnatted_table *dnt,
+get_orig_from_dnat_entry(const struct dnat_entry *dnt,
 		const ipfire_info_t * iit,
 		struct sockaddr_in *sin)
 {
-	if (dnt->protocol != IPPROTO_TCP)
+        if (dnt->common.key.proto != IPPROTO_TCP)
 		return -1;
 	/* valid only for TCP, so: */
 	if ((dnt->old_saddr == iit->iphead.daddr) &&
@@ -88,24 +106,16 @@ get_orig_from_dnat_entry(const struct dnatted_table *dnt,
 	return -1;
 }
 
-	int
-lookup_dnat_table_and_getorigdst(const ipfire_info_t * iit,
-		struct sockaddr_in *sin)
-{
-	int counter = 0;
-	struct dnatted_table *dntmp;
-	rcu_read_lock_bh();
-	list_for_each_entry_rcu(dntmp, &root_dnatted_table.list, list)
-	{
-		counter++;
-		if (get_orig_from_dnat_entry(dntmp, iit, sin) == 1)
-		{
-			rcu_read_unlock_bh();
-			return 0;
-		}
-	}
+int lookup_dnat_entry_and_getorigdst(const ipfire_info_t * iit, struct sockaddr_in *sin) {
+        int ret = -1;
+        struct dnat_entry *entry;
+        rcu_read_lock_bh();
+        entry = rhashtable_lookup(&dnat_ht, key, dnat_ht_params);
+        if (entry && get_orig_from_dnat_entry(entry, iit, sin) == 1) {
+          ret = 0;
+        }
 	rcu_read_unlock_bh();
-	return -1;
+        return ret;
 }
 
 /* getsockopt related function: finds original destination address and port
@@ -147,13 +157,13 @@ int get_original_dest(struct sock *sk, int optval, void __user * user, int *len)
 	tmp_iit->iphead.daddr = inet->inet_daddr;	/* foreign ipv4 addr */
 	tmp_iit->transport_header.tcphead.source = inet->inet_sport;
 	tmp_iit->transport_header.tcphead.dest = inet->inet_dport;
-	tmp_iit->protocol = IPPROTO_TCP;
+        tmp_iit->common.key.proto = IPPROTO_TCP;
 
 //	IPFI_PRINTK("IPFIRE GETORIG COUPLE: %u.%u.%u.%u:%u-%u.%u.%u.%u:%u.\n", NIPQUAD(tmp_iit->iphead.saddr),
 //			ntohs(tmp_iit->transport_header.tcphead.source), NIPQUAD(tmp_iit->iphead.daddr),
 //			ntohs(tmp_iit->transport_header.tcphead.dest));
 
-	if (lookup_dnat_table_and_getorigdst(tmp_iit, sin) < 0)
+        if (lookup_dnat_entry_and_getorigdst(tmp_iit, sin) < 0)
 	{
 //		IPFI_PRINTK("IPFIRE: get_original_dest(): GETORIG COUPLE FAILED: %u.%u.%u.%u:%u-%u.%u.%u.%u:%u.\n",
 //				NIPQUAD(tmp_iit->iphead.saddr), ntohs(tmp_iit->transport_header.tcphead.source),
@@ -211,7 +221,7 @@ net_quadruplet get_quad_from_skb(const struct sk_buff* skb)
 	netquad.saddr = iphdr->saddr;
 	netquad.daddr = iphdr->daddr;
 
-	switch (iphdr->protocol)
+        switch (iphdr->common.key.proto)
 	{
 		case IPPROTO_TCP:
 			ptcphead = skb_header_pointer(skb, iphdr->ihl * 4, sizeof(tcphead), &tcphead);
@@ -239,7 +249,7 @@ net_quadruplet get_quad_from_skb(const struct sk_buff* skb)
 			break;
 		default:
 			IPFI_MODERATE_PRINTK(PRINT_PROTO_UNSUPPORTED, 
-			  "IPFIRE: get_quad_from_skb(): unsupported protocol %d\n", iphdr->protocol);
+                          "IPFIRE: get_quad_from_skb(): unsupported protocol %d\n", iphdr->common.key.proto);
 			return nq_invalid;
 	}
 	return netquad;
@@ -291,9 +301,9 @@ int manip_skb(struct sk_buff *skb, __u32 saddr, __u16 sport,
 	 * the skb header (net/core/skbuff.c): all the pointers pointing into 
 	 * skb header may change and must be reloaded after call to this function.
      */
-	if((mi.sp ^ mi.dp) && ipheader->protocol == IPPROTO_TCP)
+        if((mi.sp ^ mi.dp) && ipheader->common.key.proto == IPPROTO_TCP)
 	  writable_len = l4hdroff + sizeof(struct tcphdr);
-	else if((mi.sp ^ mi.dp)  && ipheader->protocol == IPPROTO_UDP)
+        else if((mi.sp ^ mi.dp)  && ipheader->common.key.proto == IPPROTO_UDP)
 	  writable_len = l4hdroff + sizeof(struct udphdr);
 	else if(mi.sp | mi.dp)
 	  return -1;
@@ -306,9 +316,9 @@ int manip_skb(struct sk_buff *skb, __u32 saddr, __u16 sport,
 	ipheader = (void *)skb->data + iphdroff;
 	
 	/* pointers to tcp and udp headers */
-	if(ipheader->protocol == IPPROTO_TCP) /* if one is set, then need to recalculate l4 checksum */
+        if(ipheader->common.key.proto == IPPROTO_TCP) /* if one is set, then need to recalculate l4 checksum */
 	  ptcphead = (struct tcphdr *)(skb->data + l4hdroff);
-	else if(ipheader->protocol == IPPROTO_UDP)
+        else if(ipheader->common.key.proto == IPPROTO_UDP)
 	  pudphead =  (struct udphdr *)(skb->data + l4hdroff);
 	
 	/* manipulate packet and update ip checksum */
@@ -327,7 +337,7 @@ int manip_skb(struct sk_buff *skb, __u32 saddr, __u16 sport,
 	/* manipulate the packet, according to the protocol */
 	if(mi.sp ^ mi.dp)
 	{
-	  switch (ipheader->protocol)
+          switch (ipheader->common.key.proto)
 	  {
 		  case IPPROTO_TCP:
 			  if (check_tcp_header_from_skb(skb, ptcphead) < 0)
@@ -370,7 +380,7 @@ int manip_skb(struct sk_buff *skb, __u32 saddr, __u16 sport,
 		  case IPPROTO_PIM:
 			  break;
 		  default:
-			  IPFI_PRINTK ("IPFIRE: manip_skb(): invalid protocol %d.\n", ipheader->protocol);
+                          IPFI_PRINTK ("IPFIRE: manip_skb(): invalid protocol %d.\n", ipheader->common.key.proto);
 			  return -1;
 			  break;
 	  }
@@ -380,7 +390,7 @@ int manip_skb(struct sk_buff *skb, __u32 saddr, __u16 sport,
 	{
 	  /* recalculate IP header checksum */
 	  csum_replace4(&ipheader->check, oldaddr, newaddr);
-	  switch(ipheader->protocol)
+          switch(ipheader->common.key.proto)
 	  {
 		case IPPROTO_TCP:  /* adjust tcp checksum according to the ip address change */
 		  inet_proto_csum_replace4(&ptcphead->check, skb, oldaddr, newaddr, 1);
@@ -398,7 +408,7 @@ int manip_skb(struct sk_buff *skb, __u32 saddr, __u16 sport,
 	/* replace checksum for tcp/udp port changes, if either mi.sp or mi.dp is set */
 	if(mi.sp ^ mi.dp)
 	{
-	  switch(ipheader->protocol)
+          switch(ipheader->common.key.proto)
 	  {
 		/* IPPROTO_TCP and IPPROTO_UDP cases only */
 		case IPPROTO_UDP: 
@@ -420,14 +430,14 @@ int manip_skb(struct sk_buff *skb, __u32 saddr, __u16 sport,
 }
 
 	int
-fill_entry_net_fields(struct dnatted_table *dnentry,
+fill_entry_net_fields(struct dnat_entry *dnentry,
 		const ipfire_info_t * original_pack,
 		const ipfire_rule * dnat_rule)
 {
-	memset(dnentry, 0, sizeof(struct dnatted_table));
+        memset(dnentry, 0, sizeof(struct dnat_entry));
 	/* Has packet arrived from external interface? */
 	dnentry->external = original_pack->external;
-	dnentry->protocol = original_pack->iphead.protocol;
+        dnentry->common.key.proto = original_pack->iphead.protocol;
 	dnentry->old_saddr = original_pack->iphead.saddr;
 	dnentry->old_daddr = original_pack->iphead.daddr;
 
@@ -467,7 +477,7 @@ fill_entry_net_fields(struct dnatted_table *dnentry,
 	}
 	dnentry->direction = original_pack->direction;
 	dnentry->id = original_pack->packet_id;
-	dnentry->position = dnatted_entry_counter;
+        dnentry->position = dnat_entry_counter;
 	/* new values */
 	if (dnat_rule->nflags.newaddr)
 		dnentry->new_daddr = dnat_rule->newaddr;
@@ -480,23 +490,22 @@ fill_entry_net_fields(struct dnatted_table *dnentry,
 /* Callback function for freeing a DNAT entry */
 void free_dnat_entry_rcu_call(struct rcu_head *head)
 {
-	struct dnatted_table *dnatt= 
-		container_of(head, struct dnatted_table, dnat_rcuh);
-	kfree(dnatt);
+  struct dnat_entry *entry = container_of(rcu, dnat_entry, rcu);
+  kfree(entry);
 }
 
 /* Must be called with the lock */
-inline void update_dnat_timer(struct dnatted_table *dnt)
+inline void update_dnat_timer(struct dnat_entry *dnt)
 {
-	unsigned int timeout = get_timeout_by_state(dnt->protocol, dnt->state);
-	mod_timer(&dnt->timer_dnattedlist,
+        unsigned int timeout = get_timeout_by_state(dnt->common.key.proto, dnt->common.state);
+        mod_timer(&dnt->common.timer,
 			jiffies + HZ * timeout);
 }
 
 /* Must be called with the lock */
 inline void update_snat_timer(struct snat_entry *snt)
 {
-	unsigned int timeout = get_timeout_by_state(snt->protocol, snt->state);
+        unsigned int timeout = get_timeout_by_state(snt->common.key.proto, snt->common.state);
 	mod_timer(&snt->timer_snattedlist,
 			jiffies + HZ * timeout);
 }
@@ -504,14 +513,16 @@ inline void update_snat_timer(struct snat_entry *snt)
 /* Timeout handler for dnat entries. */
 void handle_dnatted_entry_timeout(struct timer_list *t)
 {
-	struct dnatted_table *dnt_to_free = from_timer(dnt_to_free, t, timer_dnattedlist);
+        struct dnat_entry *dnt_to_free = from_timer(dnt_to_free, t, timer_dnattedlist);
 	/* acquire lock before freeing rule (dnat table lock) */
 	spin_lock(&dnat_list_lock);
-	del_timer(&dnt_to_free->timer_dnattedlist);
-	list_del_rcu(&dnt_to_free->list);
-	// 	kfree(dnt_to_free);
-	call_rcu(&dnt_to_free->dnat_rcuh, free_dnat_entry_rcu_call); 
-	dnatted_entry_counter--;
+        rhashtable_remove_fast(&dnat_ht,
+                               &dnt_to_free->common.node,
+                               dnat_ht_params);
+
+        del_timer(&dnt_to_free->common.timer);
+        call_rcu(&dnt_to_free->common.rcu, free_dnat_entry_rcu_call);
+        dnat_entry_counter--;
 	/* release lock */
 	spin_unlock(&dnat_list_lock);
 }
@@ -519,16 +530,16 @@ void handle_dnatted_entry_timeout(struct timer_list *t)
 /* Called when adding a new entry, the network part and the state 
  * must already be initialized.
  */
-void fill_timer_dnat_entry(struct dnatted_table *dnt)
+void fill_timer_dnat_entry(struct dnat_entry *dnt)
 {
 	unsigned timeo;
-	timeo = get_timeout_by_state(dnt->protocol, dnt->state);
-	timer_setup(&dnt->timer_dnattedlist, handle_dnatted_entry_timeout, 0);
+        timeo = get_timeout_by_state(dnt->common.key.proto, dnt->common.state);
+        timer_setup(&dnt->common.timer, handle_dnatted_entry_timeout, 0);
 
-	dnt->timer_dnattedlist.expires= jiffies + HZ * timeo;
+        dnt->common.timer.expires= jiffies + HZ * timeo;
 }
 
-int de_dnat(struct sk_buff *skb, const struct dnatted_table *dnatt)
+int de_dnat(struct sk_buff *skb, const struct dnat_entry *dnatt)
 {
 	/* set source address of outgoing packet equal to the original
 	 * destination address which was translated while incoming
@@ -543,7 +554,7 @@ int de_dnat(struct sk_buff *skb, const struct dnatted_table *dnatt)
 
 #ifdef ENABLE_RULENAME
 /* copies rulename field from state table to packet */
-inline void fill_packet_with_dnentry_rulename(ipfire_info_t * packet, const struct dnatted_table
+inline void fill_packet_with_dnentry_rulename(ipfire_info_t * packet, const struct dnat_entry
 		*dnentry)
 {
 	if (strlen(dnentry->rulename) > 0)
@@ -551,7 +562,7 @@ inline void fill_packet_with_dnentry_rulename(ipfire_info_t * packet, const stru
 }
 #endif
 
-int de_dnat_table_match(const struct dnatted_table *dnt,
+int de_dnat_entry_match(const struct dnat_entry *dnt,
 		const struct sk_buff *skb, ipfire_info_t * packet)
 {
 	net_quadruplet nquad;
@@ -563,7 +574,7 @@ int de_dnat_table_match(const struct dnatted_table *dnt,
 #endif
 	if(iphead == NULL)
 	{
-		IPFI_PRINTK("IPFIRE: de_dnat_table_match(): ip header NULL!\n");
+                IPFI_PRINTK("IPFIRE: de_dnat_entry_match(): ip header NULL!\n");
 		return -1;
 	}
 
@@ -585,18 +596,18 @@ int de_dnat_table_match(const struct dnatted_table *dnt,
 	 * equal to old destination address (our one). Source 
 	 * address must be the one we destination-natted.
 	 */
-	if (iphead->protocol != dnt->protocol)
+        if (iphead->common.key.proto != dnt->common.key.proto)
 		return -1;
 
-	if (dnt->protocol == IPPROTO_ICMP || dnt->protocol == IPPROTO_IGMP 
-	  || dnt->protocol == IPPROTO_GRE || dnt->protocol == IPPROTO_PIM)
+        if (dnt->common.key.proto == IPPROTO_ICMP || dnt->common.key.proto == IPPROTO_IGMP
+          || dnt->common.key.proto == IPPROTO_GRE || dnt->common.key.proto == IPPROTO_PIM)
 	{
 		if ((nquad.saddr == dnt->new_daddr)
 				&& (nquad.daddr == dnt->old_saddr))
 			goto success;
 	} 
-	else if ((dnt->protocol == IPPROTO_TCP) ||
-			(dnt->protocol == IPPROTO_UDP))
+        else if ((dnt->common.key.proto == IPPROTO_TCP) ||
+                        (dnt->common.key.proto == IPPROTO_UDP))
 	{
 		if ((nquad.saddr == dnt->new_daddr)
 				&& (nquad.sport == dnt->new_dport)
@@ -617,17 +628,17 @@ int de_dnat_translation(struct sk_buff *skb, ipfire_info_t * pack)
 {
 	int counter = 0;
 	int ret;
-	struct dnatted_table *dntmp;
+        struct dnat_entry *dntmp;
 	rcu_read_lock_bh();
-	list_for_each_entry_rcu(dntmp, &root_dnatted_table.list, list)
+        list_for_each_entry_rcu(dntmp, &root_dnat_entry.list, list)
 	{
 		counter++;
-		/* de_dnat_table_match() copies into pack rule 
+                /* de_dnat_entry_match() copies into pack rule
 		 * name if a match is found */
-		if (de_dnat_table_match(dntmp, skb, pack) > 0)
+                if (de_dnat_entry_match(dntmp, skb, pack) > 0)
 		{
 			/* Update the state of the destination nat entry */
-			dntmp->state = state_machine(pack, dntmp->state, 1);
+                        dntmp->common.state = state_machine(pack, dntmp->common.state, 1);
 			/* Now update the timer of the entry */
 			update_dnat_timer(dntmp);
 			ret = de_dnat(skb, dntmp);
@@ -640,10 +651,10 @@ int de_dnat_translation(struct sk_buff *skb, ipfire_info_t * pack)
 }
 
 	int
-compare_entries(const struct dnatted_table *dne1,
-		const struct dnatted_table *dne2)
+compare_entries(const struct dnat_entry *dne1,
+                const struct dnat_entry *dne2)
 {
-	return ((dne1->protocol == dne2->protocol) &&
+        return ((dne1->common.key.proto == dne2->common.key.proto) &&
 			(dne1->old_saddr == dne2->old_saddr) &&
 			(dne1->old_daddr == dne2->old_daddr) &&
 			(dne1->old_dport == dne2->old_dport) &&
@@ -665,21 +676,21 @@ compare_entries(const struct dnatted_table *dne1,
  * which is refreshed first of all when an entry is found in the
  * list.
  */
-	struct dnatted_table *
-lookup_dnatted_table_n_update_timer(const struct dnatted_table *dne, ipfire_info_t* info)
+        struct dnat_entry *
+lookup_dnat_entry_n_update_timer(const struct dnat_entry *dne, ipfire_info_t* info)
 {
 	int counter = 0;
-	struct dnatted_table *dntmp;
+        struct dnat_entry *dntmp;
 	/* acquire read lock for dnat table */
 	rcu_read_lock_bh();
-	list_for_each_entry_rcu(dntmp, &root_dnatted_table.list, list)
+        list_for_each_entry_rcu(dntmp, &root_dnat_entry.list, list)
 	{
 		counter++;
 		if (compare_entries(dntmp, dne) == 1)
 		{
 			/* Update the state of the existing entry in the kernel tables */
 			/* 0 means 'reverse = 0'. Here we are in the original direction */
-			dntmp->state = state_machine(info,  dntmp->state, 0);
+                        dntmp->common.state = state_machine(info,  dntmp->common.state, 0);
 			update_dnat_timer(dntmp);
 			rcu_read_unlock_bh();
 			return dntmp;
@@ -692,7 +703,7 @@ lookup_dnatted_table_n_update_timer(const struct dnatted_table *dne, ipfire_info
 #ifdef ENABLE_RULENAME
 /* if not null, copies rulename from packet to dne */
 inline void fill_rulename_dnat_entry(const ipfire_info_t * packet,
-		struct dnatted_table *dne)
+                struct dnat_entry *dne)
 {
 	if (strlen(packet->rulename) > 0)
 		strncpy(dne->rulename, packet->rulename, RULENAMELEN);
@@ -703,27 +714,27 @@ int add_dnatted_entry(const struct sk_buff *skb,
 		ipfire_info_t * original_pack,
 		const ipfire_rule * dnat_rule)
 {
-	struct dnatted_table *dnatted_entry;
-	struct dnatted_table *existing_entry;
+        struct dnat_entry *dnatted_entry;
+        struct dnat_entry *existing_entry;
 	struct sk_buff *skb_to_user;
 	ipfire_info_t *ipfi_info_warn;
-	dnatted_entry = (struct dnatted_table *)
-		kmalloc(sizeof(struct dnatted_table), GFP_ATOMIC);
+        dnatted_entry = (struct dnat_entry *)
+                kmalloc(sizeof(struct dnat_entry), GFP_ATOMIC);
 	if (fill_entry_net_fields(dnatted_entry, original_pack, dnat_rule)
 			< 0)
 	{
 		kfree(dnatted_entry);
 		return -1;
 	}
-	/* lookup_dnatted_table_n_update_timer() updates first the state.
+        /* lookup_dnat_entry_n_update_timer() updates first the state.
 	 * Then it updates the timer.
 	 */
-	if ((existing_entry = lookup_dnatted_table_n_update_timer(dnatted_entry, original_pack)) != NULL)
+        if ((existing_entry = lookup_dnat_entry_n_update_timer(dnatted_entry, original_pack)) != NULL)
 	{
 		kfree(dnatted_entry);	/* free just mallocated memory */
 		return 1;	/* entry already existing */
 	}
-	if (dnatted_entry_counter == fwopts.max_nat_entries)
+        if (dnat_entry_counter == fwopts.max_nat_entries)
 	{
 		/* allocate ipfi_info_warn: it is created and lives only inside this if branch */
 		ipfi_info_warn = (ipfire_info_t *) kmalloc(sizeof(ipfire_info_t), GFP_ATOMIC);
@@ -748,7 +759,7 @@ int add_dnatted_entry(const struct sk_buff *skb,
 
 	/* A new dnat table will be added */
 	/* Set the state of the new dnat table */
-	dnatted_entry->state = state_machine(original_pack,  dnatted_entry->state, 0);
+        dnatted_entry->common.state = state_machine(original_pack,  dnatted_entry->common.state, 0);
 
 	/* copy the name the user gave to the rule to the dynamic dnat entry */
 #ifdef ENABLE_RULENAME
@@ -759,10 +770,10 @@ int add_dnatted_entry(const struct sk_buff *skb,
 	/* fill in timer fields */
 	fill_timer_dnat_entry(dnatted_entry);
 	/* add timer */
-	add_timer(&dnatted_entry->timer_dnattedlist);
+        add_timer(&dnatted_entry->common.timer);
 	/* add entry to root table */
 	INIT_LIST_HEAD(&dnatted_entry->list);
-	list_add_rcu(&dnatted_entry->list, &root_dnatted_table.list);
+        list_add_rcu(&dnatted_entry->list, &root_dnat_entry.list);
 	spin_unlock_bh(&dnat_list_lock);
 	return 0;
 }
@@ -811,7 +822,7 @@ int translation_rule_match(ipfire_info_t * packet, const ipfire_rule * r)
 	if (address_match(packet, r) < 0)
 		return -1;
 	/* transport */
-	switch (packet->protocol)
+        switch (packet->common.key.proto)
 	{
 		case IPPROTO_TCP:
 			if (port_match(packet, r, IPPROTO_TCP) < 0)
@@ -939,6 +950,7 @@ int dnat_translation(struct sk_buff *skb, ipfire_info_t * packet, int direction)
 	/* read lock: it might be possible that rule list is modified during read in non atomic context (output maybe)
 	*/
 	rcu_read_lock_bh();
+
 	list_for_each_entry_rcu(transrule, &dnat_rules->list, list)
 	{
 		counter++;
@@ -957,7 +969,7 @@ int dnat_translation(struct sk_buff *skb, ipfire_info_t * packet, int direction)
 			 * and if it is present, its timeout gets updated.
 			 */
 			if(add_dnatted_entry(skb, packet, transrule) == 0)
-				dnatted_entry_counter++;
+                                dnat_entry_counter++;
 			dest_translate(skb, transrule);
 			rcu_read_unlock_bh();
 			return 0; /* unlock before returning */
@@ -1031,22 +1043,22 @@ int dest_translate(struct sk_buff *skb, const ipfire_rule * transrule)
 	return 1;
 }
 
-int free_dnatted_table(void)
+int free_dnat_entry(void)
 {
 	struct list_head *pos;
 	struct list_head *q;
-	struct dnatted_table *dtl;
+        struct dnat_entry *dtl;
 	int counter = 0;
 	spin_lock_bh(&dnat_list_lock);
-	list_for_each_safe(pos, q, &root_dnatted_table.list)
+        list_for_each_safe(pos, q, &root_dnat_entry.list)
 	{
-		dtl = list_entry(pos, struct dnatted_table, list);
-		if(del_timer(&dtl->timer_dnattedlist) )
+                dtl = list_entry(pos, struct dnat_entry, list);
+                if(del_timer(&dtl->common.timer) )
 		{
 			list_del_rcu(&dtl->list);
-			call_rcu(&dtl->dnat_rcuh, free_dnat_entry_rcu_call);
+                        call_rcu(&dtl->common.rcu, free_dnat_entry_rcu_call);
 			counter++;
-			dnatted_entry_counter--;
+                        dnat_entry_counter--;
 		}
 	}
 	spin_unlock_bh(&dnat_list_lock);
@@ -1055,7 +1067,7 @@ int free_dnatted_table(void)
 
 /* looks for matches in dynamic denatted tables. If a match is found,
  * rule name is copied to packet */
-int pre_denat_table_match(const struct dnatted_table *dnt,
+int pre_denat_table_match(const struct dnat_entry *dnt,
 		const struct sk_buff *skb,
 		ipfire_info_t * packet)
 {
@@ -1063,7 +1075,7 @@ int pre_denat_table_match(const struct dnatted_table *dnt,
 	struct iphdr* iphead;
 
 	if ((skb == NULL) || (dnt == NULL))
-		return network_header_null("pre_denat_table_match()", "skb or dnatted_table NULL!");
+                return network_header_null("pre_denat_table_match()", "skb or dnat_entry NULL!");
 	iphead = ip_hdr(skb);
 	if(iphead == NULL)
 		return network_header_null("pre_denat_table_match()", "IP header NULL!");
@@ -1081,17 +1093,17 @@ int pre_denat_table_match(const struct dnatted_table *dnt,
 		return -1;
 	}
 
-	if (iphead->protocol != dnt->protocol)
+        if (iphead->common.key.proto != dnt->common.key.proto)
 		return -1;
 	if (dnt->direction == IPFI_OUTPUT)
 	{
-		if (dnt->protocol == IPPROTO_ICMP || dnt->protocol == IPPROTO_IGMP || 
-		  dnt->protocol == IPPROTO_GRE  || dnt->protocol == IPPROTO_PIM)
+                if (dnt->common.key.proto == IPPROTO_ICMP || dnt->common.key.proto == IPPROTO_IGMP ||
+                  dnt->common.key.proto == IPPROTO_GRE  || dnt->common.key.proto == IPPROTO_PIM)
 		{
 			if ((netquad.saddr == dnt->new_daddr) && (netquad.daddr == dnt->old_saddr))
 				goto success;
 		} 
-		else if ((dnt->protocol == IPPROTO_TCP) || (dnt->protocol == IPPROTO_UDP))
+                else if ((dnt->common.key.proto == IPPROTO_TCP) || (dnt->common.key.proto == IPPROTO_UDP))
 		{
 			if ((netquad.saddr == dnt->new_daddr) && (netquad.sport == dnt->new_dport)
 					&& (netquad.daddr == dnt->old_saddr) && (netquad.dport == dnt->old_sport))
@@ -1100,13 +1112,13 @@ int pre_denat_table_match(const struct dnatted_table *dnt,
 	} 
 	else
 	{
-		if (dnt->protocol == IPPROTO_ICMP || dnt->protocol == IPPROTO_IGMP 
-		  || dnt->protocol == IPPROTO_GRE  || dnt->protocol == IPPROTO_PIM)
+                if (dnt->common.key.proto == IPPROTO_ICMP || dnt->common.key.proto == IPPROTO_IGMP
+                  || dnt->common.key.proto == IPPROTO_GRE  || dnt->common.key.proto == IPPROTO_PIM)
 		{
 			if ((netquad.saddr == dnt->new_daddr) && (netquad.daddr == dnt->old_daddr))
 				goto success;
 		} 
-		else if ((dnt->protocol == IPPROTO_TCP) || (dnt->protocol == IPPROTO_UDP))
+                else if ((dnt->common.key.proto == IPPROTO_TCP) || (dnt->common.key.proto == IPPROTO_UDP))
 		{
 			if ((netquad.saddr == dnt->new_daddr) && (netquad.sport == dnt->new_dport)
 					&& ((netquad.daddr == dnt->old_daddr) || (netquad.daddr == dnt->our_ifaddr))
@@ -1123,7 +1135,7 @@ success:
 }
 
 int pre_de_dnat_translate(struct sk_buff *skb,
-		const struct dnatted_table *dnt)
+                const struct dnat_entry *dnt)
 {
 	struct pkt_manip_info mi;
 	memset(&mi, 0, sizeof(mi));
@@ -1152,9 +1164,9 @@ int pre_de_dnat_translate(struct sk_buff *skb,
 int pre_de_dnat(struct sk_buff *skb, ipfire_info_t * packet)
 {
 	int counter = 0, ret;
-	struct dnatted_table *dntmp;
+        struct dnat_entry *dntmp;
 	rcu_read_lock_bh();
-	list_for_each_entry_rcu(dntmp, &root_dnatted_table.list, list)
+        list_for_each_entry_rcu(dntmp, &root_dnat_entry.list, list)
 	{
 		counter++;
 		/* pre_denat_table_match() copies rulename from entry 
@@ -1162,7 +1174,7 @@ int pre_de_dnat(struct sk_buff *skb, ipfire_info_t * packet)
 		if (pre_denat_table_match(dntmp, skb, packet) > 0)
 		{
 			/* Update the state of the destination nat entry */
-			dntmp->state = state_machine(packet, dntmp->state, 1);
+                        dntmp->common.state = state_machine(packet, dntmp->common.state, 1);
 			/* Now update the timer of the entry */
 			update_dnat_timer(dntmp);
 			ret = pre_de_dnat_translate(skb, dntmp);
@@ -1175,7 +1187,7 @@ int pre_de_dnat(struct sk_buff *skb, ipfire_info_t * packet)
 }
 
 /* set source address of outgoing packet equal to our source address */
-int snat_dynamic_translate(struct sk_buff *skb, struct dnatted_table *dnt)
+int snat_dynamic_translate(struct sk_buff *skb, struct dnat_entry *dnt)
 {
 	struct pkt_manip_info mi;
 	memset(&mi, 0, sizeof(mi));
@@ -1188,14 +1200,14 @@ int snat_dynamic_translate(struct sk_buff *skb, struct dnatted_table *dnt)
 
 #ifdef ENABLE_RULENAME
 /* copies rule name from dynamic entry table to packet */
-inline void fill_packet_with_snentry_rulename(ipfire_info_t * packet, const struct snatted_table *snentry)
+inline void fill_packet_with_snentry_rulename(ipfire_info_t * packet, const struct snat_entry *snentry)
 {
 	if (strlen(snentry->rulename) > 0)
 		strncpy(packet->rulename, snentry->rulename, RULENAMELEN);
 }
 #endif
 
-int snat_dynamic_table_match(const struct dnatted_table *dnt,
+int snat_dynamic_table_match(const struct dnat_entry *dnt,
 		const struct sk_buff *skb,
 		ipfire_info_t * packet)
 {
@@ -1220,13 +1232,13 @@ int snat_dynamic_table_match(const struct dnatted_table *dnt,
 		IPFI_PRINTK("IPFIRE: could not correctly get_quad_from_skb() in snat_dynamic_table_match()\n");
 		return -1;
 	}
-	if (dnt->protocol == IPPROTO_ICMP || dnt->protocol == IPPROTO_IGMP 
-	  || dnt->protocol == IPPROTO_GRE  || dnt->protocol == IPPROTO_PIM)
+        if (dnt->common.key.proto == IPPROTO_ICMP || dnt->common.key.proto == IPPROTO_IGMP
+          || dnt->common.key.proto == IPPROTO_GRE  || dnt->common.key.proto == IPPROTO_PIM)
 	{
 		if ((netq.saddr == dnt->old_saddr) && (netq.daddr == dnt->new_daddr))
 			goto success;
 	} 
-	else if ((dnt->protocol == IPPROTO_TCP) || (dnt->protocol == IPPROTO_UDP))
+        else if ((dnt->common.key.proto == IPPROTO_TCP) || (dnt->common.key.proto == IPPROTO_UDP))
 	{
 		if ((netq.saddr == dnt->old_saddr) && (netq.sport == dnt->old_sport)
 				&& (netq.daddr == dnt->new_daddr) && (netq.dport == dnt->new_dport))
@@ -1261,9 +1273,9 @@ success:
 int post_snat_dynamic(struct sk_buff *skb, ipfire_info_t * packet)
 {
 	int counter = 0, ret;
-	struct dnatted_table *dntmp;
+        struct dnat_entry *dntmp;
 	rcu_read_lock_bh();
-	list_for_each_entry_rcu(dntmp, &root_dnatted_table.list, list)
+        list_for_each_entry_rcu(dntmp, &root_dnat_entry.list, list)
 	{
 		counter++;
 		/* snat_dynamic_table_match() copies rulename from dynamic
@@ -1274,7 +1286,7 @@ int post_snat_dynamic(struct sk_buff *skb, ipfire_info_t * packet)
 			 * ! CHECK THE reverse: ok, the same direction of
 			 * the originating connection
 			 */
-			dntmp->state = state_machine(packet, dntmp->state, 0);
+                        dntmp->common.state = state_machine(packet, dntmp->common.state, 0);
 			/* Update the timer */
 			update_dnat_timer(dntmp);
 			ret = snat_dynamic_translate(skb, dntmp);
@@ -1293,7 +1305,7 @@ int post_snat_dynamic(struct sk_buff *skb, ipfire_info_t * packet)
 compare_snat_entries(const struct snat_entry *sne1,
                 const struct snat_entry *sne2)
 {
-	return ((sne1->protocol == sne2->protocol) &&
+        return ((sne1->common.key.proto == sne2->common.key.proto) &&
 			(sne1->old_saddr == sne2->old_saddr) &&
 			(sne1->old_daddr == sne2->old_daddr) &&
 			(sne1->old_dport == sne2->old_dport) &&
@@ -1312,19 +1324,19 @@ compare_snat_entries(const struct snat_entry *sne1,
  * See dnatted lookup function counterpart for further details.
  */
         struct snat_entry *
-lookup_snatted_table_n_update_timer(const struct snat_entry *sne, ipfire_info_t* info)
+lookup_snat_entry_n_update_timer(const struct snat_entry *sne, ipfire_info_t* info)
 {
 	int counter = 0;
         struct snat_entry *sntmp;
 	/* read lock on source nat tables */
 	rcu_read_lock_bh();
-	list_for_each_entry_rcu(sntmp, &root_snatted_table.list, list)
+        list_for_each_entry_rcu(sntmp, &root_snat_entry.list, list)
 	{
 		counter++;
 		if (compare_snat_entries(sntmp, sne) == 1)
 		{
 			/* Update the state. reverse is 0 */
-			sntmp->state = state_machine(info, sntmp->state, 0);
+                        sntmp->common.state = state_machine(info, sntmp->common.state, 0);
 			/* Modify timer while in lock and without being
 			 * interrupted by timeouts.
 			 * update_snat_timer updates the timer
@@ -1345,7 +1357,7 @@ fill_snat_entry_net_fields(struct snat_entry *snentry,
 		const ipfire_rule * snat_rule)
 {
         memset(snentry, 0, sizeof(struct snat_entry));
-	snentry->protocol = original_pack->iphead.protocol;
+        snentry->common.key.proto = original_pack->iphead.protocol;
 	snentry->old_saddr = original_pack->iphead.saddr;
 	snentry->old_daddr = original_pack->iphead.daddr;
 	/* initialize new address to the value in original packet */
@@ -1384,7 +1396,7 @@ fill_snat_entry_net_fields(struct snat_entry *snentry,
 	}
 	snentry->direction = original_pack->direction;
 	snentry->id = original_pack->packet_id;
-	snentry->position = snatted_entry_counter;
+        snentry->position = snat_entry_counter;
 	/* new values */
 	if (snat_rule->nflags.newaddr)
 		snentry->new_saddr = snat_rule->newaddr;
@@ -1413,7 +1425,7 @@ void handle_snatted_entry_timeout(struct timer_list *t)
 	del_timer(&snt_to_free->timer_snattedlist);
 	list_del_rcu(&snt_to_free->list);
 	call_rcu(&snt_to_free->snat_rcuh, free_snat_entry_rcu_call);
-	snatted_entry_counter--;
+        snat_entry_counter--;
 	/* release lock */
 	spin_unlock_bh(&snat_list_lock);
 }
@@ -1421,7 +1433,7 @@ void handle_snatted_entry_timeout(struct timer_list *t)
 void fill_timer_snat_entry(struct snat_entry *snt)
 {
 	unsigned timeo;
-	timeo = get_timeout_by_state(snt->protocol, snt->state);
+        timeo = get_timeout_by_state(snt->common.key.proto, snt->common.state);
 	timer_setup(&snt->timer_snattedlist, handle_snatted_entry_timeout, 0);
 	snt->timer_snattedlist.expires = jiffies + HZ * timeo;
 }
@@ -1429,7 +1441,7 @@ void fill_timer_snat_entry(struct snat_entry *snt)
 #ifdef ENABLE_RULENAME
 /* if not null, copies rulename from packet to dynamic snentry */
 inline void fill_rulename_snat_entry(const ipfire_info_t * packet,
-		struct snatted_table *snentry)
+                struct snat_entry *snentry)
 {
 	if (strlen(packet->rulename) > 0)
 		strncpy(snentry->rulename, packet->rulename, RULENAMELEN);
@@ -1453,7 +1465,7 @@ int add_snatted_entry(ipfire_info_t * original_pack,
 		return -1;
 	}
 	/* The following first of all updates the state, then the timer */
-	if ((existing_entry = lookup_snatted_table_n_update_timer(snatted_entry, original_pack)) != NULL)
+        if ((existing_entry = lookup_snat_entry_n_update_timer(snatted_entry, original_pack)) != NULL)
 	{
 		/* An entry is already in list and its timer has 
 		 * been updated.
@@ -1461,7 +1473,7 @@ int add_snatted_entry(ipfire_info_t * original_pack,
 		kfree(snatted_entry);	/* just kmallocated entry is not of use */
 		return 1;	/* entry already existing */
 	}
-	if (snatted_entry_counter == fwopts.max_nat_entries)
+        if (snat_entry_counter == fwopts.max_nat_entries)
 	{
 		ipfi_info_warn = (ipfire_info_t *) kmalloc(sizeof(ipfire_info_t), GFP_ATOMIC);
 		if(ipfi_info_warn != NULL)
@@ -1487,7 +1499,7 @@ int add_snatted_entry(ipfire_info_t * original_pack,
 
 	/* A new dnat table will be added */
 	/* Set the state of the new dnat table */
-	snatted_entry->state = state_machine(original_pack,  snatted_entry->state, 0);
+        snatted_entry->common.state = state_machine(original_pack,  snatted_entry->common.state, 0);
 
 #ifdef ENABLE_RULENAME
 	/* copy rule name from packet to dynamic entry */
@@ -1499,7 +1511,7 @@ int add_snatted_entry(ipfire_info_t * original_pack,
 	add_timer(&snatted_entry->timer_snattedlist);
 	/* add entry to root table */
 	INIT_LIST_HEAD(&snatted_entry->list);
-	list_add_rcu(&snatted_entry->list, &root_snatted_table.list);
+        list_add_rcu(&snatted_entry->list, &root_snat_entry.list);
 	spin_unlock_bh(&snat_list_lock);
 	return 0;
 }
@@ -1584,7 +1596,7 @@ int masquerade_translation(struct sk_buff *skb, ipfire_info_t * packet)
 			/* add_snatted_entry copies rule name from packet to
 			 * dynamic snat entry */
 			if (add_snatted_entry(packet, transrule, packet) == 0)
-				snatted_entry_counter++;
+                                snat_entry_counter++;
 			/* masquerade now - while still holding read lock on the list - */
 			status = do_masquerade(skb, transrule);
 			/* clear the modified new address fields of the rule above set */
@@ -1614,7 +1626,7 @@ int snat_translation(struct sk_buff *skb, ipfire_info_t * packet)
 			/* add_snatted_entry(), if adds a rule, copies name from
 			 * packet to new entry */
 			if (add_snatted_entry(packet, snatrule, packet) == 0)
-				snatted_entry_counter++;
+                                snat_entry_counter++;
 			/* call do_source_nat while holding the lock */
 			status = do_source_nat(skb, snatrule);
 			rcu_read_unlock_bh(); /* unlock before returning */
@@ -1661,16 +1673,16 @@ int de_snat_table_match(struct snat_entry *snt,
 	 * equal to new destination address (masqueraded one). Source 
 	 * address and port are unchanged.
 	 */
-	if (iphead->protocol != snt->protocol)
+        if (iphead->common.key.proto != snt->common.key.proto)
 		return -1;
 
-	if (snt->protocol == IPPROTO_ICMP || snt->protocol == IPPROTO_IGMP  
-	  || snt->protocol == IPPROTO_GRE || snt->protocol == IPPROTO_PIM)
+        if (snt->common.key.proto == IPPROTO_ICMP || snt->common.key.proto == IPPROTO_IGMP
+          || snt->common.key.proto == IPPROTO_GRE || snt->common.key.proto == IPPROTO_PIM)
 	{			/* match only addresses */
 		if ((nquad.saddr == snt->old_daddr) && (nquad.daddr == snt->new_saddr))
 			goto success;
 	} 
-	else if ((snt->protocol == IPPROTO_TCP) || (snt->protocol == IPPROTO_UDP))
+        else if ((snt->common.key.proto == IPPROTO_TCP) || (snt->common.key.proto == IPPROTO_UDP))
 	{
 		if ((nquad.saddr == snt->old_daddr) && (nquad.sport == snt->old_dport)
 				&& (nquad.daddr == snt->new_saddr) && (nquad.dport == snt->old_sport))
@@ -1690,7 +1702,7 @@ int pre_de_snat(struct sk_buff *skb, ipfire_info_t * packet)
         struct snat_entry *sntmp;
 	/* lock snat table */
 	rcu_read_lock_bh();
-	list_for_each_entry_rcu(sntmp, &root_snatted_table.list, list)
+        list_for_each_entry_rcu(sntmp, &root_snat_entry.list, list)
 	{
 		counter++;
 		/* de_snat_table_match() copies rule name into packet if 
@@ -1698,7 +1710,7 @@ int pre_de_snat(struct sk_buff *skb, ipfire_info_t * packet)
 		if (de_snat_table_match(sntmp, skb, packet) > 0)
 		{
 			/* Update the state of the source nat entry */
-			sntmp->state = state_machine(packet, sntmp->state, 1);
+                        sntmp->common.state = state_machine(packet, sntmp->common.state, 1);
 			/* Then update the timer of the entry, depending on the state */
 			update_snat_timer(sntmp);
 			ret = de_snat(skb, sntmp);
@@ -1742,7 +1754,7 @@ int check_checksums(const struct sk_buff *skb)
 	if (iph->check != check)	/* wrong checksum */
 		return -BAD_IP_CSUM;
 	/* tcp */
-	switch (iph->protocol)
+        switch (iph->common.key.proto)
 	{
 		case IPPROTO_TCP:
 			th = skb_header_pointer(skb, iph->ihl * 4, sizeof(tcphead), &tcphead);
@@ -1777,7 +1789,7 @@ int check_checksums(const struct sk_buff *skb)
 	return 0;
 }
 
-int free_snatted_table(void)
+int free_snat_entry(void)
 {
 	struct list_head *pos;
 	struct list_head *q;
@@ -1785,7 +1797,7 @@ int free_snatted_table(void)
 	int counter = 0;
 	synchronize_net();
 	spin_lock_bh(&snat_list_lock);
-	list_for_each_safe(pos, q, &root_snatted_table.list)
+        list_for_each_safe(pos, q, &root_snat_entry.list)
 	{
                 stl = list_entry(pos, struct snat_entry, list);
 		if(del_timer(&stl->timer_snattedlist) )
@@ -1793,7 +1805,7 @@ int free_snatted_table(void)
 			list_del_rcu(&stl->list);
 			call_rcu(&stl->snat_rcuh, free_snat_entry_rcu_call);
 			counter++;
-			snatted_entry_counter--;
+                        snat_entry_counter--;
 		}
 	}
 	spin_unlock_bh(&snat_list_lock);
@@ -1808,25 +1820,31 @@ MODULE_LICENSE("GPL");
 int init_translation(void)
 {
 	int ret;
-	INIT_LIST_HEAD(&root_dnatted_table.list);
-	INIT_LIST_HEAD(&root_snatted_table.list);
+        INIT_LIST_HEAD(&root_dnat_entry.list);
+        INIT_LIST_HEAD(&root_snat_entry.list);
 	ret = nf_register_sockopt(&so_getoriginal_dst);
-	if (ret != 0)
-	{
-		IPFI_PRINTK(KERN_ERR
-				"IPFIRE: unable to register netfilter socket option\n");
-		return ret;
-	}
-	return 0;
+        if (ret != 0)
+                IPFI_PRINTK(KERN_ERR "IPFIRE: unable to register netfilter socket option\n");
+        else {
+          ret = rhashtable_init(&dnat_ht, &dnat_ht_params);
+          if(ret != 0)
+            IPFI_PRINTK(KERN_ERR "IPFIRE: failed to initialize dnat hash table\n");
+          else {
+            ret = rhashtable_init(&snat_ht, &snat_ht_params);
+            if(ret != 0)
+            IPFI_PRINTK(KERN_ERR "IPFIRE: failed to initialize snat hash table\n");
+          }
+      }
+      return ret;
 }
 
 //static void __exit fini(void)
 void fini_translation(void)
 {
 	int ret;
-	ret = free_dnatted_table();
+        ret = free_dnat_entry();
 	// 	IPFI_PRINTK("DNAT items: %d entries freed. ", ret);
-	ret = free_snatted_table();
+        ret = free_snat_entry();
 	/* see ipfi_machine.c in this directory for the comments on
 	 * might_sleep() and rcu_barrier()
 	 */
@@ -1835,5 +1853,39 @@ void fini_translation(void)
 	// 	IPFI_PRINTK("SNAT items: %d freed.\n", ret);
 	nf_unregister_sockopt(&so_getoriginal_dst);
 	//IPFI_PRINTK("IPFIRE: sockopt unregistered.\n");
+      rhashtable_destroy(&snat_ht);
+      rhashtable_destroy(&dnat_ht);
 }
 
+
+void build_nat_key(nat_key *key, sk_buff *skb)
+{
+    struct iphdr *iph = ip_hdr(skb);
+    struct tcphdr *th;
+    struct udphdr *uh;
+
+    key->src_ip = iph->saddr;
+    key->dst_ip = iph->daddr;
+    key->proto  = iph->protocol;
+
+    if (iph->protocol == IPPROTO_TCP) {
+        th = tcp_hdr(skb);
+        key->src_port = th->source;
+        key->dst_port = th->dest;
+    } else if (iph->protocol == IPPROTO_UDP) {
+        uh = udp_hdr(skb);
+        key->src_port = uh->source;
+        key->dst_port = uh->dest;
+    } else {
+        key->src_port = 0;
+        key->dst_port = 0;
+    }
+}
+
+void build_nat_key(nat_key *key, ipfire_rule *rule) {
+  key->src_ip = rule->ip.ipsrc;
+  key->dst_ip = rule->ip.ipdst;
+  key->proto = rule->ip.protocol;
+  key->src_port = rule->tp.sport;
+  key->dst_port = rule->tp.dport;
+}

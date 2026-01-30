@@ -322,14 +322,8 @@ unsigned int deliver_process_by_direction(void *priv,
 			if (ret != NF_DROP && ret != NF_STOLEN && daddr != ip_hdr(skb)->daddr) 
 			{
 			  /* destination nat applied and destination address changed in pre routing */
-	#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,31)
-			  dst_release(skb->dst);
-			  skb->dst = NULL;
-	#else
 			  dst_release(skb_dst(skb));
-			  skb_dst_set(skb, NULL);
-	#endif
-			  
+			  skb_dst_set(skb, NULL);	  
 			}
 			return ret;
 		case NF_IP_LOCAL_IN:

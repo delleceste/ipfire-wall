@@ -7,10 +7,11 @@
  */
 
 #include <linux/timer.h>
+#include <linux/rhashtable.h>
 
 #define SNAT_ENTRY 0
 #define DNAT_ENTRY 1
- 
+
 typedef struct 
 {
   __u32 saddr, daddr;
@@ -60,7 +61,7 @@ struct nat_entry_common {
  * checked on arrival of a packet on the interface interested.
  */
 struct dnat_entry {
-    struct nat_entry_common nat_common;
+    struct nat_entry_common common;
 
     __be32 new_daddr;
     __be16 new_dport;
@@ -87,7 +88,7 @@ int init_translation(void);
 void fini_translation(void);
 
 int 
-get_orig_from_dnat_entry(const struct dnatted_table* dnt,
+get_orig_from_dnat_entry(const struct dnat_entry* dnt,
 					 const ipfire_info_t* iit, struct sockaddr_in* sin);
 
 int 
@@ -119,15 +120,15 @@ int dest_translate(struct sk_buff* skb, const ipfire_rule* transrule);
  * lock to update here entry timer, instead of acquiring another
  * lock later elsewhere to update the timer.
  */
-struct dnatted_table *
-lookup_dnatted_table_n_update_timer(const struct dnatted_table *dne, ipfire_info_t* info);
+struct dnat_entry *
+lookup_dnat_entry_n_update_timer(const struct dnat_entry *dne, ipfire_info_t* info);
 
 int 
-compare_dnat_entries(const struct dnatted_table* dne1, 
-		     const struct dnatted_table* dne2);
+compare_dnat_entries(const struct dnat_entry* dne1,
+             const struct dnat_entry* dne2);
 
 int add_dnatted_entry(const struct sk_buff* skb, ipfire_info_t* original_pack, const ipfire_rule* dnat_rule);
-int fill_entry_net_fields(struct dnatted_table  *dnentry, const ipfire_info_t* original_pack, 
+int fill_entry_net_fields(struct dnat_entry  *dnentry, const ipfire_info_t* original_pack,
 				      const ipfire_rule* nat_rule);
 				      
 void fill_masquerade_rule_fields(ipfire_rule * ipfr, __u32 newsaddr);
@@ -140,15 +141,15 @@ inline void copy_rulename_from_rule_to_ipfire_info
 				      
 /* if not null, copies rulename from packet to dne */
 inline void fill_rulename_dnat_entry(const ipfire_info_t* packet, 
-			      struct dnatted_table* dne);
+                  struct dnat_entry* dne);
 
 /* copies rulename field from state table to packet */
 inline void fill_packet_with_dnentry_rulename(ipfire_info_t* packet, 
-					      const struct dnatted_table* dnentry);
+                          const struct dnat_entry* dnentry);
 #endif
 					      
 /* de-nat function */
-int denat_table_match(const struct dnatted_table* dnt, const ipfire_info_t* pack);
+int denat_table_match(const struct dnat_entry* dnt, const ipfire_info_t* pack);
 int de_dnat_translation(struct sk_buff* skb, ipfire_info_t *pack);
 
 /* given a socket buffer skb, returns source and destination addresses and ports 
@@ -165,11 +166,11 @@ int manip_skb(struct sk_buff* skb, __u32 saddr, __u16 sport,
 		     __u32 daddr, __u16 dport, struct pkt_manip_info pf);
 		     
 /** three pre de dnat functions */
-int pre_de_dnat_translate(struct sk_buff* skb, const struct dnatted_table* dnt);
+int pre_de_dnat_translate(struct sk_buff* skb, const struct dnat_entry* dnt);
 
 /* looks for matches in dynamic denatted tables. If a match is found,
  * rule name is copied to packet */
-int pre_denat_table_match(const struct dnatted_table* dnt, 
+int pre_denat_table_match(const struct dnat_entry* dnt,
 			  const struct sk_buff* skb, ipfire_info_t* packet);
 /* if a packet hits prerouting hook and comes back from a previously
  * dnatted connection, with ip address translation (i.e. has been forwarded),
@@ -185,13 +186,13 @@ int pre_de_dnat(struct sk_buff* skb, ipfire_info_t* packet);
  * See dnatted lookup function counterpart for further details.
  */
 struct snat_entry *
-lookup_snatted_table_n_update_timer(const struct snat_entry *sne, ipfire_info_t* info);
+lookup_snat_entry_n_update_timer(const struct snat_entry *sne, ipfire_info_t* info);
 
-int snat_dynamic_translate(struct sk_buff* skb, struct dnatted_table* dnt);
+int snat_dynamic_translate(struct sk_buff* skb, struct dnat_entry* dnt);
 
 /* looks for a match between skb fields and dynamic entries. If a match is
  * found, rule name is copied into packet */
-int snat_dynamic_table_match(const struct dnatted_table* dnt, 
+int snat_dynamic_table_match(const struct dnat_entry* dnt,
 			     const struct sk_buff* skb,
 			     ipfire_info_t* packet);
 
@@ -208,11 +209,11 @@ int post_snat_dynamic(struct sk_buff* skb, ipfire_info_t* packet);
 #ifdef ENABLE_RULENAME
 /* if not null, copies rulename from packet to dynamic snentry */
 inline void fill_rulename_snat_entry(const ipfire_info_t* packet, 
-				     struct snatted_table* snentry);
+                     struct snat_entry* snentry);
 
 /* copies rulename field from state table to packet */
 inline void fill_packet_with_snentry_rulename(ipfire_info_t* packet, 
-					      const struct snatted_table* snentry);
+                          const struct snat_entry* snentry);
 #endif
 
 int add_snatted_entry(ipfire_info_t* original_pack, 
@@ -271,5 +272,7 @@ void free_dnat_entry_rcu_call(struct rcu_head *head);
 
 void free_snat_entry_rcu_call(struct rcu_head *head);
 
+void build_nat_key(struct nat_key *key, struct sk_buff *skb);
+void build_nat_key(struct nat_key *key, struct ipfire_rule *rule);
 
 #endif
