@@ -1,5 +1,5 @@
 /* Compilation system and compilation date.
  * Written by Makefile */
-#define _BUILD_DATE "gio 29 gen 2026, 10:28:28, CET"
-#define _BUILD_SYS "Linux 6.12.63-1-lts GNU/Linux"
+#define _BUILD_DATE "Sat Jan 31 03:20:56 PM CET 2026"
+#define _BUILD_SYS "Linux 6.17.9-arch1-1 GNU/Linux"
 

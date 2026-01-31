@@ -42,10 +42,10 @@ void free_entry_rcu_call(struct rcu_head *head)
 
 void handle_loginfo_entry_timeout(struct timer_list *t)
 {
-	struct ipfire_loginfo *ipfilog = from_timer(ipfilog, t, timer_loginfo);
+	struct ipfire_loginfo *ipfilog = timer_container_of(ipfilog, t, timer_loginfo);
 	/* lock list before deleting an entry */
 	spin_lock_bh(&loginfo_list_lock);
-	del_timer(&ipfilog->timer_loginfo);
+	timer_delete(&ipfilog->timer_loginfo);
 	list_del_rcu(&ipfilog->list);	/* delete from list */
 	// 	kfree(ipfilog);		/* free entry */
 	call_rcu(&ipfilog->rcuh, free_entry_rcu_call);
@@ -311,7 +311,7 @@ int free_loginfo_entries(void)
 	list_for_each_safe(pos, q, &packlist.list)
 	{
 		ilo = list_entry(pos, struct ipfire_loginfo, list);
-		if(del_timer(&ilo->timer_loginfo) )
+		if(timer_delete(&ilo->timer_loginfo) )
 		{
 			/* Invoke the call_rcu() to free the log table.
 			 * So we must remember to call rcu_barrier() before

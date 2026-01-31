@@ -511,10 +511,10 @@ inline void update_snat_timer(struct snatted_table *snt)
 /* Timeout handler for dnat entries. */
 void handle_dnatted_entry_timeout(struct timer_list *t)
 {
-	struct dnatted_table *dnt_to_free = from_timer(dnt_to_free, t, timer_dnattedlist);
+	struct dnatted_table *dnt_to_free = timer_container_of(dnt_to_free, t, timer_dnattedlist);
 	/* acquire lock before freeing rule (dnat table lock) */
 	spin_lock(&dnat_list_lock);
-	del_timer(&dnt_to_free->timer_dnattedlist);
+	timer_delete(&dnt_to_free->timer_dnattedlist);
 	list_del_rcu(&dnt_to_free->list);
 	// 	kfree(dnt_to_free);
 	call_rcu(&dnt_to_free->dnat_rcuh, free_dnat_entry_rcu_call); 
@@ -1048,7 +1048,7 @@ int free_dnatted_table(void)
 	list_for_each_safe(pos, q, &root_dnatted_table.list)
 	{
 		dtl = list_entry(pos, struct dnatted_table, list);
-		if(del_timer(&dtl->timer_dnattedlist) )
+		if(timer_delete(&dtl->timer_dnattedlist) )
 		{
 			list_del_rcu(&dtl->list);
 			call_rcu(&dtl->dnat_rcuh, free_dnat_entry_rcu_call);
@@ -1419,11 +1419,11 @@ void free_snat_entry_rcu_call(struct rcu_head *head)
 
 void handle_snatted_entry_timeout(struct timer_list *t)
 {
-	struct snatted_table *snt_to_free = from_timer(snt_to_free, t, timer_snattedlist);
+	struct snatted_table *snt_to_free = timer_container_of(snt_to_free, t, timer_snattedlist);
 	//      IPFI_PRINTK("IPFIRE: timer expired for dnatted entry %d...", snt_to_free->position);
 	/* Acquire lock on source nat table */
 	spin_lock_bh(&snat_list_lock);
-	del_timer(&snt_to_free->timer_snattedlist);
+	timer_delete(&snt_to_free->timer_snattedlist);
 	list_del_rcu(&snt_to_free->list);
 	call_rcu(&snt_to_free->snat_rcuh, free_snat_entry_rcu_call);
 	snatted_entry_counter--;
@@ -1801,7 +1801,7 @@ int free_snatted_table(void)
 	list_for_each_safe(pos, q, &root_snatted_table.list)
 	{
 		stl = list_entry(pos, struct snatted_table, list);
-		if(del_timer(&stl->timer_snattedlist) )
+		if(timer_delete(&stl->timer_snattedlist) )
 		{
 			list_del_rcu(&stl->list);
 			call_rcu(&stl->snat_rcuh, free_snat_entry_rcu_call);

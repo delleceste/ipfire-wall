@@ -1397,7 +1397,7 @@ int add_state_table_to_list(struct state_table* newtable)
 */
 void handle_keep_state_timeout(struct timer_list *t)
 {
-	struct state_table *st_to_free = from_timer(st_to_free, t, timer_statelist);
+	struct state_table *st_to_free = timer_container_of(st_to_free, t, timer_statelist);
 
 	spin_lock_bh(&state_list_lock);
 
@@ -1420,7 +1420,7 @@ void handle_keep_state_timeout(struct timer_list *t)
 	*/
 
 
-	del_timer(&st_to_free->timer_statelist);
+	timer_delete(&st_to_free->timer_statelist);
 	list_del_rcu(&st_to_free->list);
 	/* do not decrease table_id, but decrement state_tables_counter. */
 	state_tables_counter--;
@@ -1510,7 +1510,7 @@ int free_state_tables(void)
 	list_for_each_entry(tl, &root_state_table.list, list)
 	{
 		i++;
-		if(del_timer(&tl->timer_statelist) > 0 )
+		if(timer_delete(&tl->timer_statelist) > 0 )
 		{
 			list_del_rcu(&tl->list);
 			call_rcu(&tl->state_rcuh, free_state_entry_rcu_call);
