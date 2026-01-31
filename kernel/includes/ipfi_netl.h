@@ -108,7 +108,7 @@ int nl_receive_outcome(struct sock* sknl_ipfi_data_rec);
  *
  * @return is, again, the response obtained by ipfire_filter().
  */
-int iph_in_get_response(struct sk_buff* skb, int direction, const  struct net_device *in, const  struct net_device *out);
+struct response iph_in_get_response(struct sk_buff* skb, int direction, const  struct net_device *in, const  struct net_device *out);
 
 /* sends an acknowledgement to userspace program 
  * before actuating a command */
@@ -176,6 +176,8 @@ int tell_user_howmany_rules_flushed(int howmany);
  *  netlink CONTROL socket.
  */
 int send_back_command(const command* cmd);
+
+int send_back_fw_busy(pid_t pid);
 
 int manage_rule(command* rule_from_user);
 

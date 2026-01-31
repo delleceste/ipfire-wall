@@ -1,5 +1,5 @@
 #ifndef NETLINK_PACKET_BUILDER_H
-#define NETLINL_PACKET_BUILDER_H
+#define NETLINK_PACKET_BUILDER_H
 
 #include "ipfi.h"
 #include "ipfi_machine.h"

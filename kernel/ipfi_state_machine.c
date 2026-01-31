@@ -205,7 +205,7 @@ int set_state(const struct sk_buff* skb, struct state_table *entry, short revers
 {
 	int state;
 	/* Get the state */
-        state = state_machine(skb, entry->state.state, reverse);
+    state = state_machine(skb, entry->state.state, reverse);
 	/* Set the state */
 	if(state == GUESS_CLOSING)
 		entry->state.state = CLOSED;
@@ -215,7 +215,7 @@ int set_state(const struct sk_buff* skb, struct state_table *entry, short revers
 		entry->state.state = ESTABLISHED;
 	else
 		entry->state.state = state;
-        return state;
+    return state;
 }
 
 

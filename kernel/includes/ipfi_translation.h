@@ -6,6 +6,7 @@
  * (C) 2005 Giacomo S. 
  */
 
+#include "../../common/defs/ipfi_structures.h"
 #include <linux/timer.h>
 
 #define SNAT_ENTRY 0
@@ -118,12 +119,13 @@ int
 dnat_translation(struct sk_buff* skb, ipfire_info_t* packet,
 		 int direction);
 
-/* packet contains the fields taken from sk_buff, r is the translation rule.
- * In this function, the packet must match the rule provided by user for
+/* skb contains the fields taken from sk_buff, r is the translation rule.
+ * In this function, the skb must match the rule provided by user for
  * DNAT or SNAT (or MASQUERADE). 1 is returned on success, i.e. if the 
- * rule matches ip packet. Rule name is filled in in packet if a matcu
+ * rule matches ip skb. Rule name is filled in in skb if a matcu
  * is found with a rule. */
-int translation_rule_match(ipfire_info_t *packet, const ipfire_rule* r);
+int translation_rule_match(const ipfire_info_t *packet,
+                           const ipfire_rule* r);
 
 int dest_translate(struct sk_buff* skb, const ipfire_rule* transrule);
 
@@ -147,6 +149,9 @@ int fill_entry_net_fields(struct dnatted_table  *dnentry, const ipfire_info_t* o
 void fill_masquerade_rule_fields(ipfire_rule * ipfr, __u32 newsaddr);
 void clear_masquerade_rule_fields(ipfire_rule *);
 				      
+void fill_timer_snat_entry(struct snatted_table *snt);
+void fill_timer_dnat_entry(struct dnatted_table *snt);
+
 #ifdef ENABLE_RULENAME
 /* if rulename in src is specified, copy it to dest rulename */
 inline void copy_rulename_from_rule_to_ipfire_info

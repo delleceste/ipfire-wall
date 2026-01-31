@@ -1,3 +1,7 @@
+/usr/src/linux/include/
+/usr/src/linux/include/arch/x86/include/
 /usr/src/linux-lts/include/
+/usr/src/linux-lts/arch/x86/include/
 includes/
 gcc-check
+../common

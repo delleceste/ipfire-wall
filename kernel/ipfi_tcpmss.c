@@ -60,7 +60,7 @@ int tcpmss_mangle_packet(struct sk_buff *skb, short unsigned int tcpmss_option, 
   int ret, newlen;
   struct iphdr *iph;
   
-  ret = __tcpmss_mangle_packet(skb, tcpmss_option, mss, info);
+  ret = __tcpmss_mangle_packet(skb, tcpmss_option, mss);
   
   /* __tcpmss_mangle_packet() might add the mss option */
   if (ret > 0)  {
@@ -161,17 +161,17 @@ ipfire_info_t *info*/)
 			 * doing so results in problems for hosts that rely
 			 * on MSS being set correctly.
 			 */
-			info->manipinfo.pmanip.mss.enabled = 1;
+            // info->manipinfo.pmanip.mss.enabled = 1;
 			if (oldmss <= newmss)
 			{
-			  info->manipinfo.pmanip.mss.old_lessthan = 1;
-			  info->manipinfo.pmanip.mss.mss = oldmss;
+              // info->manipinfo.pmanip.mss.old_lessthan = 1;
+              // info->manipinfo.pmanip.mss.mss = oldmss;
 			  return 0;
 			}
 			/* else: fill in the new mss */
 			opt[i+2] = (newmss & 0xff00) >> 8;
 			opt[i+3] = newmss & 0x00ff;
-			info->manipinfo.pmanip.mss.mss = newmss;
+            // info->manipinfo.pmanip.mss.mss = newmss;
 			/* update checksum */
 			inet_proto_csum_replace2(&tcph->check, skb,
 						 htons(oldmss), htons(newmss),
@@ -212,7 +212,7 @@ ipfire_info_t *info*/)
 	oldval = ((__be16 *)tcph)[6];  /* old value calculation to use in csum_replace.. below */
 	tcph->doff += TCPOLEN_MSS/4;   /* new start of data position */
 	inet_proto_csum_replace2(&tcph->check, skb, oldval, ((__be16 *)tcph)[6], 0);
-	info->manipinfo.pmanip.mss.skb_enlarged = 1;
+    // info->manipinfo.pmanip.mss.skb_enlarged = 1;
 	return TCPOLEN_MSS;
 }
 

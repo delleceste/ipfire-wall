@@ -60,7 +60,10 @@ struct state_table
 int init_machine(void);
 void fini_machine(void);
 
-int check_state(struct sk_buff* skb, int direction);
+struct response check_state(struct sk_buff* skb,
+                            int direction,
+                            const struct net_device *in,
+                            const struct net_device *out);
 int state_match(const struct sk_buff* skb, const struct state_table* entry,
                 short *reverse, int direction,
                 const struct net_device *in,
@@ -76,7 +79,7 @@ unsigned int get_timeout_by_state(int protocol, int state);
  * skb might be modified if mangling is required in input output or
  * forward directions - e.g. mss manipulation -.
  */
-int ipfire_filter(
+struct response ipfire_filter(
     const ipfire_rule *denied,
     const ipfire_rule *allowed,
     const struct ipfire_options* ipfiopts,
