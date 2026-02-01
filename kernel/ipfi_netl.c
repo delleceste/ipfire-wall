@@ -1209,10 +1209,13 @@ static void nl_receive_data(struct sk_buff *skb)
 /* depending on loguser, this function decides if
  * firewall has to send packet info to userspace
  * firewall */
-int is_to_send(ipfire_info_t * info, const struct ipfire_options *fwopts)
+int is_to_send(const struct sk_buff * skb,
+               const struct ipfire_options *fwopts,
+               const struct response* res,
+               const struct info_flags *flags)
 {
     if(smartlog_func != NULL)
-        return smartlog_func(info);
+        return smartlog_func(skb, res, flags);
     else
     {
         /* at level 6 or higher all is sent to user */
@@ -1295,18 +1298,19 @@ unsigned long long update_sent_counter(int direction)
 struct response iph_in_get_response(struct sk_buff* skb,
                                     int direction,
                                     const struct net_device *in,
-                                    const struct net_device *out)
+                                    const struct net_device *out,
+                                    struct info_flags *flags)
 {
     struct response response;
     response.value = IPFI_DROP;
 
     /* invoke engine function passing the appropriate rule lists */
     if (direction == IPFI_INPUT)
-        response = ipfire_filter(&in_drop, &in_acc, &fwopts, skb, direction, in, out);
+        response = ipfire_filter(&in_drop, &in_acc, &fwopts, skb, direction, in, out, flags);
     else if (direction == IPFI_OUTPUT)
-        response = ipfire_filter(&out_drop, &out_acc, &fwopts, skb, direction, in, out);
+        response = ipfire_filter(&out_drop, &out_acc, &fwopts, skb, direction, in, out, flags);
     else if (direction == IPFI_FWD)
-        response = ipfire_filter(&fwd_drop, &fwd_acc, &fwopts, skb, direction, in, out);
+        response = ipfire_filter(&fwd_drop, &fwd_acc, &fwopts, skb, direction, in, out, flags);
     else
         IPFI_PRINTK("IPFIRE: iph_in_get_response(): invalid direction!\n");
     return response;
@@ -1905,7 +1909,7 @@ void init_options(struct ipfire_options *opts)
  * that failed to be sent. Moreover, response field is
  * copied to last_failed field of kernel stats structure.
  */
-void update_kernel_stats(int counter_to_increment, unsigned long int response)
+void update_kernel_stats(int counter_to_increment, short int response)
 {
     switch (counter_to_increment)
     {

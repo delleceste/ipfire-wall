@@ -474,7 +474,8 @@ struct response ipfire_filter(const ipfire_rule *dropped,
                               struct sk_buff* skb,
                               int direction,
                               const struct net_device *in,
-                              const struct net_device *out)
+                              const struct net_device *out,
+                              struct info_flags *flags)
 {
     struct response response = {};
     unsigned i = 0;

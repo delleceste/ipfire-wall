@@ -1,1 +1,1 @@
--std=c++17
+-std=c++17 -D__KERNEL__=1

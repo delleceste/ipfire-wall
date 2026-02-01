@@ -2,8 +2,8 @@
 #define IPFI_NETL_H
 
 /* See ipfi.c for details and 
- * use of this software. 
- * (C) 2005 Giacomo S. 
+ * use of this software.
+ * (C) 2005 Giacomo S.
  */
 
 #include <linux/module.h>
@@ -23,8 +23,8 @@
 /* Smart logging */
 enum smartlog_type
 {
-  SMART_LOG = 1,
-  SMART_LOG_WITH_STATE_CHECK,
+    SMART_LOG = 1,
+    SMART_LOG_WITH_STATE_CHECK,
 };
 
 /* every LOG_PACKETS_RECV packets
@@ -40,14 +40,14 @@ enum smartlog_type
 
 
 /** @param skb socket buffer received by netlink socket callback nl_receive_control()
- * Extracts the command data structure from skb with NLMSG_DATA (extract_data() ) and 
+ * Extracts the command data structure from skb with NLMSG_DATA (extract_data() ) and
  * according to the command type, invokes one of the functions in ipfi_process_control.
  * @return less than zero if an error occurred.
  */
 int process_control_received(struct sk_buff *skb);
 
- /** Handshake with userspace program: checks if structure sizes 
-  * are correct 
+/** Handshake with userspace program: checks if structure sizes
+  * are correct
   */
 int initial_handshake(command* hello, uid_t userspace_uid);
 
@@ -72,62 +72,44 @@ int send_struct_sizes(void);
 int send_smartlog_type(void);
 
 /* depending on loguser, this function decides if
- * firewall has to send packet info to userspace 
+ * firewall has to send packet skb to userspace
  * firewall */
-int
-is_to_send(ipfire_info_t* info, const struct ipfire_options* ipo);
+int is_to_send(const struct sk_buff *skb,
+               const struct ipfire_options* ipo,
+               const struct response *res,
+               const struct info_flags *flags);
 
 /* packets sent to userspace get the "logu_id" field incremented 
- * by one each time. If this counter exceeds ULONG_MAX, it 
+ * by one each time. If this counter exceeds ULONG_MAX, it
  * has to be re-initialized to 0, to prevent overflow */
 unsigned long long update_sent_counter(int direction);
 
 int send_data_to_user(struct sk_buff *skb, pid_t destination_pid, struct sock* which_socket);
 
 int
- build_message_in_skb(struct sk_buff *skb, void *message,
-				     size_t message_size);
- 
+build_message_in_skb(struct sk_buff *skb, void *message,
+                     size_t message_size);
+
 void set_outgoing_skb_params(struct sk_buff *skbf);
 int nl_receive_outcome(struct sock* sknl_ipfi_data_rec);
-
-/** int ipfi_response() in ipfire_core.c invokes this function.
- * @param ipfi_info is kmallocated by ipfi_response() itself at the beginning.
- *
- * If allocation succeeds, ipfire_info_t is initialized with socket buffer values 
- * and then begins its long travel starting from iph_in_get_response().
- * At the end of ipfi_response, after that the verdict has been decided for the 
- * packet inside skb, ipfi_info is kfreed.
- * The main task of iph_in_get_response() is to invoke ipfire_filter for incoming,
- * outgoing and to forward packets. Once the response is determined by ipfire_filter(),
- * this function sends the info_t to userspace, if required - according to is_to_send() 
- * return value, and updates some statistics.
- *
- * In addition, it checks if manipulation of the packet is needed, for instance mss change,
- * which is the only mangle function provided by ipfirewall.
- *
- * @return is, again, the response obtained by ipfire_filter().
- */
-struct response iph_in_get_response(struct sk_buff* skb, int direction, const  struct net_device *in, const  struct net_device *out);
 
 /* sends an acknowledgement to userspace program 
  * before actuating a command */
 inline int send_acknowledgement(pid_t uspace_pid);
 
 /* given a direction or a constant identifying the counter
- * which has to be incremented, this function increments 
+ * which has to be incremented, this function increments
  * corresponding counter. Response is unsigned long
  * because if the counter to be incremented is total_lost
  * (last case), printk logs the packet_id field of packet
  * that failed to be sent. Moreover, response field is
  * copied to last_failed field of kernel stats structure. */
 void 
-update_kernel_stats(int counter_to_increment,
-				    unsigned long int response);
-			     
+update_kernel_stats(int counter_to_increment, short response);
+
 /* checks if timeouts are too high and, if so, sets them to the
- * maximum value allowed. 
- * In 32 bit architecture, maximum value for timeouts is 
+ * maximum value allowed.
+ * In 32 bit architecture, maximum value for timeouts is
  * 2^32/2/HZ, see ipfi_netl.h near the definition of
  * MAX_TIMEOUT.
  */
@@ -172,7 +154,7 @@ int tell_user_howmany_rules_flushed(int howmany);
  *  The parameter cmd _must_ be a kmallocated pointer to command data structure.
  *  Never pass command* through & operator in the caller!
  *  This function calls build_command_packet(cmd) obtaining a pointer to a struct sk_buff.
- *  If that pointer is not NULL, the command is ready to be sent to userspace via the 
+ *  If that pointer is not NULL, the command is ready to be sent to userspace via the
  *  netlink CONTROL socket.
  */
 int send_back_command(const command* cmd);
@@ -206,7 +188,7 @@ int
 find_rules_in_list(const ipfire_rule* rlist, const ipfire_rule* rule);
 
 void init_kernel_stats(struct kernel_stats* nl_kstats);
-				    
+
 /* sends to userspace the passed kernel_stats structure */
 int send_kstats(void );
 

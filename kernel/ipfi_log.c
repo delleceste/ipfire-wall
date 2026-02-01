@@ -21,8 +21,6 @@
  
  /* see ipfi.c for details */
 
-#include "includes/ipfi_netl.h"
-#include "includes/ipfi.h"
 #include "includes/ipfi_log.h"
 
 struct ipfire_loginfo packlist;
@@ -79,11 +77,14 @@ inline void fill_timer_loginfo_entry(struct ipfire_loginfo *ipfilog)
 
 /* copies a packet to info field of ipfire_loginfo, then initializes
  * timers and adds to packlist list */
-inline int add_packet_to_infolist(const ipfire_info_t * info)
+inline int add_packet_to_infolist(const struct sk_buff* skb,
+                                  const struct response *res,
+                                  const struct info_flags *flags)
 {
 	struct ipfire_loginfo *ipli;
+    struct iphdr* iph = ip_hdr(skb);
 	ipli = (struct ipfire_loginfo *) kmalloc(sizeof(struct ipfire_loginfo), GFP_ATOMIC);
-	memcpy(&ipli->info, info, sizeof(ipfire_info_t));
+    memcpy(&ipli->info.packet.iphead, iph, sizeof(*iph));
 	/* removed position in ipfire-wall 2 */
 // 	ipli->position = loginfo_entry_counter;
 	spin_lock_bh(&loginfo_list_lock);
@@ -156,34 +157,37 @@ inline int igmph_compare(const ipfire_info_t * p1, const ipfire_info_t * p2)
  * Called by compare_loginfo_packets(), which in turn is called by packet_not_seen(), while a 
  * read_lock_bh is held and p1 and p2 being kmallocated areas.
  */
-int comp_pack(const ipfire_info_t * p1, const ipfire_info_t * p2)
+int comp_pack(const struct sk_buff *skb,
+              const struct response *res,
+              const struct info_flags *flags,
+              const ipfire_info_t * p2)
 {
 	int ret;
-	if (p1->protocol != p2->protocol)
+    struct iphdr *iph = ip_hdr(skb);
+    if (iph->protocol != p2->packet.iphead.protocol)
 		return -1;
 
-	if (p1->st.state != p2->st.state)
+    if (res->st.state != p2->flags.state)
 		return -1;
 
-	if ((p1->direction != p2->direction) || (p1->nat != p2->nat) || (p1->snat != p2->snat) || (p1->state != p2->state) ) 
+    if ((flags->direction != p2->flags.direction)
+            || (flags->nat != p2->flags.nat)
+            || (flags->snat != p2->flags.snat) || (flags->state != p2->flags.state) )
 		return -1;
 
 	/* Compare responses */
-	ret =  p1->response * p2->response;
+    ret =  res->value * p2->response.value;
 	/* p1 has negative response and p2 has positive response
 	 * or vice-versa 
 	 */
 	if(ret < 0) /* responses differ in sign */
 		return -1;
 	/* at least one of the two is 0 */	
-	else if(ret == 0) 
-	{
-		if( (p1->response & p2->response) != 0 ) /* One of the two is nonzero */
-			return -1;
+    else if(ret == 0 && (res->value & p2->response.value) != 0) {
+            return -1;/* One of the two is nonzero */
 		/* else they are both 0 and we can go on */	
 	}
 	/* else if the product result is positive, they are both positive or negative responses */
-
 	if (strcmp(p1->devpar.in_devname, p2->devpar.in_devname))
 		return -1;
 	if (strcmp(p1->devpar.out_devname, p2->devpar.out_devname))
@@ -229,23 +233,27 @@ int comp_pack(const ipfire_info_t * p1, const ipfire_info_t * p2)
  * Called by packet_not_seen(), it executes inside a read_lock 
  * and packet1 and packet2 live in a kmallocated area.
  */
-inline int compare_loginfo_packets(const ipfire_info_t * packet1,
-		const ipfire_info_t * packet2)
+inline int compare_loginfo_packets(const struct sk_buff *skb,
+                                   const struct response *res,
+                                   const struct info_flags *flags,
+                                   const ipfire_info_t * packet2)
 {
-	if (comp_pack(packet1, packet2) == 0)
+    if (comp_pack(skb, res, flags, packet2) == 0)
 		return 1;	/* success in comparison */
 	/* comp_pack has returned -1, that is failure */
 	return 0;
 }
 
-/* returns 1 if packet has never been seen,
- * 0 otherwise. If a packet is already in list, 
+/* returns 1 if skb has never been seen,
+ * 0 otherwise. If a skb is already in list,
  * its timer is updated.
  * We do not update the timer, since every timeout
- * seconds we want the packet to be re printed.
+ * seconds we want the skb to be re printed.
  */
-inline int packet_not_seen(const ipfire_info_t * packet, int chk_state)
-{
+inline int packet_not_seen(const struct sk_buff* skb,
+                           const struct response* res,
+                           const struct info_flags *flags,
+                           int chk_state) {
 	struct ipfire_loginfo *loginfo;
 	rcu_read_lock_bh();
 	list_for_each_entry_rcu(loginfo, &packlist.list, list)
@@ -254,9 +262,9 @@ inline int packet_not_seen(const ipfire_info_t * packet, int chk_state)
 		 * area pertaining to loginfo, so we can pass it through subsequent calls 
 		 * without losing it. Moreover, we are inside a lock.
 		 */
-		if (compare_loginfo_packets(packet, &loginfo->info))
+        if (compare_loginfo_packets(skb, &loginfo->info))
 		{
-			if( (chk_state && (packet->st.state == loginfo->info.st.state) )
+            if( (chk_state && (skb->st.state == loginfo->info.st.state) )
 				|| !chk_state)
 			{
 				rcu_read_unlock_bh();
@@ -277,11 +285,13 @@ inline int packet_not_seen(const ipfire_info_t * packet, int chk_state)
  * reduces load in userspace communication via netlink
  * socket. Must return 0 if match is found.
  */
-int smart_log(const ipfire_info_t * info)
+int smart_log(const struct sk_buff* skb,
+              const struct response* res,
+              const struct info_flags *flags)
 {
-	if (packet_not_seen(info, 0))
+    if (packet_not_seen(skb, res, flags, 0))
 	{
-		add_packet_to_infolist(info);
+        add_packet_to_infolist(skb, res, flags);
 		return 1;
 	}
 	return 0;
@@ -291,11 +301,12 @@ int smart_log(const ipfire_info_t * info)
  * Applies all the same procedures as the one above, but also
  * does checks against the state.
  */
-int smart_log_with_state_check(const ipfire_info_t* info)
+int smart_log_with_state_check(const struct sk_buff *skb,
+                               const struct response *res,
+                               const struct info_flags *flags)
 {
-	if (packet_not_seen(info, 1))
-	{
-		add_packet_to_infolist(info);
+    if (packet_not_seen(skb, res, flags, 1)){
+        add_packet_to_infolist(skb, res, flags);
 		return 1;
 	}
 	return 0;
@@ -311,7 +322,7 @@ int free_loginfo_entries(void)
 	list_for_each_safe(pos, q, &packlist.list)
 	{
 		ilo = list_entry(pos, struct ipfire_loginfo, list);
-		if(del_timer(&ilo->timer_loginfo) )
+        if(timer_delete_sync(&ilo->timer_loginfo) )
 		{
 			/* Invoke the call_rcu() to free the log table.
 			 * So we must remember to call rcu_barrier() before

@@ -2,8 +2,8 @@
 #define IPFI_H
 
 /* See ipfi.c for details and 
- * use of this software. 
- * (C) 2005 Giacomo S. 
+ * use of this software.
+ * (C) 2005 Giacomo S.
  */
 
 //#include <linux/config.h>
@@ -43,43 +43,43 @@
 
 /* this macro avoids filling kernel log with the same message hundred of times.
  * There are MAXMODERATE_ARGS different messages that can be registered by means
- * of the enumeration moderate_print_sections below. The associated message is 
+ * of the enumeration moderate_print_sections below. The associated message is
  * printed by printk only every MODERATE_LIMIT times.
- * The variable used by this macro must be globally declared in the file/module that 
+ * The variable used by this macro must be globally declared in the file/module that
  * uses it and its name must be `moderate_print. It must be an unsigned int array of
- * dimension MAXMODERATE_ARGS. An example is represented in ipfi_machine, where 
+ * dimension MAXMODERATE_ARGS. An example is represented in ipfi_machine, where
  * `moderate_print is declared at the beginning of the file and initialized to 0 values
  * in the initialization method `init_translation()' via the memset function.
  */
 #define IPFI_MODERATE_PRINTK(id, args...) do \
 { \
-  if(id < MAXMODERATE_ARGS) \
-  { \
+    if(id < MAXMODERATE_ARGS) \
+{ \
     if(moderate_print[id] % moderate_print_limit[id] == 0) \
-    { \
-      moderate_print[id]++; \
-      IPFI_PRINTK(args); \
-      IPFI_PRINTK("[message repeated %u times. Next repetition in %u events of the same type]\n", moderate_print[id], moderate_print_limit[id]); \
+{ \
+    moderate_print[id]++; \
+    IPFI_PRINTK(args); \
+    IPFI_PRINTK("[message repeated %u times. Next repetition in %u events of the same type]\n", moderate_print[id], moderate_print_limit[id]); \
     } \
     else \
-    { \
-      moderate_print[id]++; \
+{ \
+    moderate_print[id]++; \
     } \
-  } \
-}while(0)
-    
+    } \
+    }while(0)
+
 enum moderate_print_sections
 {
-  PRINT_PROTO_UNSUPPORTED = 0,
-  PRINT_SKB_ALLOC_FAILED,
-  PRINT_TEST,
-  /* register here other custom sections */
-  
-  END_MODERATE_LIST = MAXMODERATE_ARGS - 1,
+    PRINT_PROTO_UNSUPPORTED = 0,
+    PRINT_SKB_ALLOC_FAILED,
+    PRINT_TEST,
+    /* register here other custom sections */
+
+    END_MODERATE_LIST = MAXMODERATE_ARGS - 1,
 };
 
 enum checksum_errors { BAD_IP_CSUM = 1, BAD_TCPHEAD_CSUM,  BAD_TCPHEAD_CHECK,
-  BAD_UDPHEAD_CHECK, BAD_UDPHEAD_CSUM };
+                       BAD_UDPHEAD_CHECK, BAD_UDPHEAD_CSUM };
 
 
 #define BAD_CHECKSUM   INT_MIN
@@ -110,24 +110,24 @@ enum checksum_errors { BAD_IP_CSUM = 1, BAD_TCPHEAD_CSUM,  BAD_TCPHEAD_CHECK,
                  printed on commands received _at_startup_ loguser
                  must be 7.
  */
- /* loglevel
-    if loglevel > 3 printk of rule added in manage_rule() 
-    (ipfi_netl.c );  
+/* loglevel
+    if loglevel > 3 printk of rule added in manage_rule()
+    (ipfi_netl.c );
     if loglevel > 2 printk of command received in do_control
     (ipfi_netl.c);
   */
 struct ipfire_options {
-	u8 nat:1, masquerade:1, state:1, all_stateful:1, free:4;
-	u8 user_allowed:1, noflush_on_exit:1, loglevel:3,	/* logging level by means of printk */
-	 loguser:3;		/* sending information to userspace */
-	 unsigned long int snatted_lifetime;
-	 unsigned long int dnatted_lifetime;
-	 unsigned long int state_lifetime;
-	 unsigned long int setup_shutd_state_lifetime;
-	 unsigned long int loginfo_lifetime;
-	 unsigned long int max_loginfo_entries;
-	 unsigned long int max_nat_entries;
-	 unsigned long int max_state_entries;
+    u8 nat:1, masquerade:1, state:1, all_stateful:1, free:4;
+    u8 user_allowed:1, noflush_on_exit:1, loglevel:3,	/* logging level by means of printk */
+                       loguser:3;		/* sending information to userspace */
+    unsigned long int snatted_lifetime;
+    unsigned long int dnatted_lifetime;
+    unsigned long int state_lifetime;
+    unsigned long int setup_shutd_state_lifetime;
+    unsigned long int loginfo_lifetime;
+    unsigned long int max_loginfo_entries;
+    unsigned long int max_nat_entries;
+    unsigned long int max_state_entries;
 };
 
 /* functions to register with netfilter hooks */
@@ -135,65 +135,66 @@ int register_hooks(void);
 
 
 unsigned int deliver_process_by_direction(void *priv,
-		struct sk_buff *skb,
-		const struct nf_hook_state *state);
+                                          struct sk_buff *skb,
+                                          const struct nf_hook_state *state);
 
 /* ipfire functions */
 
 
 
 inline int
-allocate_headers(const struct sk_buff *skb, ipfire_info_t * fireinfo);
+copy_headers(const struct sk_buff *skb, ipfire_info_t * fireinfo);
 
 
 /* The following three functions extract from the socket buffer
  * skb the tcp/udp/icmp header.
- * Since allocate_headers() already extracts the IP header, 
+ * Since allocate_headers() already extracts the IP header,
  * allocate_headers() itself passes this header to build_xxxh_usermess()
  * for convenience
  */
 inline int build_tcph_usermess(const struct sk_buff *skb,
-	const struct iphdr *iph,
-	ipfire_info_t * ipfi_info);
-	
+                               const struct iphdr *iph,
+                               ipfire_info_t * ipfi_info);
+
 inline int build_udph_usermess(const struct sk_buff *skb,
-	const struct iphdr *iph,
-	ipfire_info_t * ipfi_info);
-	
+                               const struct iphdr *iph,
+                               ipfire_info_t * ipfi_info);
+
 inline int build_icmph_usermess(const struct sk_buff *skb,
-	const struct iphdr *iph,
-	ipfire_info_t * ipfi_info);
-				
+                                const struct iphdr *iph,
+                                ipfire_info_t * ipfi_info);
+
 inline int build_igmph_usermess(const struct sk_buff *skb,
-				const struct iphdr *iph,
-    ipfire_info_t * ipfi_info);
-								
-/* NF hooks pass input and output device. If not null,
- * we copy names into info */
-inline int get_devnames(const struct sk_buff *skb,
-			ipfire_info_t * ipfi_info, const struct net_device* in,
-			const struct net_device* out);
-			
+                                const struct iphdr *iph,
+                                ipfire_info_t * ipfi_info);
+
 int build_ipfire_info_from_skb(const struct sk_buff *skb,
-			       ipfire_info_t * iit, int direction,
-			       int packet_no, const struct net_device* in,
-			       const struct net_device* out);
+                               ipfire_info_t * iit,
+                               int direction,
+                               const struct net_device* in,
+                               const struct net_device* out);
+
+struct response iph_in_get_response(struct sk_buff* skb,
+                                    int direction,
+                                    const  struct net_device *in,
+                                    const  struct net_device *out,
+                                    struct info_flags *flags);
 
 #ifdef ENABLE_RULENAME
 /* if rulename in src is specified, copy it to dest rulename */
 inline void copy_rulename(ipfire_info_t * iit_dest,
-			  const ipfire_info_t * iit_src);
+                          const ipfire_info_t * iit_src);
 #endif
 
 /* if *cnt reaches ULONG MAX, it must be reset to 0 */
 inline void check_packet_num(unsigned long long *cnt);
 
-int ipfi_response(struct sk_buff *skb, unsigned long long packet_num,
-		  int direction, const struct net_device *in, const struct net_device *out);
+int ipfi_response(struct sk_buff *skb, flow *_flow);
+
 int ipfi_pre_process(struct sk_buff *skb, unsigned long long packet_num,
-		     int direction, const struct net_device *in);
+                     int direction, const struct net_device *in);
 int ipfi_post_process(struct sk_buff *skb, unsigned long long packet_num,
-		      int direction, const struct net_device *out);
+                      int direction, const struct net_device *out);
 int get_cache_inh_in(const ipfire_info_t info);
 
 int recalculate_ip_checksum(struct sk_buff *skb, int direction);
@@ -205,7 +206,7 @@ void init_packet(ipfire_info_t * iit);
  */
 inline int 
 send_packet_to_userspace_and_update_counters(ipfire_info_t* 
-		packet);
+                                             packet);
 
 /* prints just tcp checksum, for debug. To remove */
 void print_check(struct sk_buff* skb);

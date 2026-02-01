@@ -11,6 +11,7 @@
 #include "includes/ipfi_proc.h"
 #include "includes/ipfi_tcpmss.h"
 #include "includes/ipfi_defrag.h"
+#include "includes/module_init.h"
 
 /* since kernel 2.6.25, hook names have changed from _IP_ to _INET_ */
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,24)
@@ -23,13 +24,12 @@
 
 #endif
 
-
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Giacomo S. <delleceste@gmail.com>");
 MODULE_DESCRIPTION("IPv4 packet filter");
 
 /* Versione di test!
- * (C) Giacomo Strangolino, 2005
+ * (C) Giacomo Strangolino, 2005-2026
  * Filtro di pacchetti con funzionalita' di NAT.
  * Il software in kernel space consta di 6 moduli interdipendenti.
  * Per problemi potete scrivere a Giacomo S.
@@ -45,7 +45,7 @@ MODULE_DESCRIPTION("IPv4 packet filter");
  */
 
 /***************************************************************************
- *  Copyright  2005  Giacomo Strangolino.
+ *  Copyright  2005-2026  Giacomo Strangolino.
  *
  *  email:
  *  delleceste@gmail.com
@@ -121,15 +121,12 @@ struct nf_hook_ops nfh_pre, nfh_in, nfh_out, nfh_fwd, nfh_post, nfh_defrag_pre, 
 #define BUILD_DATE 	_BUILD_DATE
 #define BUILD_SYS 	_BUILD_SYS
 
-int welcome(void)
-{
+int welcome(void) {
     struct timespec64 tv_load_time;
-    IPFI_PRINTK("        IPFIRE-WALL MODULE INITIALIZED - ");
-    IPFI_PRINTK(KERNEL_MODULE_VERSION);
-    IPFI_PRINTK("\n        Built on %s, %s", BUILD_DATE, BUILD_SYS);
-    IPFI_PRINTK("\n        Giacomo S. <delleceste@gmail.com>\n");
-    // 	IPFI_PRINTK("sizeof command: %d, sizeof ipfire_rule: %d\n",
-    // 	       sizeof(command), sizeof(ipfire_rule));
+    IPFI_PRINTK("IPFIRE-wall MODULE INITIALIZED [%s] built on %s, %s\n",
+                KERNEL_MODULE_VERSION, BUILD_DATE, BUILD_SYS);
+    IPFI_PRINTK("Giacomo S. <delleceste@gmail.com>\n");
+
     /* set loading time into kernel stats struct */
     ktime_get_real_ts64(&tv_load_time);
     module_load_time = tv_load_time.tv_sec;
@@ -138,48 +135,25 @@ int welcome(void)
     init_kernel_stats(&kstats);
     kstats.policy = default_policy;
     kstats.kmod_load_time = module_load_time;
-
     if (init_procentry(PROCENT, policy) < 0)
         return -1;
     set_procentry_values();
-
     userspace_control_pid = 0;
     userspace_data_pid = 0;
-
     init_machine(); /* just calls INIT_LIST_HEAD(&root_state_table.list); */
-
-    /* INIT_LIST_HEAD(&root_dnatted_table.list);
-         * INIT_LIST_HEAD(&root_snatted_table.list);
-         * nf_register_sockopt(&so_getoriginal_dst);
-         */
     init_translation();
-
-    /* initializes loginfo list
-         *INIT_LIST_HEAD(&packlist.list);
-         */
     init_log();
-
-    /* a. creates control, data and notifier socket.
-         * b. INIT_LIST_HEAD of the rules list
-         * c. init_options(&fwopts);
-         * d. init_kernel_stats(&kstats);
-         */
-    if(init_netl() == 0)
-    {
-        /* The last steps actually activates the firewall */
+    if(init_netl() == 0) {
         register_hooks();
     }
-
     return 0;
 }
 
-static int __init ini(void)
-{
+static int __init ini(void) {
     return welcome();
 }
 
-static void __exit fini(void)
-{
+static void __exit fini(void) {
     IPFI_PRINTK("IPFIRE-wall unloading:  \n");
 
     /* net/core/dev.c : synchronizes with packet receive processing.
@@ -211,18 +185,13 @@ static void __exit fini(void)
 }
 
 
-void set_policy(const char *def_policy)
-{
-    if (strncmp(def_policy, "accept", 6) == 0)
-    {
+void set_policy(const char *def_policy) {
+    if (strncmp(def_policy, "accept", 6) == 0) {
         kstats.policy = default_policy = 1;
-        printk
-                ("IPFIRE: default policy: ACCEPT packets which do not match any rule.\n");
-    } else
-    {
+        printk("IPFIRE: default policy: ACCEPT packets which do not match any rule.\n");
+    } else {
         kstats.policy = default_policy = 0;
-        printk
-                ("IPFIRE: default policy: DROP packets not matching rules.\n");
+        printk("IPFIRE: default policy: DROP packets not matching rules.\n");
     }
 }
 
@@ -306,14 +275,10 @@ unsigned int deliver_process_by_direction(void *priv,
     const struct net_device *out = state->out;
     unsigned int ret;
     __be32 daddr;
-
-    /* raw socket . */
-    if (skb->len < sizeof(struct iphdr) ||
-            ip_hdrlen(skb) < sizeof(struct iphdr))
-    {
-        IPFI_PRINTK("raw socket\n");
-        return IPFI_ACCEPT;
-    }
+    ipfi_flow flow = {in, out, NODIRECTION };
+    // packet truncated or malformed?
+    if (!pskb_may_pull(skb, ip_hdrlen(skb)))
+        return IPFI_DROP;
 
     switch (hooknum)
     {
@@ -321,31 +286,28 @@ unsigned int deliver_process_by_direction(void *priv,
         pre_counter++;
         daddr = ip_hdr(skb)->daddr; /* save original destination address */
         ret = ipfi_pre_process(skb, pre_counter, IPFI_INPUT_PRE, in);
-        if (ret != NF_DROP && ret != NF_STOLEN && daddr != ip_hdr(skb)->daddr)
-        {
+        if (ret != NF_DROP && ret != NF_STOLEN && daddr != ip_hdr(skb)->daddr) {
             /* destination nat applied and destination address changed in pre routing */
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,31)
-            dst_release(skb->dst);
-            skb->dst = NULL;
-#else
             dst_release(skb_dst(skb));
             skb_dst_set(skb, NULL);
-#endif
-
         }
         return ret;
     case NF_IP_LOCAL_IN:
         in_counter++;
-        return ipfi_response(skb, in_counter, IPFI_INPUT, in, out);
+        flow.direction = IPFI_INPUT;
+        return ipfi_response(skb, &flow);
     case NF_IP_LOCAL_OUT:
         out_counter++;
-        return ipfi_response(skb, out_counter, IPFI_OUTPUT, in, out);
+        flow.direction = IPFI_OUTPUT;
+        return ipfi_response(skb,  &flow);
     case NF_IP_FORWARD:
         fwd_counter++;
-        return ipfi_response(skb, fwd_counter, IPFI_FWD, in, out);
+        flow.direction = IPFI_FWD;
+        return ipfi_response(skb,  &flow);
     case NF_IP_POST_ROUTING:
         post_counter++;
-        return ipfi_post_process(skb, post_counter, IPFI_OUTPUT_POST, out);
+        flow.direction = IPFI_OUTPUT_POST;
+        return ipfi_post_process(skb,  &flow);
     default:
         return IPFI_DROP;
     }
@@ -362,17 +324,6 @@ void init_kernel_stats(struct kernel_stats *nl_kstats)
     memset(nl_kstats, 0, sizeof(struct kernel_stats));
 }
 
-#ifdef ENABLE_RULENAME
-/* if rulename in src is specified, copy it to dest rulename */
-inline void copy_rulename(ipfire_info_t * iit_dest,
-                          const ipfire_info_t * iit_src)
-{
-    if (strlen(iit_src->rulename) > 0)
-        strncpy(iit_dest->rulename, iit_src->rulename,
-                RULENAMELEN);
-}
-#endif
-
 /* updates sent counter, sends packet to userspace and calls
  * update_kernel_stats()
  */
@@ -380,11 +331,11 @@ inline int
 send_packet_to_userspace_and_update_counters(ipfire_info_t * packet)
 {
     struct sk_buff *skb_to_user = NULL;
-    update_sent_counter(packet->direction);
+    update_sent_counter(packet->flags.direction);
     skb_to_user = build_info_t_packet(packet);
     if(skb_to_user != NULL && skb_send_to_user(skb_to_user, LISTENER_DATA) < 0)
     {
-        update_kernel_stats(IPFI_FAILED_NETLINK_USPACE, packet->packet_id);
+        update_kernel_stats(IPFI_FAILED_NETLINK_USPACE, packet->response.value);
         return -1;
     }
     else if(skb_to_user == NULL)
@@ -464,12 +415,9 @@ int ipfi_pre_process(struct sk_buff *skb, unsigned long long packet_num,
     /* checksum is calculated inside set_pairs_in_skb(), ipfi_translation.c */
     if (ret >= 0)
     {
-        saved_packet->nat = 1;
-        saved_packet->direction = IPFI_INPUT_PRE;
-#ifdef ENABLE_RULENAME
-        /* tell anyway user the match we found, reporting the name of the rule */
-        copy_rulename(saved_packet, packet);
-#endif
+        saved_packet->flags.nat = 1;
+        saved_packet->flags.direction = IPFI_INPUT_PRE;
+
         /* we send to userspace old packet, to let see how translation changed it,
                  * if loguser is greater than 5 */
         if ((userspace_data_pid) && (loguser_enabled) && (is_to_send(saved_packet, &fwopts)))
@@ -480,7 +428,7 @@ int ipfi_pre_process(struct sk_buff *skb, unsigned long long packet_num,
     else if (ret == BAD_CHECKSUM)
     {
         kstats.bad_checksum_in++;
-        saved_packet->badsum = 1;
+        saved_packet->flags.badsum = 1;
         IPFI_PRINTK("IPFIRE: bad checksum on incoming packet %llu over %llu received.\n", kstats.bad_checksum_in, kstats.pre_rcv);
         /* send a packet signaling an error */
         send_packet_to_userspace_and_update_counters(saved_packet);
@@ -500,7 +448,6 @@ int ipfi_post_process(struct sk_buff *skb, unsigned long long packet_num,
          */
     int de_dnat_done = -1, snat_done = -1;
     ipfire_info_t *post_packet;
-    char rulename[RULENAMELEN];
 
     /* stats. Only one field is to be updated.
          * So don't call update_kernel_stats().
@@ -558,24 +505,14 @@ send_touser:
 
     if ((snat_done >= 0) || (de_dnat_done >= 0))
     {
-        // save rule name only from post_packet
-#ifdef ENABLE_RULENAME
-        if (strlen(post_packet->rulename) > 0)
-            strncpy(rulename, post_packet->rulename, RULENAMELEN);
-#endif
-
         /* alloc ok: init packet */
         init_packet(post_packet);
         /* update post packet with new skb */
         build_ipfire_info_from_skb(skb, post_packet, direction, packet_num, NULL, out);
-#ifdef ENABLE_RULENAME
-        strncpy(post_packet->rulename, rulename, RULENAMELEN);
-#endif
-
-        post_packet->nat = 1;
+        post_packet->flags.nat = 1;
 
         if (snat_done >= 0)
-            post_packet->snat = 1;
+            post_packet->flags.snat = 1;
 
         if ((userspace_data_pid) && (loguser_enabled) && (is_to_send(post_packet, &fwopts)))
             send_packet_to_userspace_and_update_counters(post_packet);
@@ -588,33 +525,6 @@ send_touser:
     /* free memory */
     kfree(post_packet);     /* free post packet */
     return IPFI_ACCEPT;
-}
-
-/* NF hooks pass input and output device. If not null,
- * we copy names into info */
-inline int get_devnames(const struct sk_buff *skb,
-                        ipfire_info_t * ipfi_info,
-                        const struct net_device *in,
-                        const struct net_device *out)
-{
-    if (in == NULL) {
-        strcpy(ipfi_info->devpar.in_devname, "n.a.");
-        ipfi_info->devpar.in_idx = -1;
-    }
-    else {
-        strncpy(ipfi_info->devpar.in_devname, in->name, IFNAMSIZ);
-        ipfi_info->devpar.in_idx = in->dev_id;
-    }
-    if (out == NULL) {
-        strcpy(ipfi_info->devpar.out_devname, "n.a.");
-        ipfi_info->devpar.out_idx = -1;
-    }
-    else {
-        strncpy(ipfi_info->devpar.out_devname, out->name,
-                IFNAMSIZ);
-        ipfi_info->devpar.out_idx = out->dev_id;
-    }
-    return 0;
 }
 
 /* The following three functions extract from the socket buffer
@@ -639,7 +549,7 @@ inline int build_tcph_usermess(const struct sk_buff *skb,
     if (check_tcp_header_from_skb(skb, p_tcphead) < 0)	/* we can't examine this packet, we drop it */
         return -1;
     /* we fill in our userspace information */
-    memcpy(&(ipfi_info->transport_header.tcphead), p_tcphead, sizeof(tcphead));
+    memcpy(&(ipfi_info->packet.transport_header.tcphead), p_tcphead, sizeof(tcphead));
     return 0;
 }
 
@@ -655,7 +565,7 @@ inline int build_udph_usermess(const struct sk_buff *skb,
     p_udphead = skb_header_pointer(skb, iph->ihl * 4, sizeof(udphead), &udphead);
     if (check_udp_header_from_skb(skb, p_udphead) < 0)	/* we can't examine this packet, we drop it */
         return -1;
-    memcpy(&(ipfi_info->transport_header).udphead, p_udphead, sizeof(udphead));
+    memcpy(&(ipfi_info->packet.transport_header).udphead, p_udphead, sizeof(udphead));
     return 0;
 }
 
@@ -671,7 +581,7 @@ inline int build_icmph_usermess(const struct sk_buff *skb,
 
     if (p_icmphead == NULL)
         return network_header_null("build_icmph_usermess()", "ICMP header NULL!");
-    memcpy(&(ipfi_info->transport_header).icmphead, p_icmphead, sizeof(icmphead));
+    memcpy(&(ipfi_info->packet.transport_header).icmphead, p_icmphead, sizeof(icmphead));
     return 0;
 }
 
@@ -687,12 +597,12 @@ inline int build_igmph_usermess(const struct sk_buff *skb,
 
     if (p_igmphead == NULL)
         return network_header_null("build_igmph_usermess()",  "IGMP header NULL!");
-    memcpy(&(ipfi_info->transport_header).igmphead, p_igmphead, sizeof(igmphead));
+    memcpy(&(ipfi_info->packet.transport_header).igmphead, p_igmphead, sizeof(igmphead));
     return 0;
 }
 
-inline int allocate_headers(const struct sk_buff *skb,
-                            ipfire_info_t * fireinfo)
+inline int copy_headers(const struct sk_buff *skb,
+                        ipfire_info_t * fireinfo)
 {
     struct iphdr *iph;
     iph = ip_hdr(skb);
@@ -701,12 +611,12 @@ inline int allocate_headers(const struct sk_buff *skb,
         return network_header_null("allocate_headers()", "IP HEADER null");
 
     /* protocol information */
-    fireinfo->protocol = iph->protocol;
+    fireinfo->packet.iphead.protocol = iph->protocol;
 
     /* internet header */
-    memcpy(&fireinfo->iphead, iph, sizeof(struct iphdr));
+    memcpy(&fireinfo->packet.iphead, iph, sizeof(struct iphdr));
 
-    /* is this a tcp, udp or icmp message? */
+    /* tcp, udp icmp headers? */
     if (iph->protocol == IPPROTO_TCP)
     {
         if (build_tcph_usermess(skb, iph, fireinfo) < 0)
@@ -731,32 +641,22 @@ inline int allocate_headers(const struct sk_buff *skb,
 }
 
 int build_ipfire_info_from_skb(const struct sk_buff *skb,
-                               ipfire_info_t * iit, int direction,
-                               int packet_no, const struct net_device *in,
-                               const struct net_device *out)
-{
+                               ipfire_info_t * iit,
+                               int direction,
+                               const struct net_device *in,
+                               const struct net_device *out) {
     if (skb == NULL)
         return network_header_null("build_ipfire_info_from_skb()", "socket buffer null");
-    iit->direction = direction;
-    /* packet_id is ulong, packet no is ulonglong: every time
-        * packet_no reaches n * ULONG_MAX, packet_id restarts from 0,
-        * which is what we want.
-        */
-    iit->packet_id = packet_no;
-
-    if (get_devnames(skb, iit, in, out) < 0)
+    iit->flags.direction = direction;
+    if (copy_headers(skb, iit) < 0)
         return -1;
-    if (allocate_headers(skb, iit) < 0)
-        return -1;
-
+    iit->netdevs.in_idx = in != NULL ? in->ifindex : -1;
+    iit->netdevs.out_idx = out != NULL ? out->ifindex : -1;
     return 0;
 }
 
-int ipfi_response(struct sk_buff *skb, unsigned long long packet_num,
-                  int direction, const struct net_device *in,
-                  const struct net_device *out)
-{
-    ipfire_info_t *fireinfo = NULL;
+int ipfi_response(struct sk_buff *skb, flow* _flow) {
+    // ipfire_info_t *fireinfo = NULL;
     /* 0.98.4: When we have to DNAT in output direction, we have to
          * check if the original destination is allowed by the
          * filter rules. Imagine we have setup a proxy web and the
@@ -765,30 +665,22 @@ int ipfi_response(struct sk_buff *skb, unsigned long long packet_num,
          * by means of an OUTPUT DNAT rule, the connection will
          * pass through also if it is not desired.
          */
-    struct response res = iph_in_get_response(skb, direction, in, out);
+    struct info_flags flags;
+    struct response   res = iph_in_get_response(skb, direction, in, out, &flags);
     /* decide according to loguser if to send or not feedback */
     if ((userspace_data_pid) && (loguser_enabled)) {
-        fireinfo = (ipfire_info_t *) kmalloc(sizeof(ipfire_info_t), GFP_ATOMIC);
-        if(fireinfo == NULL) /* allocation failed: return a drop */ {
-            IPFI_PRINTK("IPFIRE: cannot allocate memory inside ipfi_response(): dropping\n");
-            return IPFI_DROP;
-        }
-        /* allocation succeeded: fireinfo alive */
-        /* we must initialize packet before filling and using it */
-        init_packet(fireinfo);
         /* Checks for skb null */
         if (build_ipfire_info_from_skb(skb, fireinfo, direction, packet_num, in, out) < 0) {
             kfree(fireinfo); /* release just allocated memory */
             return IPFI_DROP;
         }
-        fireinfo->response = res;
-        if((is_to_send(fireinfo, &fwopts) > 0)) {
+        if((is_to_send(skb, res, &fwopts) > 0)) {
             /*int sent = */update_sent_counter(direction);
             struct sk_buff* skb_touser = build_info_t_packet(fireinfo);
             if(skb_touser == NULL) /* shouldn't happen :r */
                 IPFI_PRINTK("IPFIRE: failed to allocate memory for socket buffer in iph_in_get_response()\n");
             else if(skb_send_to_user(skb_touser, LISTENER_DATA) < 0)
-                update_kernel_stats(IPFI_FAILED_NETLINK_USPACE, fireinfo->packet_id);
+                update_kernel_stats(IPFI_FAILED_NETLINK_USPACE, res.value);
         }
 
         /* if gui_notifier_enabled we send the info if there is no match (popup
@@ -806,7 +698,7 @@ int ipfi_response(struct sk_buff *skb, unsigned long long packet_num,
                      */
             struct sk_buff* skb_touser = build_info_t_packet(fireinfo);
             if (skb_touser != NULL && skb_send_to_user(skb_touser,  GUI_NOTIF_DATA) < 0)
-                update_kernel_stats(IPFI_FAILED_NETLINK_USPACE, fireinfo->packet_id);
+                update_kernel_stats(IPFI_FAILED_NETLINK_USPACE, res.value);
         }
 
     }

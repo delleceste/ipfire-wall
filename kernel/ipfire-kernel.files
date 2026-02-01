@@ -28,3 +28,5 @@ ipfi_state_machine.c
 ipfi_tcpmss.c
 ipfi_translation.c
 ipfire_core.c
+module_init.c
+module_init.h
