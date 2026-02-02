@@ -274,7 +274,7 @@ struct state_t {
 
 struct response {
     struct state_t st;
-    uint8_t notify:1,state:1,value:6;
+    uint8_t notify:1,state:1,verdict:6;
     short rulepos;
 };
 

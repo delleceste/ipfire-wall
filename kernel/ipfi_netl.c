@@ -106,7 +106,10 @@ extern unsigned long max_state_entries;
 
 struct ipfire_options fwopts;
 
-int (*smartlog_func) (const ipfire_info_t * info);
+int (*smartlog_func) (const struct sk_buff* skb,
+                      const struct response* res,
+                      const ipfi_flow *flow,
+                      const struct info_flags *flags);
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,24)
 #include <net/net_namespace.h>
@@ -805,7 +808,7 @@ int add_rule_to_list_by_command(command *cmd_with_rule)
     return 0;
 }
 
-int rule_not_already_loaded(const command* cmd)
+int rule_not_loaded(const command* cmd)
 {
     ipfire_rule *newrule = (ipfire_rule *) kmalloc(sizeof(ipfire_rule), GFP_KERNEL);
     if(newrule == NULL)
@@ -818,52 +821,52 @@ int rule_not_already_loaded(const command* cmd)
     memcpy(newrule, &(cmd->content.rule), sizeof(ipfire_rule));
 
     /* watch in the list for a rule already present */
-    if (!find_rules_in_list(&in_acc, newrule)) /* one found */
+    if (!find_rules(&in_acc, newrule)) /* one found */
     {
         kfree(newrule); /* free newrule */
         return 0;  /* return we have found */
     }
-    if (!find_rules_in_list(&in_drop, newrule))
+    if (!find_rules(&in_drop, newrule))
     {
         kfree(newrule);
         return 0;
     }
-    if (!find_rules_in_list(&fwd_drop, newrule))
+    if (!find_rules(&fwd_drop, newrule))
     {
         kfree(newrule);
         return 0;
     }
-    if (!find_rules_in_list(&fwd_acc, newrule))
+    if (!find_rules(&fwd_acc, newrule))
     {
         kfree(newrule);
         return 0;
     }
-    if (!find_rules_in_list(&out_acc, newrule))
+    if (!find_rules(&out_acc, newrule))
     {
         kfree(newrule);
         return 0;
     }
-    if (!find_rules_in_list(&out_drop, newrule))
+    if (!find_rules(&out_drop, newrule))
     {
         kfree(newrule);
         return 0;
     }
-    if (!find_rules_in_list(&translation_pre, newrule))
+    if (!find_rules(&translation_pre, newrule))
     {
         kfree(newrule);
         return 0;
     }
-    if (!find_rules_in_list(&translation_post, newrule))
+    if (!find_rules(&translation_post, newrule))
     {
         kfree(newrule);
         return 0;
     }
-    if (!find_rules_in_list(&translation_out, newrule))
+    if (!find_rules(&translation_out, newrule))
     {
         kfree(newrule);
         return 0;
     }
-    if (!find_rules_in_list(&masquerade_post, newrule))
+    if (!find_rules(&masquerade_post, newrule))
     {
         kfree(newrule);
         return 0;
@@ -874,7 +877,7 @@ int rule_not_already_loaded(const command* cmd)
     return 1;
 }
 
-int find_rules_in_list(const ipfire_rule *rlist, const ipfire_rule * rule)
+int find_rules(const ipfire_rule *rlist, const ipfire_rule * rule)
 {
     ipfire_rule *tmp;
     unsigned i = 0;
@@ -928,7 +931,7 @@ int manage_rule(command * rule_from_user)
         IPFI_PRINTK("IPFIRE: user %u does not have the rights to insert rules.\n", rule_owner);
         rule_from_user->cmd = RULE_NOT_ADDED_NO_PERM;
     }
-    else if (rule_not_already_loaded(rule_from_user)) /* we will add rule */
+    else if (rule_not_loaded(rule_from_user)) /* we will add rule */
     {
         add = 1;
     }
@@ -1017,21 +1020,17 @@ int send_back_command(const command * cmd)
  * @param destination_pid process ID of the application in userspace who wants to receive the message
  * @param socket the netlink socket to use to send the message. Can be data, control, GUI notifier.
  */
-int send_data_to_user(struct sk_buff *skb, pid_t destination_pid, struct sock *socket)
-{
+int send_data_to_user(struct sk_buff *skb, pid_t destination_pid, struct sock *socket) {
     int ret = -1;
-    if(socket != NULL && skb != NULL)
-    {
-        set_outgoing_skb_params(skb);
+    if(socket != NULL && skb != NULL) {
+        NETLINK_CB(skb).portid = 0;	/* kernel sending */
+        NETLINK_CB(skb).dst_group = 0;
         ret = netlink_unicast(socket, skb, destination_pid, MSG_DONTWAIT);
         if(ret < 0)
-        {
             IPFI_PRINTK("IPFIRE: netlink_unicast() to pid %d failed with error %d. Errnos in asm-generic/errno-base.h\n", destination_pid, ret);
-        }
     }
     else
         IPFI_PRINTK("socket or sk_buff null in send_data_to_user(): socket: 0x%p skb: 0x%p\n", socket, skb);
-
     return ret;
 }
 
@@ -1039,14 +1038,8 @@ static inline pid_t get_sender_pid(const struct sk_buff *skbff)
 {
     int ret = 0;
     pid_t header_pid, credentials_pid;
-
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,24)
-    struct nlmsghdr *nlh = (struct nlmsghdr *) skbff->data;
-#else
     struct nlmsghdr *nlh = nlmsg_hdr(skbff);
-#endif
-    if(nlh == NULL)
-    {
+    if(nlh == NULL)  {
         IPFI_PRINTK("IPFIRE: get_sender_pid(): error extracting nlmsghdr from socket buffer. Cannot determine header pid\n");
         ret = 0;
     }
@@ -1055,11 +1048,7 @@ static inline pid_t get_sender_pid(const struct sk_buff *skbff)
         header_pid =  nlh->nlmsg_pid;
         if(1)
         {
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3,6,0)
-            credentials_pid = NETLINK_CB(skbff).pid;
-#else
             credentials_pid = NETLINK_CB(skbff).portid;
-#endif
             /* first level check: pid got from the netlink header
         * (set by the userspace program) must be equal to the
         * pid got by the netlink credentials.
@@ -1075,24 +1064,6 @@ static inline pid_t get_sender_pid(const struct sk_buff *skbff)
         }
     }
     return ret;
-}
-
-void set_outgoing_skb_params(struct sk_buff *skbf)
-{
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,14)
-    NETLINK_CB(skbf).groups = 0;	/* not in multicast group */
-#elif LINUX_VERSION_CODE < KERNEL_VERSION(3,6,0)
-    NETLINK_CB(skbf).pid = 0;	/* kernel sending */
-#else
-    NETLINK_CB(skbf).portid = 0;	/* kernel sending */
-#endif
-
-    //	NETLINK_CB(skbf).pid = userspace_control_pid;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,14)
-    NETLINK_CB(skbf).dst_groups = 0;	/* unicast */
-#else
-    NETLINK_CB(skbf).dst_group = 0;
-#endif
 }
 
 int send_back_fw_busy(pid_t pid)
@@ -1147,27 +1118,6 @@ int send_back_fw_busy(pid_t pid)
     return status;
 }
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,24)
-static void nl_receive_control(struct sock *skctrl, int len)
-{
-    pid_t pid;
-    struct sk_buff *skb_ipfi_control = NULL;
-    while ((skb_ipfi_control = skb_dequeue(&skctrl->sk_receive_queue)) != NULL)
-    {
-        pid = get_sender_pid(skb_ipfi_control);
-        userspace_uid = NETLINK_CREDS(skb_ipfi_control)->uid;
-        if ((userspace_control_pid != 0) && (pid != userspace_control_pid))
-            send_back_fw_busy(pid);
-        else
-        {
-            userspace_control_pid = pid;
-            process_control_received(skb_ipfi_control);
-        }
-        /* anyway, free memory */
-        kfree_skb(skb_ipfi_control);
-    }
-}
-#else
 static void nl_receive_control(struct sk_buff* skb)
 {
     pid_t pid;
@@ -1183,28 +1133,12 @@ static void nl_receive_control(struct sk_buff* skb)
         process_control_received(skb);
     }
 }
-#endif
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,24)
-static void nl_receive_data(struct sock *sk, int len)
-{
-    struct sk_buff *skb_ipfi_data = NULL;
-    while((skb_ipfi_data = skb_dequeue(&sk->sk_receive_queue)) != NULL)
-    {
-        userspace_data_pid = get_sender_pid(skb_ipfi_data);
-        process_data_received(skb_ipfi_data);
-        /* free memory */
-        kfree_skb(skb_ipfi_data);
-    }
-}
-
-#else
 static void nl_receive_data(struct sk_buff *skb)
 {
     userspace_data_pid = get_sender_pid(skb);
     process_data_received(skb);
 }
-#endif
 
 /* depending on loguser, this function decides if
  * firewall has to send packet info to userspace
@@ -1212,32 +1146,24 @@ static void nl_receive_data(struct sk_buff *skb)
 int is_to_send(const struct sk_buff * skb,
                const struct ipfire_options *fwopts,
                const struct response* res,
-               const struct info_flags *flags)
-{
+               const ipfi_flow* flow,
+               const struct info_flags *flags) {
     if(smartlog_func != NULL)
-        return smartlog_func(skb, res, flags);
-    else
-    {
+        return smartlog_func(skb, res, flow, flags);
+    else {
         /* at level 6 or higher all is sent to user */
         if (fwopts->loguser >= 6)
             return 1;
         /* implicit denial */
-        if (info->response.value == 0)
-        {
-            if (fwopts->loguser >= 2)
+        if (res->verdict == 0 && fwopts->loguser >= 2) {
                 return 1;
         }
-        else if (info->response.value > 0)
-        {
-            if (fwopts->loguser >= 5)
-                return 1;
+        else if (res->verdict > 0 && fwopts->loguser >= 5) {
+            return 1;
         }
-        else if (info->response.value < 0)
-        {
-            if (fwopts->loguser >= 4)
-                return 1;
+        else if (res->verdict < 0 && fwopts->loguser >= 4) {
+            return 1;
         }
-
     }
     return 0;
 }
@@ -1292,25 +1218,23 @@ unsigned long long update_sent_counter(int direction)
  * The main task of iph_in_get_response() is to invoke ipfire_filter for incoming,
  * outgoing and to forward packets. Once the response is determined by ipfire_filter(),
  * this function sends the info_t to userspace, if required - according to is_to_send()
- * return value, and updates some statistics.
- * The value returned is, again, the response obtained by ipfire_filter().
+ * return verdict, and updates some statistics.
+ * The verdict returned is, again, the response obtained by ipfire_filter().
  */
 struct response iph_in_get_response(struct sk_buff* skb,
-                                    int direction,
-                                    const struct net_device *in,
-                                    const struct net_device *out,
+                                    ipfi_flow *flow,
                                     struct info_flags *flags)
 {
     struct response response;
-    response.value = IPFI_DROP;
+    response.verdict = IPFI_DROP;
 
     /* invoke engine function passing the appropriate rule lists */
-    if (direction == IPFI_INPUT)
-        response = ipfire_filter(&in_drop, &in_acc, &fwopts, skb, direction, in, out, flags);
-    else if (direction == IPFI_OUTPUT)
-        response = ipfire_filter(&out_drop, &out_acc, &fwopts, skb, direction, in, out, flags);
-    else if (direction == IPFI_FWD)
-        response = ipfire_filter(&fwd_drop, &fwd_acc, &fwopts, skb, direction, in, out, flags);
+    if (flow->direction == IPFI_INPUT)
+        response = ipfire_filter(&in_drop, &in_acc, &fwopts, skb, flow, flags);
+    else if (flow->direction == IPFI_OUTPUT)
+        response = ipfire_filter(&out_drop, &out_acc, &fwopts, skb, flow, flags);
+    else if (flow->direction == IPFI_FWD)
+        response = ipfire_filter(&fwd_drop, &fwd_acc, &fwopts, skb, flow, flags);
     else
         IPFI_PRINTK("IPFIRE: iph_in_get_response(): invalid direction!\n");
     return response;
@@ -1843,7 +1767,7 @@ int do_userspace_exit_tasks(uid_t userspace_commander)
         if(ipfi_info_exit != NULL) /* good... go on */
         {
             memset(ipfi_info_exit, 0, sizeof(ipfire_info_t));
-            ipfi_info_exit->exit = 1;
+            ipfi_info_exit->flags.exit = 1;
             /* copy data contained into ipfi_info_exit into the socket buffer destined to
            * the user */
             skb_touser = build_info_t_packet(ipfi_info_exit);

@@ -11,6 +11,12 @@ struct sk_buff* build_command_packet(const command *cmd);
 
 struct sk_buff* build_info_t_packet(const ipfire_info_t *info);
 
+struct sk_buff* build_info_t_nlmsg(const struct sk_buff *skb,
+                                   const ipfi_flow* flow,
+                                   const struct response *res,
+                                   const struct info_flags *flags,
+                                  int *err);
+
 struct sk_buff* build_dnat_t_packet(const struct dnatted_table *dt);
 
 struct sk_buff* build_snat_t_packet(const struct snatted_table *dt);

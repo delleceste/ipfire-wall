@@ -134,50 +134,29 @@ struct ipfire_options {
 int register_hooks(void);
 
 
-unsigned int deliver_process_by_direction(void *priv,
-                                          struct sk_buff *skb,
-                                          const struct nf_hook_state *state);
+int check_headers(struct sk_buff *skb);
+unsigned int process(void *priv,
+                     struct sk_buff *skb,
+                     const struct nf_hook_state *state);
 
 /* ipfire functions */
 
 
 
-inline int
-copy_headers(const struct sk_buff *skb, ipfire_info_t * fireinfo);
-
-
-/* The following three functions extract from the socket buffer
- * skb the tcp/udp/icmp header.
- * Since allocate_headers() already extracts the IP header,
- * allocate_headers() itself passes this header to build_xxxh_usermess()
- * for convenience
- */
-inline int build_tcph_usermess(const struct sk_buff *skb,
-                               const struct iphdr *iph,
-                               ipfire_info_t * ipfi_info);
-
-inline int build_udph_usermess(const struct sk_buff *skb,
-                               const struct iphdr *iph,
-                               ipfire_info_t * ipfi_info);
-
-inline int build_icmph_usermess(const struct sk_buff *skb,
-                                const struct iphdr *iph,
-                                ipfire_info_t * ipfi_info);
-
-inline int build_igmph_usermess(const struct sk_buff *skb,
-                                const struct iphdr *iph,
-                                ipfire_info_t * ipfi_info);
+/*! returns nonzero only if protocol is unsupported */
+inline int copy_headers(const struct sk_buff *skb, ipfire_info_t * fireinfo);
+inline void build_tcph_usermess(const struct tcphdr *tcph, ipfire_info_t * ipfi_info);
+inline void build_udph_usermess(const struct udphdr *p_udphead,  ipfire_info_t * ipfi_info);
+inline void build_icmph_usermess(const struct icmphdr *icmph, ipfire_info_t * ipfi_info);
+inline void build_igmph_usermess(const struct igmphdr *igmph, ipfire_info_t * ipfi_info);
 
 int build_ipfire_info_from_skb(const struct sk_buff *skb,
-                               ipfire_info_t * iit,
-                               int direction,
-                               const struct net_device* in,
-                               const struct net_device* out);
+                               const ipfi_flow *flow, const struct response *res,
+                               const struct info_flags *flags,
+                               ipfire_info_t * dest);
 
 struct response iph_in_get_response(struct sk_buff* skb,
-                                    int direction,
-                                    const  struct net_device *in,
-                                    const  struct net_device *out,
+                                    ipfi_flow *flow,
                                     struct info_flags *flags);
 
 #ifdef ENABLE_RULENAME
@@ -189,12 +168,10 @@ inline void copy_rulename(ipfire_info_t * iit_dest,
 /* if *cnt reaches ULONG MAX, it must be reset to 0 */
 inline void check_packet_num(unsigned long long *cnt);
 
-int ipfi_response(struct sk_buff *skb, flow *_flow);
+int ipfi_response(struct sk_buff *skb, ipfi_flow *_flow);
 
-int ipfi_pre_process(struct sk_buff *skb, unsigned long long packet_num,
-                     int direction, const struct net_device *in);
-int ipfi_post_process(struct sk_buff *skb, unsigned long long packet_num,
-                      int direction, const struct net_device *out);
+int ipfi_pre_process(struct sk_buff *skb, const ipfi_flow *flow);
+int ipfi_post_process(struct sk_buff *skb, const ipfi_flow *flow);
 int get_cache_inh_in(const ipfire_info_t info);
 
 int recalculate_ip_checksum(struct sk_buff *skb, int direction);
@@ -204,9 +181,10 @@ void init_packet(ipfire_info_t * iit);
 /* updates sent counter, sends packet to userspace and calls
  * update_kernel_stats()
  */
-inline int 
-send_packet_to_userspace_and_update_counters(ipfire_info_t* 
-                                             packet);
+inline int send_packet_to_userspace_and_update_counters(const struct sk_buff *skb,
+                                                        const ipfi_flow *flow,
+                                                        const struct response *resp,
+                                                        const struct info_flags *flags);
 
 /* prints just tcp checksum, for debug. To remove */
 void print_check(struct sk_buff* skb);

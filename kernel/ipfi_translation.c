@@ -739,7 +739,7 @@ int add_dnatted_entry(const struct sk_buff *skb,
 			memset(ipfi_info_warn, 0, sizeof(ipfire_info_t));
 			ipfi_info_warn->nat_max_entries = 1;
 			ipfi_info_warn->packet_id = fwopts.max_nat_entries;
-			skb_to_user = build_info_t_packet(ipfi_info_warn);
+			skb_to_user = build_info_t_nlmsg(ipfi_info_warn);
 
 			if (skb_to_user != NULL && skb_send_to_user(skb_to_user, LISTENER_DATA) < 0)
 				IPFI_PRINTK("IPFIRE: error notifying maximum number of nat entries to user\n");
@@ -930,15 +930,18 @@ int csum_error_message(const char *origin, int enum_code)
  * This is called from ipfi_response() and ipfi_pre_process(),
  * where skb != NULL must have already been checked.
  */
-int dnat_translation(struct sk_buff *skb, ipfire_info_t * packet, int direction)
+int dnat_translation(struct sk_buff *skb,
+                     ipfire_info_t * packet,
+                     const ipfi_flow *flow,
+                     const struct info_flags *flags)
 {
 	ipfire_rule *transrule;
 	ipfire_rule *dnat_rules = NULL;
 	int counter = 0, csum_check;
 
-	if (direction == IPFI_INPUT_PRE)
+    if (flow->direction == IPFI_INPUT_PRE)
 		dnat_rules = &translation_pre;
-	else if (direction == IPFI_OUTPUT)
+    else if (flow->direction == IPFI_OUTPUT)
 		dnat_rules = &translation_out;
 	if (dnat_rules == NULL)
 		return -1;
@@ -951,14 +954,14 @@ int dnat_translation(struct sk_buff *skb, ipfire_info_t * packet, int direction)
 		counter++;
         if (translation_rule_match(packet, transrule) > 0)
 		{
-			if( (direction == IPFI_INPUT_PRE) && ((csum_check = check_checksums(skb)) < 0) )
+            if( (flow->direction == IPFI_INPUT_PRE) && ((csum_check = check_checksums(skb)) < 0) )
 			{
 				rcu_read_unlock_bh(); /* unlock before returning */
 				return csum_error_message("dnat_translation()", csum_check);
 			}
 
 			if(public_to_private_address(skb, transrule))
-				packet->external = 1;
+                packet->flags.external = 1;
 			/* there is a rule for our packet to be translated */
 			/* add_dnatted_entry() adds a new table if not already present,
 			 * and if it is present, its timeout gets updated.
@@ -992,36 +995,21 @@ int dest_translate(struct sk_buff *skb, const ipfire_rule * transrule)
 	  mi.dp = 1;
 	mi.direction = transrule->direction; /* can be output or pre routing */
 	return manip_skb(skb, 0, 0, transrule->newaddr, transrule->newport, mi);
-	
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,22)
-	iphead = skb->nh.iph;
-#else
 	iphead = ip_hdr(skb);
-#endif
 	if(iphead == NULL)
 		return network_header_null("dest_translate()", "IP HEADER NULL!");
 
-	if (transrule->nflags.newaddr)
-	{			/* change ip destination address */
+    if (transrule->nflags.newaddr) {			/* change ip destination address */
 		iphead->daddr = transrule->newaddr;
 	}
-	if (transrule->nflags.newport)
-	{
-		switch (transrule->ip.protocol)
-		{
+    if (transrule->nflags.newport) {
+        switch (transrule->ip.protocol) {
 			case IPPROTO_TCP:
-				p_tcphead = skb_header_pointer(skb, iphead->ihl * 4, sizeof(tcphead), &tcphead);
-				if (check_tcp_header_from_skb(skb, p_tcphead) < 0)
-				  return network_header_null("dest_translate()", "malformed TCP header");
-				
+                p_tcphead = tcp_hdr(skb);
 				p_tcphead->dest = transrule->newport;
 				break;
-
 			case IPPROTO_UDP:
-				p_udphead = skb_header_pointer(skb, iphead->ihl * 4, sizeof(udphead), &udphead);
-				if (check_udp_header_from_skb(skb, p_udphead) < 0)
-				  return network_header_null("dest_translate()", "malformed UDP header");
-
+                p_udphead = udp_hdr(skb);
 				p_udphead->dest = transrule->newport;
 				break;
 
@@ -1031,7 +1019,7 @@ int dest_translate(struct sk_buff *skb, const ipfire_rule * transrule)
 			case IPPROTO_PIM:
 				break;
 			default:
-				IPFI_PRINTK("IPFIRE: unsupported protocol during translation: %d\n", transrule->ip.protocol);
+                IPFI_PRINTK("IPFIRE: dest_translate: unsupported protocol: %d\n", transrule->ip.protocol);
 				break;
 		}
 	}
@@ -1199,15 +1187,6 @@ int snat_dynamic_translate(struct sk_buff *skb, struct dnatted_table *dnt)
 	return manip_skb(skb, dnt->our_ifaddr, 0, 0, 0, mi);
 }
 
-#ifdef ENABLE_RULENAME
-/* copies rule name from dynamic entry table to packet */
-inline void fill_packet_with_snentry_rulename(ipfire_info_t * packet, const struct snatted_table *snentry)
-{
-	if (strlen(snentry->rulename) > 0)
-		strncpy(packet->rulename, snentry->rulename, RULENAMELEN);
-}
-#endif
-
 int snat_dynamic_table_match(const struct dnatted_table *dnt,
 		const struct sk_buff *skb,
 		ipfire_info_t * packet)
@@ -1247,11 +1226,7 @@ int snat_dynamic_table_match(const struct dnatted_table *dnt,
 	}
 	return -1;
 success:
-#ifdef ENABLE_RULENAME
-	fill_packet_with_dnentry_rulename(packet, dnt);
-#endif
 	return 1;
-
 }
 
 /* checks in dynamic entries in root nat table looking for a rule matching 
@@ -1302,8 +1277,7 @@ int post_snat_dynamic(struct sk_buff *skb, ipfire_info_t * packet)
 
 /* SOURCE NAT OR MASQUERADING SECTION */
 
-	int
-compare_snat_entries(const struct snatted_table *sne1,
+int compare_snat_entries(const struct snatted_table *sne1,
 		const struct snatted_table *sne2)
 {
 	return ((sne1->protocol == sne2->protocol) &&
@@ -1324,8 +1298,7 @@ compare_snat_entries(const struct snatted_table *sne1,
  * its timer is updated and a pointer to it is returned.
  * See dnatted lookup function counterpart for further details.
  */
-	struct snatted_table *
-lookup_snatted_table_n_update_timer(const struct snatted_table *sne, ipfire_info_t* info)
+struct snatted_table *lookup_snatted_table_n_update_timer(const struct snatted_table *sne, ipfire_info_t* info)
 {
 	int counter = 0;
 	struct snatted_table *sntmp;
@@ -1352,8 +1325,7 @@ lookup_snatted_table_n_update_timer(const struct snatted_table *sne, ipfire_info
 	return NULL;
 }
 
-	int
-fill_snat_entry_net_fields(struct snatted_table *snentry,
+int fill_snat_entry_net_fields(struct snatted_table *snentry,
 		const ipfire_info_t * original_pack,
 		const ipfire_rule * snat_rule)
 {
@@ -1483,7 +1455,7 @@ int add_snatted_entry(ipfire_info_t * original_pack,
 			memset(ipfi_info_warn, 0, sizeof(ipfire_info_t));
 			ipfi_info_warn->snat_max_entries = 1;
 			ipfi_info_warn->packet_id = fwopts.max_nat_entries;
-			skb_to_user = build_info_t_packet(ipfi_info_warn);
+			skb_to_user = build_info_t_nlmsg(ipfi_info_warn);
 
 			if (skb_to_user != NULL && skb_send_to_user(skb_to_user,  LISTENER_DATA) < 0)
 				IPFI_PRINTK("IPFIRE: error notifying maximum number of snat entries to user\n");

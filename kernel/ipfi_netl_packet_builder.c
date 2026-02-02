@@ -1,5 +1,6 @@
 #include "includes/ipfi_netl_packet_builder.h"
 
+/*! returns a new struct sk_buff */
 struct sk_buff *build_packet(void *buf, int numbytes)
 {
   struct sk_buff *skb_to_user;
@@ -46,6 +47,56 @@ struct sk_buff *build_info_t_packet(const ipfire_info_t *info)
   struct sk_buff* skb_to_user = NULL;
   skb_to_user = build_packet((void *) info, sizeof(ipfire_info_t));
   return skb_to_user;
+}
+
+struct sk_buff *build_info_t_nlmsg(const struct sk_buff *skb,
+                                    const ipfi_flow* flow,
+                                    const struct response *res,
+                                    const struct info_flags *flags,
+                                   int *err) {
+    struct sk_buff *nl_skb;
+    struct nlmsghdr *nlh;
+    ipfire_info_t *msg;
+    void *l4h;
+    int size = sizeof(*msg);
+    struct iphdr *iph = ip_hdr(skb); // checked at the origin
+    nl_skb = nlmsg_new(size, GFP_ATOMIC);
+    if (!nl_skb) {
+        *err = ENOMEM;
+    } else {
+        nlh = nlmsg_put(nl_skb, 0, 0, 0, size, 0);
+        if (!nlh) {
+            kfree_skb(nl_skb);
+            *err = EMSGSIZE;
+            return NULL;
+        }
+        msg = nlmsg_data(nlh);
+        memset(msg, 0, sizeof(*msg));
+        memcpy(&msg->packet.iphead, iph, sizeof(struct iphdr));
+        l4h = skb_transport_header(skb);
+        switch (iph->protocol) {
+        case IPPROTO_TCP:
+            memcpy(&msg->packet.transport_header.tcphead, l4h, sizeof(struct tcphdr));
+            break;
+        case IPPROTO_UDP:
+            memcpy(&msg->packet.transport_header.udphead, l4h, sizeof(struct udphdr));
+            break;
+        case IPPROTO_ICMP:
+            memcpy(&msg->packet.transport_header.icmphead, l4h, sizeof(struct icmphdr));
+            break;
+        case IPPROTO_IGMP:
+            memcpy(&msg->packet.transport_header.igmphead, l4h, sizeof(struct igmphdr));
+            break;
+        default:
+            break;
+        }
+
+        msg->response = *res;
+        msg->flags = *flags;
+        msg->netdevs.in_idx = flow->in ? flow->in->ifindex : -1;
+        msg->netdevs.out_idx = flow->out ? flow->out->ifindex : -1;
+    }
+    return nl_skb;
 }
 
 struct sk_buff *build_dnat_t_packet(const struct dnatted_table *dt)

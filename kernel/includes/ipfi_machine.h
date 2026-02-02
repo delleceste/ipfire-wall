@@ -60,14 +60,9 @@ struct state_table
 int init_machine(void);
 void fini_machine(void);
 
-struct response check_state(struct sk_buff* skb,
-                            int direction,
-                            const struct net_device *in,
-                            const struct net_device *out);
-int state_match(const struct sk_buff* skb, const struct state_table* entry,
-                short *reverse, int direction,
-                const struct net_device *in,
-                const struct net_device *out);
+struct response check_state(struct sk_buff* skb, const ipfi_flow *flow);
+int skb_matches_state_table(const struct sk_buff* skb, const struct state_table* entry,
+                short *reverse, const ipfi_flow *flow);
 
 unsigned int get_timeout_by_state(int protocol, int state);
 
@@ -83,9 +78,7 @@ struct response ipfire_filter(const ipfire_rule *denied,
                               const ipfire_rule *allowed,
                               const struct ipfire_options* ipfiopts,
                               struct sk_buff* skb,
-                              int direction,
-                              const struct net_device *in,
-                              const struct net_device *out,
+                              const ipfi_flow *flow,
                               struct info_flags *flags);
 
 int port_match(const  struct tcphdr *tcph, const struct udphdr *udph,
@@ -126,11 +119,13 @@ int icmp_filter(const struct icmphdr *icmph, const ipfire_rule* r);
 int ip_layer_filter(const  struct iphdr *iph, const ipfire_rule* r, int direction,
                     const  struct net_device *in, const  struct net_device *out);
 
-int direct_state_match(const  struct sk_buff *skb, const struct state_table *entry,
-                       const  struct net_device *in, const  struct net_device *out);
+int direct_state_match(const  struct sk_buff *skb,
+                       const struct state_table *entry,
+                       const ipfi_flow *flow);
 
-int reverse_state_match(const struct sk_buff *skb, const struct state_table *entry,
-                        const  struct net_device *in, const  struct net_device *out);
+int reverse_state_match(const struct sk_buff *skb,
+                        const struct state_table *entry,
+                        const ipfi_flow *flow);
 
 /* keep_state */
 /* If a skb carries fields pertaining to a table already present
@@ -148,9 +143,7 @@ int reverse_state_match(const struct sk_buff *skb, const struct state_table *ent
  */
 struct state_table* keep_state(const struct sk_buff *skb,
                                const ipfire_rule* p_rule,
-                               int direction,
-                               const  struct net_device *in,
-                               const  struct net_device *out);
+                               const ipfi_flow *flow);
 
 /* Adds the new state table to the list. Takes a pointer to a memory allocated
  * structure.
@@ -169,9 +162,7 @@ reverse_transport_state_match(const ipfire_info_t * packet,
 /* fills in state table with network informations */
 int fill_net_table_fields(struct state_table *state_t,
                           const struct sk_buff *skb,
-                          int direction,
-                          const struct  net_device *in,
-                          const struct  net_device *out);
+                          const ipfi_flow *flow);
 
 int fill_state_info(struct state_info *stinfo, const struct state_table* stt);
 
@@ -192,11 +183,8 @@ void fill_timer_table_fields(struct state_table* state_t);
 void handle_keep_state_timeout(struct timer_list *t);
 
 /* compares two state table entries */
-int compare_state_entries(const struct sk_buff *skb,
-                          const struct state_table* s2,
-                          const  struct net_device *in,
-                          const  struct net_device *out,
-                          int direction);
+int compare_state_entries(const struct state_table *s1,
+                          const struct state_table* s2);
 
 /* scans root list looking for already present entries. 
  * Returns NULL if none is found, the pointer to the entry
@@ -205,11 +193,7 @@ int compare_state_entries(const struct sk_buff *skb,
  * to update timers here avoids putting another lock when
  * calling timer updating routine elsewhere.
  */
-struct state_table *lookup_state_table_n_update_timer(const struct sk_buff *skb,
-                                                      int lock,
-                                                      int direction,
-                                                      const  struct net_device *in,
-                                                      const  struct net_device *out);
+struct state_table *lookup_state_table_n_update_timer(const struct state_table *stt, int lock);
 
 /* returns in *addr the internet address corresponding to 
  * ouput or input interface, depending on field "direction" of info

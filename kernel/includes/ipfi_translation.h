@@ -105,19 +105,18 @@ int
 get_orig_from_dnat_entry(const struct dnatted_table* dnt,
 					 const ipfire_info_t* iit, struct sockaddr_in* sin);
 
-int 
-lookup_dnat_table_and_getorigdst(const ipfire_info_t* iit, 
+int  lookup_dnat_table_and_getorigdst(const ipfire_info_t* iit,
 		struct sockaddr_in* sin);
 
-int
-get_original_dest(struct sock *sk, int optval, void __user *user, int *len);
+int get_original_dest(struct sock *sk, int optval, void __user *user, int *len);
 
 /* translate destination address or destination port
  * Used in prerouting or output directions.
  */
-int 
-dnat_translation(struct sk_buff* skb, ipfire_info_t* packet,
-		 int direction);
+int dnat_translation(struct sk_buff* skb,
+                 ipfire_info_t* packet,
+                 const ipfi_flow *flow,
+                 const struct info_flags *flags);
 
 /* skb contains the fields taken from sk_buff, r is the translation rule.
  * In this function, the skb must match the rule provided by user for

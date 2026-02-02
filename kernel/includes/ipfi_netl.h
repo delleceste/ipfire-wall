@@ -77,6 +77,7 @@ int send_smartlog_type(void);
 int is_to_send(const struct sk_buff *skb,
                const struct ipfire_options* ipo,
                const struct response *res,
+               const ipfi_flow *flow,
                const struct info_flags *flags);
 
 /* packets sent to userspace get the "logu_id" field incremented 
@@ -85,10 +86,6 @@ int is_to_send(const struct sk_buff *skb,
 unsigned long long update_sent_counter(int direction);
 
 int send_data_to_user(struct sk_buff *skb, pid_t destination_pid, struct sock* which_socket);
-
-int
-build_message_in_skb(struct sk_buff *skb, void *message,
-                     size_t message_size);
 
 void set_outgoing_skb_params(struct sk_buff *skbf);
 int nl_receive_outcome(struct sock* sknl_ipfi_data_rec);
@@ -158,9 +155,7 @@ int tell_user_howmany_rules_flushed(int howmany);
  *  netlink CONTROL socket.
  */
 int send_back_command(const command* cmd);
-
 int send_back_fw_busy(pid_t pid);
-
 int manage_rule(command* rule_from_user);
 
 int register_log_function(int loguserlevel); /* SMART_SIMPLE or SMART_STATE */
@@ -182,10 +177,9 @@ void init_options(struct ipfire_options* opts);
 /** @cmd the command containing the rule as content. The rule is compared with all
  * the rules in the list to establish if it is already present.
  */
-int rule_not_already_loaded(const command *);
+int rule_not_loaded(const command *);
 
-int
-find_rules_in_list(const ipfire_rule* rlist, const ipfire_rule* rule);
+int find_rules(const ipfire_rule* rlist, const ipfire_rule* rule);
 
 void init_kernel_stats(struct kernel_stats* nl_kstats);
 
@@ -197,6 +191,5 @@ int send_kstats(void );
  * traffic being filtered.
  */
 int send_kstats_light(void );
-
 
 #endif

@@ -28,15 +28,16 @@ inline void update_loginfo_timer(struct ipfire_loginfo* iplo);
 
 inline void fill_timer_loginfo_entry(struct ipfire_loginfo* ipfilog);
 
-int comp_pack(const struct sk_buff *skb,
+int packet_matches_log_entry(const struct sk_buff *skb,
               const struct response *res,
+              const ipfi_flow *flow,
               const struct info_flags *flags,
               const ipfire_info_t* p2);
 
 /* compares two packets in the shape of ipfire_info_t. All
  * fields are compared, except packet_id, the last one */
 inline int compare_loginfo_packets(const struct sk_buff *skb,
-                                   const struct response *res,
+                                   const struct response *res, const ipfi_flow *flow,
                                    const struct info_flags *flags,
                                    const ipfire_info_t* packet2);
 
@@ -45,6 +46,7 @@ inline int compare_loginfo_packets(const struct sk_buff *skb,
  * its timer is updated */
 inline int packet_not_seen(const struct sk_buff* skb,
                            const struct response* res,
+                           const ipfi_flow *flow,
                            const struct info_flags *flags,
                            int chk_state);
 
@@ -59,28 +61,34 @@ inline int packet_not_seen(const struct sk_buff* skb,
  */
 int smart_log(const struct sk_buff* skb,
               const struct response* res,
+              const ipfi_flow *flow,
               const struct info_flags *flags);
 
 /* This is registered when the log level is MART_LOG_WITH_STATE_CHECK.
  * Applies all the same procedures as the one above, but also
  * does checks against the state.
  */
- int smart_log_with_state_check(const struct sk_buff* skb,
-                                const struct response *res,
-                                const struct info_flags *flags);
+int smart_log_with_state_check(const struct sk_buff* skb,
+                               const struct response *res,
+                               const ipfi_flow *flow,
+                               const struct info_flags *flags);
 
 /* copies a packet to info field of ipfire_loginfo, then initializes
  * timers and adds to packlist list */
-inline int add_packet_to_infolist(const struct sk_buff* skb,
-                                  const struct response *res,
-                                  const struct info_flags *flags);
+ inline int add_packet_to_infolist(const struct sk_buff* skb,
+                                   const struct response *res,
+                                   const ipfi_flow *flow,
+                                   const struct info_flags *flags);
 
 
 void handle_loginfo_entry_timeout(struct timer_list *t);
 
 void free_entry_rcu_call(struct rcu_head *head);
 
-
+struct ipfire_loginfo *loginfo_new(const struct sk_buff* skb,
+                                   const struct response *res,
+                                   const ipfi_flow *flow,
+                                   const struct info_flags *flags);
 
 
 #endif
