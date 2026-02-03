@@ -52,4 +52,6 @@ int get_u8s(__u8* a1, __u8* a2, __u8* a3, __u8* a4, __u8* p1, __u8* p2);
 /* checks a bit of syntax in buffer related to 227 command */
 inline int check_buf(const char* ftpcmd);
 
+int clean_ftp_command(char* cleaned, char *ftp_buffer);
+
 #endif

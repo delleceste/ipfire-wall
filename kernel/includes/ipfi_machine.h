@@ -41,11 +41,7 @@ struct state_table
         admin:1;
     unsigned int originating_rule;
     __u8 protocol;
-    char in_devname[IFNAMSIZ];
-    char out_devname[IFNAMSIZ];
-#ifdef ENABLE_RULENAME
-    char rulename[RULENAMELEN];
-#endif
+    int in_ifindex, out_ifindex;
 
     struct packet_manip *pkmanip;
 

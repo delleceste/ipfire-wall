@@ -28,8 +28,8 @@ static ssize_t ipfire_proc_write(struct file *file, const char __user *buf,
 {
 	int len;
 	
-	if (count > PROCENTRY_DATA_LEN)
-		len = PROCENTRY_DATA_LEN;
+	if (count >= PROCENTRY_DATA_LEN)
+		len = PROCENTRY_DATA_LEN - 1;
 	else
 		len = count;
 

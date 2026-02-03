@@ -68,20 +68,12 @@ int data_start_with_227(const struct sk_buff* skb, char *ftp_buffer)
 	unsigned int dataoff, datalen;
 	char* data_ptr;
 	struct tcphdr *th;
-	struct iphdr* iph;
-	struct tcphdr _tcph;
+    struct iphdr* iph;
 	
 	iph = ip_hdr(skb);
-	if(iph == NULL)
-		return network_header_null("data_start_with_227() (ipfi_ftp.c)",
-				"IP header NULL");
 
 	/* a packet arrives here if protocol is TCP, see check_state() */
-	th = skb_header_pointer(skb, iph->ihl*4, sizeof(_tcph), &_tcph);
-
-	if (check_tcp_header_from_skb(skb, th) < 0)
-		return network_header_null("data_start_with_227() (ipfi_ftp.c)", "TCP header NULL");
-
+	th = (struct tcphdr *)((void *)iph + iph->ihl * 4);
 	dataoff = iph->ihl*4 + th->doff*4;
 	/* If there is no data in the buffer, return -1 */
 	if (dataoff >= skb->len) 
@@ -123,9 +115,6 @@ get_params_and_alloc_newentry(const struct state_table* orig, char *ftp_buffer)
 {
 	ftp_info ftpi;
 	struct state_table *newt = NULL;
-#ifdef ENABLE_RULENAME
-	char rname[RULENAMELEN];
-#endif
 	ftpi = get_ftpaddr_and_port(ftp_buffer);
 
 	if(ftpi.valid)
@@ -144,12 +133,14 @@ get_params_and_alloc_newentry(const struct state_table* orig, char *ftp_buffer)
 		newt->dport = ftpi.ftp_port;
 		newt->ftp = FTP_DEFINED;
 		newt->originating_rule = orig->originating_rule;
-#ifdef ENABLE_RULENAME
-		snprintf(rname, RULENAMELEN, "FTP<->RULE %u [%u-%u]", orig->originating_rule,
-			  ntohs(orig->sport), ntohs(orig->dport));
-		rname[RULENAMELEN-1] = '\0';
-		strncpy(newt->rulename, rname, RULENAMELEN-1);
-#endif	
+        // *CHECK *
+// #ifdef ENABLE_RULENAME
+// 		snprintf(rname, RULENAMELEN, "FTP<->RULE %u [%u-%u]", orig->originating_rule,
+// 			  ntohs(orig->sport), ntohs(orig->dport));
+// 		rname[RULENAMELEN-1] = '\0';
+// 		strncpy(newt->rulename, rname, RULENAMELEN-1);
+// #endif
+        //             //
 	}
 	/* return the new allocated state table or NULL */
 	return newt;

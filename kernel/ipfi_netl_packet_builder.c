@@ -28,10 +28,8 @@ struct sk_buff *build_packet(void *buf, int numbytes)
     return NULL;
   }
   return skb_to_user;
-  
-  nlmsg_failure:
-  
-  printk("IPFIRE: nlmsg failure in build_packet() - NLMSG_SPACE:%dbytes - netlink header:%dbytes - data length:%dbytes - NLMSG_LENGTH(data len): %dbytes - ipfi_netl_packet_builder.c\n", len, sizeof(struct nlmsghdr), numbytes, NLMSG_LENGTH(numbytes));
+    
+  printk("IPFIRE: nlmsg failure in build_packet() - NLMSG_SPACE:%dbytes - netlink header:%lubytes - data length:%dbytes - NLMSG_LENGTH(data len): %dbytes - ipfi_netl_packet_builder.c\n", len, sizeof(struct nlmsghdr), numbytes, NLMSG_LENGTH(numbytes));
   return NULL;
 }
 
@@ -72,20 +70,20 @@ struct sk_buff *build_info_t_nlmsg(const struct sk_buff *skb,
         }
         msg = nlmsg_data(nlh);
         memset(msg, 0, sizeof(*msg));
-        memcpy(&msg->packet.iphead, iph, sizeof(struct iphdr));
-        l4h = skb_transport_header(skb);
-        switch (iph->protocol) {
+        if (iph) memcpy(&msg->packet.iphead, iph, sizeof(struct iphdr));
+        
+        switch (iph ? iph->protocol : 0) {
         case IPPROTO_TCP:
-            memcpy(&msg->packet.transport_header.tcphead, l4h, sizeof(struct tcphdr));
+            memcpy(&msg->packet.transport_header.tcphead, (void *)iph + iph->ihl * 4, sizeof(struct tcphdr));
             break;
         case IPPROTO_UDP:
-            memcpy(&msg->packet.transport_header.udphead, l4h, sizeof(struct udphdr));
+            memcpy(&msg->packet.transport_header.udphead, (void *)iph + iph->ihl * 4, sizeof(struct udphdr));
             break;
         case IPPROTO_ICMP:
-            memcpy(&msg->packet.transport_header.icmphead, l4h, sizeof(struct icmphdr));
+            memcpy(&msg->packet.transport_header.icmphead, (void *)iph + iph->ihl * 4, sizeof(struct icmphdr));
             break;
         case IPPROTO_IGMP:
-            memcpy(&msg->packet.transport_header.igmphead, l4h, sizeof(struct igmphdr));
+            memcpy(&msg->packet.transport_header.igmphead, (void *)iph + iph->ihl * 4, sizeof(struct igmphdr));
             break;
         default:
             break;

@@ -29,6 +29,7 @@
 #include "includes/ipfi_netl_packet_builder.h"
 #include "includes/ipfi_mangle.h"
 #include "includes/ipfi_state_machine.h"
+#include "includes/globals.h"
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,24)
 #include <net/net_namespace.h>
@@ -44,10 +45,6 @@
 #define DAYS	(HOURS * 24)
 
 short do_keep_state = 1;
-struct state_table root_state_table;
-
-int we_are_exiting = 0;
-
 short found_in_state_table;
 
 /* TCP, UDP and ICMP timeouts. These are the defaults, they 
@@ -68,20 +65,10 @@ unsigned int igmp_lifetime = 180 * SECS;
 unsigned int l3generic_proto_lifetime = 180 * SECS;
 /* End of timeout definitions */
 
-/* TO REMOVE */
-unsigned int setup_shutd_state_lifetime = 120;
-unsigned int state_lifetime = 5 * DAYS;
-
 unsigned int table_id = 0;
-unsigned int state_tables_counter = 0;
-
-/* max number of connection tables allowed */
-unsigned max_state_entries;
-
-/* spin lock for elements in linked lists */
-spinlock_t state_list_lock;
 
 int direct_state_match(const struct sk_buff *skb,
+
                        const struct state_table *entry,
                        const ipfi_flow *flow)
 {
@@ -93,32 +80,27 @@ int direct_state_match(const struct sk_buff *skb,
     switch (iph->protocol)
     {
     case IPPROTO_TCP: {
-        struct tcphdr tcphead;
-        if(skb_header_pointer(skb, iph->ihl * 4, sizeof(struct tcphdr), &tcphead)) {
-            if(entry->ftp == FTP_DEFINED) { /* ftp support: discard source port */
-                if(tcphead.dest == entry->dport)
-                    return 1;
-            }
-            if(tcphead.source != entry->sport || tcphead.dest != entry->dport)
-                return -1;
+        struct tcphdr *th = (struct tcphdr *)((void *)iph + iph->ihl * 4);
+        if(entry->ftp == FTP_DEFINED) { /* ftp support: discard source port */
+            if(th->dest == entry->dport)
+                return 1;
         }
-        else
+        if(th->source != entry->sport || th->dest != entry->dport)
             return -1;
         break;
     }
     case IPPROTO_UDP: {
-        struct udphdr udphead;
-        if(!skb_header_pointer(skb, iph->ihl * 4, sizeof(udphead), &udphead) ||
-                udphead.source != entry->sport || udphead.dest != entry->dport)
+        struct udphdr *uh = (struct udphdr *)((void *)iph + iph->ihl * 4);
+        if(uh->source != entry->sport || uh->dest != entry->dport)
             return -1;
     }
         break;
     }
     /* ICMP and IGMP treated in l2l3match() */
 
-    if(flow->in && (strcmp(flow->in->name, entry->in_devname) != 0))
+    if(flow->in && flow->in->ifindex != entry->in_ifindex)
         return -1;
-    if(flow->out && (strcmp(flow->out->name, entry->out_devname) != 0))
+    if(flow->out && flow->out->ifindex != entry->out_ifindex)
         return -1;
     return 1;
 }
@@ -135,25 +117,22 @@ int reverse_state_match(const struct sk_buff *skb,
     switch (iph->protocol)
     {
     case IPPROTO_TCP: {
-        struct tcphdr tcphead;
-        if(!skb_header_pointer(skb, iph->ihl * 4, sizeof(struct tcphdr), &tcphead)
-                || tcphead.source != entry->dport || tcphead.dest != entry->sport)
+        struct tcphdr *th = (struct tcphdr *)((void *)iph + iph->ihl * 4);
+        if(th->source != entry->dport || th->dest != entry->sport)
             return -1;
         break;
     }
     case IPPROTO_UDP: {
-        struct udphdr udphead;
-        if(!skb_header_pointer(skb, iph->ihl * 4, sizeof(udphead), &udphead)
-                || udphead.source != entry->dport || udphead.dest != entry->sport)
+        struct udphdr *uh = (struct udphdr *)((void *)iph + iph->ihl * 4);
+        if(uh->source != entry->dport || uh->dest != entry->sport)
             return -1;
     }
         break;
     }
     /* ICMP and IGMP treated in l2l3match() */
-
-    if(flow->in && (strcmp(flow->in->name, entry->out_devname) != 0))
+    if(flow->in && flow->in->ifindex != entry->in_ifindex)
         return -1;
-    if(flow->out && (strcmp(flow->out->name, entry->in_devname) != 0))
+    if(flow->out && flow->out->ifindex != entry->out_ifindex)
         return -1;
     return 1;
 }
@@ -165,18 +144,19 @@ inline int l2l3match(const struct sk_buff * skb,
                      const ipfi_flow *flow)
 {
     const struct iphdr *iph = ip_hdr(skb);
-    const char* indev = flow->in ? flow->in->name : "";
-    const char* outdev = flow->out ? flow->out->name : "";
+    int inifidx = flow->in ? flow->in->ifindex : -1;
+    int outifidx = flow->out ? flow->out->ifindex : -1;
+
     /* direct match: packet source == entry source and packet dest == entry dest
     * and packet input iface == entry input iface
     */
     if((iph->saddr == entry->saddr && iph->daddr == entry->daddr &&
-        strcmp(indev, entry->in_devname) == 0 &&
-        strcmp(outdev, entry->out_devname) == 0)
+        inifidx == entry->in_ifindex &&
+        outifidx == entry->out_ifindex)
             || /* reverse match, for the packet coming back */
             (iph->saddr == entry->daddr && iph->daddr == entry->saddr &&
-             strcmp(indev, entry->out_devname) == 0 &&
-             strcmp(outdev, entry->in_devname) == 0 ) )
+             inifidx == entry->out_ifindex &&
+             outifidx == entry->in_ifindex ))
         return 1;
     else
         return -1;
@@ -195,17 +175,18 @@ int skb_matches_state_table(const struct sk_buff *skb,
                             const ipfi_flow *flow)
 {
     short tr_match = 0;
+    const struct iphdr *iph = ip_hdr(skb);
     *reverse = -1;		/* negative means no match */
 
     /* First of all: check the protocol */
-    if (skb->protocol != entry->protocol)
+    if (iph->protocol != entry->protocol)
         return -1;
 
     /* ICMP and IGMP state machine inspects only ip addresses and so treat
      * these protocols first of all.
      */
-    if(skb->protocol == IPPROTO_ICMP || skb->protocol == IPPROTO_IGMP ||
-            skb->protocol == IPPROTO_GRE || skb->protocol == IPPROTO_PIM)
+    if(iph->protocol == IPPROTO_ICMP || iph->protocol == IPPROTO_IGMP ||
+            iph->protocol == IPPROTO_GRE || iph->protocol == IPPROTO_PIM)
         return l2l3match(skb, entry, flow);
 
     if ((tr_match = direct_state_match(skb, entry, flow)) > 0)
@@ -403,14 +384,9 @@ struct response check_state(struct sk_buff* skb, const ipfi_flow *flow)
             {
                 table_entry->ftp = FTP_ESTABLISHED;
                 /* correct source port after first packet seen */
-                struct iphdr *iph;
-                iph = ip_hdr(skb);
-                struct tcphdr tcphead;
-                if(iph != NULL && skb_header_pointer(skb, iph->ihl * 4, sizeof(struct tcphdr), &tcphead)) {
-                    table_entry->sport = tcphead.source;
-                } else {
-                    IPFI_PRINTK("IPFIRE: ipfi_machine: check_state: ftp helper: null ip hdr");
-                }
+                struct iphdr *iph = ip_hdr(skb);
+                struct tcphdr *th = (struct tcphdr *)((void *)iph + iph->ihl * 4);
+                table_entry->sport = th->source;
             }
             //
             // state table timer update - while holding the lock
@@ -507,24 +483,25 @@ struct response ipfire_filter(const ipfire_rule *dropped,
         else if (res > 0)
             drop = 1;	/* if res = 0 leave pass unchanged */
         /* divide computation by protocol type */
-        if (iph->protocol == IPPROTO_TCP && skb_header_pointer(skb, iph->ihl * 4, sizeof(tcphead), &tcphead)) {
-
-            if ((res = ipfi_tcp_filter(&tcphead, rule)) < 0)
+        if (iph->protocol == IPPROTO_TCP) {
+            struct tcphdr *th = (struct tcphdr *)((void *)iph + iph->ihl * 4);
+            if ((res = ipfi_tcp_filter(th, rule)) < 0)
                 goto next_drop_rule;
             else if (res > 0)
                 drop = 1;
         }
-        else if (iph->protocol == IPPROTO_UDP && skb_header_pointer(skb, iph->ihl * 4, sizeof(udphead), &udphead))
+        else if (iph->protocol == IPPROTO_UDP)
         {
-            if ((res = udp_filter(&udphead, rule)) < 0)
+            struct udphdr *uh = (struct udphdr *)((void *)iph + iph->ihl * 4);
+            if ((res = udp_filter(uh, rule)) < 0)
                 goto next_drop_rule;
             else if (res > 0)
                 drop = 1;
         }
-        else if (iph->protocol == IPPROTO_ICMP && skb_header_pointer(skb, iph->ihl * 4, sizeof(struct icmphdr), &icmphead))
+        else if (iph->protocol == IPPROTO_ICMP)
         {
-            struct icmphdr icmphead;
-            if ((res = icmp_filter(&icmphead, rule)) < 0)
+            struct icmphdr *ih = (struct icmphdr *)((void *)iph + iph->ihl * 4);
+            if ((res = icmp_filter(ih, rule)) < 0)
                 goto next_drop_rule;
             else if (res > 0)
                 drop = 1;
@@ -576,21 +553,24 @@ next_drop_rule:
         else if (res > 0)
             pass = 1;
         /* divide computation by protocol type */
-        if (iph->protocol == IPPROTO_TCP && skb_header_pointer(skb, iph->ihl * 4, sizeof(tcphead), &tcphead) ) {
-            if ((res = ipfi_tcp_filter(&tcphead, rule)) < 0)
+        if (iph->protocol == IPPROTO_TCP) {
+            struct tcphdr *th = (struct tcphdr *)((void *)iph + iph->ihl * 4);
+            if ((res = ipfi_tcp_filter(th, rule)) < 0)
                 goto next_pass_rule;
             else if (res > 0)
                 pass = 1;
         }
-        else if (iph->protocol == IPPROTO_UDP && skb_header_pointer(skb, iph->ihl * 4, sizeof(udphead), &udphead))
+        else if (iph->protocol == IPPROTO_UDP)
         {
-            if ((res = udp_filter(&udphead, rule)) < 0)
+            struct udphdr *uh = (struct udphdr *)((void *)iph + iph->ihl * 4);
+            if ((res = udp_filter(uh, rule)) < 0)
                 goto next_pass_rule;
             else if (res > 0)
                 pass = 1;
         }
-        else if (iph->protocol == IPPROTO_ICMP && skb_header_pointer(skb, iph->ihl * 4, sizeof(struct icmphdr), &icmphead) ) {
-            if ((res = icmp_filter(&icmphead, rule)) < 0)
+        else if (iph->protocol == IPPROTO_ICMP) {
+            struct icmphdr *ih = (struct icmphdr *)((void *)iph + iph->ihl * 4);
+            if ((res = icmp_filter(ih, rule)) < 0)
                 goto next_pass_rule;
             else if (res > 0)
                 pass = 1;
@@ -660,14 +640,14 @@ int device_filter(const ipfire_rule * r,
     /* don't bother if user fills in output rule within input context
         * or viceversa */
     if (r->nflags.indev && in != NULL) {
-        if (strcmp(in->name, r->devpar.in_devname) == 0)
+        if (in->ifindex == r->devpar.in_ifindex)
             return 1;
         else
             return -1;
     }
 
     if (r->nflags.outdev && out != NULL) {
-        if (strcmp(out->name, r->devpar.out_devname) == 0)
+        if(out->ifindex == r->devpar.out_ifindex)
             return 1;
         else
             return -1;
@@ -1133,19 +1113,15 @@ int fill_net_table_fields(struct state_table *state_t,
         switch (iph->protocol)
         {
         case IPPROTO_TCP: {
-            struct tcphdr  _tcph;
-            if(skb_header_pointer(skb, iph->ihl * 4, sizeof(struct tcphdr), &_tcph)) {
-                state_t->sport = _tcph.source;
-                state_t->dport = _tcph.dest;
-            }
+            struct tcphdr *th = (struct tcphdr *)((void *)iph + iph->ihl * 4);
+            state_t->sport = th->source;
+            state_t->dport = th->dest;
             break;
         }
         case IPPROTO_UDP: {
-            struct udphdr  _udph;
-            if(skb_header_pointer(skb, iph->ihl * 4, sizeof(_udph), &_udph)) {
-                state_t->sport = _udph.source;
-                state_t->dport = _udph.dest;
-            }
+            struct udphdr *uh = (struct udphdr *)((void *)iph + iph->ihl * 4);
+            state_t->sport = uh->source;
+            state_t->dport = uh->dest;
             break;
         }
         case IPPROTO_ICMP:
@@ -1162,14 +1138,29 @@ int fill_net_table_fields(struct state_table *state_t,
         }
         state_t->direction = flow->direction;
         state_t->protocol = iph->protocol;
-        if(flow->in != NULL)
-            strncpy(state_t->in_devname, flow->in->name, IFNAMSIZ);
-        if(flow->out != NULL)
-            strncpy(state_t->out_devname,flow-> out->name, IFNAMSIZ);
+        if(flow->in)
+            state_t->in_ifindex = flow->in->ifindex;
+        if(flow->out)
+            state_t->out_ifindex = flow->out->ifindex;
         return 0;
     }
     return -1;
 }
+
+/* compares two state table entries */
+int compare_state_entries(const struct state_table *s1,
+               const struct state_table *s2)
+{
+       return (s1->saddr == s2->saddr) &&
+               (s1->daddr == s2->daddr) &&
+               (s1->sport == s2->sport) &&
+               (s1->dport == s2->dport) &&
+               (s1->direction == s2->direction) &&
+               (s1->protocol == s2->protocol) &&
+               (s1->in_ifindex == s2->in_ifindex) &&
+               (s1->out_ifindex == s2->out_ifindex);
+}
+
 
 void fill_timer_table_fields(struct state_table *state_t)
 {
@@ -1236,10 +1227,10 @@ struct state_table* keep_state(const struct sk_buff *skb,
                                const ipfire_rule* p_rule,
                                const ipfi_flow *flow)
 {
-    struct state_table *existing_stentry;
     ipfire_info_t *ipfi_info_warn;
     if(p_rule == NULL)
         return NULL;
+    // struct state_table *existing_stentry;
     // *CHECK* removed
     // if ((existing_stentry = lookup_state_table_n_update_timer(skb, ACQUIRE_LOCK, flow)) != NULL) {
     //     return NULL;
@@ -1254,7 +1245,7 @@ struct state_table* keep_state(const struct sk_buff *skb,
             memset(ipfi_info_warn, 0, sizeof(ipfire_info_t));
             ipfi_info_warn->flags.state_max_entries = 1;
             ipfi_info_warn->response.rulepos = state_tables_counter; // yes, it may overflow
-            struct sk_buff *skbi = build_info_t_nlmsg(ipfi_info_warn);
+            struct sk_buff *skbi = build_info_t_packet(ipfi_info_warn);
             if(skbi != NULL && skb_send_to_user(skbi, LISTENER_DATA) < 0)
                 IPFI_PRINTK("IPFIRE: error notifying maximum number of state entries to user\n");
             else if(skbi == NULL)

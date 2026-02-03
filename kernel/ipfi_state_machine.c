@@ -12,18 +12,16 @@ int state_machine(const struct sk_buff *skb, int current_state, short reverse)
 
         struct iphdr *iph;
         iph = ip_hdr(skb);
-        if(iph != NULL) {
-          protocol = iph->protocol;
-          struct tcphdr tcphead;
-          struct tcphdr *p_tcphead = skb_header_pointer(skb, iph->ihl * 4, sizeof(struct tcphdr), &tcphead);
+        protocol = iph->protocol;
 
-          if (protocol == IPPROTO_TCP && p_tcphead)
-          {
-                syn = tcphead.syn;
-                ack = tcphead.ack;
-                rst = tcphead.rst;
-                fin = tcphead.fin;
-          }
+        if (protocol == IPPROTO_TCP)
+        {
+            struct tcphdr *th = (struct tcphdr *)((void *)iph + iph->ihl * 4);
+            syn = th->syn;
+            ack = th->ack;
+            rst = th->rst;
+            fin = th->fin;
+        }
           else if(protocol == IPPROTO_UDP)
           {
 		/* A minimal state machine for udp datagrams:

@@ -22,16 +22,11 @@
 /* see ipfi.c for details */
 
 #include "includes/ipfi_log.h"
+#include "includes/globals.h"
 
-struct ipfire_loginfo packlist;
-int loginfo_entry_counter = 0;
-int max_loginfo_entries;
-unsigned int loginfo_lifetime;
-
-/* spin lock for elements in linked lists */
-spinlock_t loginfo_list_lock;
 
 void free_entry_rcu_call(struct rcu_head *head)
+
 {
     struct ipfire_loginfo *ipfl =
             container_of(head, struct ipfire_loginfo, rcuh);
@@ -169,6 +164,7 @@ int packet_matches_log_entry(const struct sk_buff *skb,
 {
     int ret;
     struct iphdr *iph = ip_hdr(skb);
+
     if (iph->protocol != p2->packet.iphead.protocol)
         return -1;
     if (res->st.state != p2->flags.state)
@@ -202,22 +198,30 @@ int packet_matches_log_entry(const struct sk_buff *skb,
         return -1;
     switch (iph->protocol)
     {
-    case IPPROTO_TCP:
-        if (!tcph_compare(tcp_hdr(skb), p2))
+    case IPPROTO_TCP: {
+        struct tcphdr *th = (struct tcphdr *)((void *)iph + iph->ihl * 4);
+        if (!tcph_compare(th, p2))
             return -1;
         break;
-    case IPPROTO_UDP:
-        if (!udph_compare(udp_hdr(skb), p2))
+    }
+    case IPPROTO_UDP: {
+        struct udphdr *uh = (struct udphdr *)((void *)iph + iph->ihl * 4);
+        if (!udph_compare(uh, p2))
             return -1;
         break;
-    case IPPROTO_ICMP:
-        if (!icmph_compare(icmp_hdr(skb), p2))
+    }
+    case IPPROTO_ICMP: {
+        struct icmphdr *ih = (struct icmphdr *)((void *)iph + iph->ihl * 4);
+        if (!icmph_compare(ih, p2))
             return -1;
         break;
-    case IPPROTO_IGMP:
-        if (!igmph_compare(igmp_hdr(skb), p2))
+    }
+    case IPPROTO_IGMP: {
+        struct igmphdr *gh = (struct igmphdr *)((void *)iph + iph->ihl * 4);
+        if (!igmph_compare(gh, p2))
             return -1;
         break;
+    }
     case IPPROTO_GRE:
     case IPPROTO_PIM:
         /* comparison is limited to the checks above, no GRE header comparison is done, no PIM info inspected */

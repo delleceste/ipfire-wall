@@ -63,6 +63,9 @@ void fill_firesizes_with_kernel_values(command* cmd, size_t krulesize, size_t ki
 int init_netl(void);
 void fini_netl(void);
 
+int fill_dnat_info(struct dnat_info *dninfo, const struct dnatted_table *dntt);
+int fill_snat_info(struct snat_info *sninfo, const struct snatted_table *sntt);
+
 /* Sends in userspace the struct sizes */
 int send_struct_sizes(void);
 

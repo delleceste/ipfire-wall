@@ -38,7 +38,6 @@
 #define IPFI_PRINTK(args...) do { if (net_ratelimit()) printk(args); } while(0)
 
 
-#define MAXMODERATE_ARGS 	16
 #define MODERATE_LIMIT		32
 
 /* this macro avoids filling kernel log with the same message hundred of times.

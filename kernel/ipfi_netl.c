@@ -33,15 +33,9 @@
 #include "includes/ipfi_translation.h"
 #include "includes/ipfi_netl_packet_builder.h"
 #include "includes/ipfi_mangle.h"
+#include "includes/globals.h"
 
 /* variables shared with ipfi module */
-static struct sock *sknl_ipfi_control;
-static struct sock *sknl_ipfi_data;
-static struct sock *sknl_ipfi_gui_notifier;
-
-pid_t userspace_control_pid;
-pid_t userspace_data_pid;
-uid_t userspace_uid;
 
 static int command_counter = 0;
 static int rule_counter = 0;
@@ -63,53 +57,11 @@ static unsigned long long int fwd_sent_touser = 0;
 static unsigned long long int pre_sent_touser = 0;
 static unsigned long long int post_sent_touser = 0;
 
-unsigned int moderate_print[MAXMODERATE_ARGS];
-unsigned int moderate_print_limit[MAXMODERATE_ARGS];
-
-short default_policy = IPFIRE_DEFAULT_POLICY;
-
-/* Determines if the user interface wants to receive responses 
- * on packets
- */
-short loguser_enabled = 1;
-
-short gui_notifier_enabled = 0;
-
-struct kernel_stats kstats;
-struct kstats_light kslight;
-
-/* Lock ruleset before adding/deleting an item.
- * Spinlock is dynamically initialized at module
- * load time. */
-spinlock_t rulelist_lock;
-
-ipfire_rule in_drop;
-ipfire_rule out_drop;
-ipfire_rule fwd_drop;
-ipfire_rule in_acc;
-ipfire_rule out_acc;
-ipfire_rule fwd_acc;
-ipfire_rule translation_pre;
-ipfire_rule translation_post;
-ipfire_rule translation_out;
-ipfire_rule masquerade_post;
-
-struct dnatted_table root_dnatted_table;
-struct snatted_table root_snatted_table;
-
-extern unsigned long loginfo_lifetime;
-extern unsigned long max_loginfo_entries;
-extern unsigned long state_lifetime;
-extern unsigned long setup_shutd_state_lifetime;
-
-extern unsigned long max_state_entries;
-
-struct ipfire_options fwopts;
-
 int (*smartlog_func) (const struct sk_buff* skb,
                       const struct response* res,
                       const ipfi_flow *flow,
                       const struct info_flags *flags);
+
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,24)
 #include <net/net_namespace.h>
@@ -293,6 +245,13 @@ int process_control_received(struct sk_buff *skb)
     /* cmd_from_user lives in the skb memory area and so it is available until
      * skb is available. This means until nl_receive_control() kfrees (skb).
      */
+    if (nlmsg_len(nlmsg_hdr(skb)) < sizeof(command))
+    {
+        IPFI_PRINTK("IPFIRE: process_control_received(): netlink message too small for command (%d < %lu)\n", 
+                    nlmsg_len(nlmsg_hdr(skb)), sizeof(command));
+        return -EINVAL;
+    }
+
     command *cmd_from_user = (command *) extract_data(skb);
 
     if(cmd_from_user == NULL)
@@ -439,6 +398,13 @@ int process_control_received(struct sk_buff *skb)
 /* process data received on data socket, i.e. son userspace process (listener) */
 static inline int process_data_received(struct sk_buff *skb)
 {
+    if (nlmsg_len(nlmsg_hdr(skb)) < sizeof(listener_message))
+    {
+        IPFI_PRINTK("IPFIRE: process_data_received(): netlink message too small for listener_message (%d < %lu)\n", 
+                    nlmsg_len(nlmsg_hdr(skb)), sizeof(listener_message));
+        return -EINVAL;
+    }
+
     listener_message *listener_mess = (listener_message *) extract_data(skb);
     if(listener_mess == NULL)
     {
@@ -1221,24 +1187,6 @@ unsigned long long update_sent_counter(int direction)
  * return verdict, and updates some statistics.
  * The verdict returned is, again, the response obtained by ipfire_filter().
  */
-struct response iph_in_get_response(struct sk_buff* skb,
-                                    ipfi_flow *flow,
-                                    struct info_flags *flags)
-{
-    struct response response;
-    response.verdict = IPFI_DROP;
-
-    /* invoke engine function passing the appropriate rule lists */
-    if (flow->direction == IPFI_INPUT)
-        response = ipfire_filter(&in_drop, &in_acc, &fwopts, skb, flow, flags);
-    else if (flow->direction == IPFI_OUTPUT)
-        response = ipfire_filter(&out_drop, &out_acc, &fwopts, skb, flow, flags);
-    else if (flow->direction == IPFI_FWD)
-        response = ipfire_filter(&fwd_drop, &fwd_acc, &fwopts, skb, flow, flags);
-    else
-        IPFI_PRINTK("IPFIRE: iph_in_get_response(): invalid direction!\n");
-    return response;
-}
 
 int skb_send_to_user(struct sk_buff* skb, int type_of_message)
 {
@@ -1265,11 +1213,13 @@ int skb_send_to_user(struct sk_buff* skb, int type_of_message)
     if (socket == NULL)
     {			/* perhaps module not loaded */
         IPFI_PRINTK("IPFIRE: netlink socket not allocated!\n");
+        if (skb) kfree_skb(skb);
         return -1;
     }
     if (pid == 0)
     {
         //IPFI_PRINTK("IPFIRE: is userspace firewall running? Its pid seems to be 0!\n");
+        if (skb) kfree_skb(skb);
         return -1;
     }
     /* check for skb not null.. */
@@ -1339,29 +1289,28 @@ void print_nat_entries_memory_usage(void)
     IPFI_PRINTK("IPFIRE: size of a source nat table is %lu bytes.\nIPFIRE:"
                 " total memory occupied by snat entries is %lu KB.\n",
                 sizeof(struct snatted_table),
-                (unsigned) ((fwopts.max_nat_entries *
+                (unsigned long) ((fwopts.max_nat_entries *
                              sizeof(struct snatted_table)) / 1024));
 
     IPFI_PRINTK("IPFIRE: destination nat entries lifetime is %lu seconds.\n",
                 fwopts.dnatted_lifetime);
     IPFI_PRINTK("IPFIRE: max. number of entries is %lu.\n",
                 fwopts.max_nat_entries);
-    IPFI_PRINTK("IPFIRE: size of a dest nat table is %u bytes.\nIPFIRE:"
+    IPFI_PRINTK("IPFIRE: size of a dest nat table is %lu bytes.\nIPFIRE:"
                 " total memory occupied by dnat entries is about %lu KB.\n",
                 sizeof(struct dnatted_table),
-                (unsigned) ((fwopts.max_nat_entries *
+                (unsigned long) ((fwopts.max_nat_entries *
                              sizeof(struct dnatted_table)) / 1024));
 }
 
 void print_loginfo_memory_usage(unsigned long lifetime)
 {
     IPFI_PRINTK("IPFIRE: log entry lifetime is %lu seconds, ", lifetime);
-    IPFI_PRINTK("max n. of entries is %u\n"
+    IPFI_PRINTK("max n. of entries is %lu\n"
                 "IPFIRE: size of an entry is %lu bytes.\nIPFIRE: maximum memory"
                 " occupied by log entries is about %lu KB.\n",
                 max_loginfo_entries, sizeof(struct ipfire_loginfo),
-                (unsigned) ((max_loginfo_entries *
-                             sizeof(struct ipfire_loginfo) / 1024)));
+                (unsigned long) ((max_loginfo_entries * sizeof(struct ipfire_loginfo) / 1024)));
 }
 
 int send_rule_list_to_userspace(void)
@@ -1440,8 +1389,8 @@ int fill_state_info(struct state_info *stinfo,
     stinfo->timeout = (stt->timer_statelist.expires - jiffies) / HZ;
     stinfo->direction = stt->direction;
     stinfo->state.state = stt->state.state;
-    strncpy(stinfo->in_devname, stt->in_devname, IFNAMSIZ);
-    strncpy(stinfo->out_devname, stt->out_devname, IFNAMSIZ);
+    stinfo->in_ifindex = stt->in_ifindex;
+    stinfo->out_ifindex = stt->out_ifindex;
     stinfo->protocol = stt->protocol;
     stinfo->notify = stt->notify;
     return 0;
@@ -1449,7 +1398,6 @@ int fill_state_info(struct state_info *stinfo,
 
 int send_tables(void)
 {
-    extern struct state_table root_state_table;
     struct state_table *st;
     struct state_info *endmess;
     struct state_info *st_info;
@@ -1509,15 +1457,14 @@ int fill_dnat_info(struct dnat_info *dninfo,
     dninfo->timeout = (dntt->timer_dnattedlist.expires - jiffies) / HZ;
     dninfo->direction = dntt->direction;
     dninfo->state.state = dntt->state;
-    strncpy(dninfo->in_devname, dntt->in_devname, IFNAMSIZ);
-    strncpy(dninfo->out_devname, dntt->out_devname, IFNAMSIZ);
+    dninfo->in_ifindex = dntt->in_ifindex;
+    dninfo->out_ifindex = dntt->out_ifindex;
     dninfo->protocol = dntt->protocol;
     return 0;
 }
 
 int send_dnat_tables(void)
 {
-    extern struct dnatted_table root_dnatted_table;
     struct dnatted_table *dt;
     struct dnat_info *endmess;
     struct dnat_info *dn_info;
@@ -1559,8 +1506,7 @@ int send_dnat_tables(void)
     return 0;
 }
 
-int fill_snat_info(struct snat_info *sninfo,
-                   const struct snatted_table *sntt)
+int fill_snat_info(struct snat_info *sninfo, const struct snatted_table *sntt)
 {
     sninfo->saddr = sntt->old_saddr;
     sninfo->daddr = sntt->old_daddr;
@@ -1573,8 +1519,8 @@ int fill_snat_info(struct snat_info *sninfo,
     sninfo->timeout = (sntt->timer_snattedlist.expires - jiffies) / HZ;
     sninfo->direction = sntt->direction;
     sninfo->state.state = sntt->state;
-    strncpy(sninfo->in_devname, sntt->in_devname, IFNAMSIZ);
-    strncpy(sninfo->out_devname, sntt->out_devname, IFNAMSIZ);
+    sninfo->in_ifindex = sntt->in_ifindex;
+    sninfo->in_ifindex = sntt->out_ifindex;
     sninfo->protocol = sntt->protocol;
     return 0;
 }
@@ -1582,10 +1528,6 @@ int fill_snat_info(struct snat_info *sninfo,
 
 int send_ktables_usage(void)
 {
-    extern unsigned int dnatted_entry_counter;
-    extern unsigned int snatted_entry_counter;
-    extern unsigned int state_tables_counter;
-    extern unsigned int loginfo_entry_counter;
     struct ktables_usage* ktu;
     struct sk_buff *skb_to_user = NULL;
 
@@ -1610,7 +1552,6 @@ int send_ktables_usage(void)
 
 int send_snat_tables(void)
 {
-    extern struct snatted_table root_snatted_table;
     struct snatted_table *st;
     struct snat_info *endmess;
     struct snat_info *sn_info;
@@ -1945,9 +1886,8 @@ void update_kernel_stats(int counter_to_increment, short int response)
     case IPFI_FAILED_NETLINK_USPACE:
         if ((( unsigned) kstats.total_lost % 25000 == 0)
                 && (kstats.total_lost != 0))
-            printk
-                    ("IPFIRE: failed to send %llu packets to userspace "
-                     "via netlink socket [loguser: %d, response: %lu]!\n",
+            printk("IPFIRE: failed to send %llu packets to userspace "
+                     "via netlink socket [loguser: %d, response: %d]!\n",
                      kstats.total_lost, fwopts.loguser,
                      response);
         kstats.total_lost++;

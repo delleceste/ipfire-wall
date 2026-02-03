@@ -12,6 +12,7 @@
 #include "includes/ipfi_tcpmss.h"
 #include "includes/ipfi_defrag.h"
 #include "includes/module_init.h"
+#include "includes/globals.h"
 
 /* since kernel 2.6.25, hook names have changed from _IP_ to _INET_ */
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,24)
@@ -79,7 +80,7 @@ MODULE_DESCRIPTION("IPv4 packet filter");
  * slackware Linux  - www.slackware.org.
  */
 
-extern short default_policy;
+
 char *policy = "drop";
 
 module_param(policy, charp, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
@@ -100,20 +101,25 @@ time64_t module_load_time;
 /* bad checksum counter for packets received */
 unsigned badcsum_cnt_rcv = 0;
 
-/* statistics */
-extern struct kernel_stats kstats;
+struct response iph_in_get_response(struct sk_buff* skb,
+                                    ipfi_flow *flow,
+                                    struct info_flags *flags)
+{
+    struct response response;
+    response.verdict = IPFI_DROP;
 
-/* is loguser enabled? */
-extern short loguser_enabled;
+    /* invoke engine function passing the appropriate rule lists */
+    if (flow->direction == IPFI_INPUT)
+        response = ipfire_filter(&in_drop, &in_acc, &fwopts, skb, flow, flags);
+    else if (flow->direction == IPFI_OUTPUT)
+        response = ipfire_filter(&out_drop, &out_acc, &fwopts, skb, flow, flags);
+    else if (flow->direction == IPFI_FWD)
+        response = ipfire_filter(&fwd_drop, &fwd_acc, &fwopts, skb, flow, flags);
+    else
+        IPFI_PRINTK("IPFIRE: iph_in_get_response(): invalid direction!\n");
+    return response;
+}
 
-extern struct ipfire_options fwopts;
-
-extern struct sock *sknl_ipfi_control;
-
-extern pid_t userspace_control_pid;	/* used for initialization  */
-extern pid_t userspace_data_pid;
-extern short loguser_enabled;
-extern short gui_notifier_enabled;
 
 struct nf_hook_ops nfh_pre, nfh_in, nfh_out, nfh_fwd, nfh_post, nfh_defrag_pre, nfh_defrag_out;
 
@@ -268,27 +274,43 @@ int register_hooks(void)
 
 int check_headers(struct sk_buff *skb) {
     if (pskb_may_pull(skb, sizeof(struct iphdr))) {
-        struct iphdr *ih = ip_hdr(skb);
-        switch(ih->protocol) {
+        // pskb_may_pull may realloc skb: get a fresh ptr to iphdr
+        struct iphdr *ih = ip_hdr(skb); 
+        unsigned int ihl;
+        uint8_t protocol;
+
+        if (ih->ihl < 5 || ih->version != 4) {
+            IPFI_PRINTK("ipfire_core: check_headers: invalid ip hdr (ihl %d, version %d)", ih->ihl, ih->version);
+            return -1;
+        }
+
+        ihl = ih->ihl * 4;
+        protocol = ih->protocol;
+
+        switch(protocol) {
         case IPPROTO_TCP:
-            if (!pskb_may_pull(skb, ip_hdrlen(skb) + sizeof(struct tcphdr)))
+            if (!pskb_may_pull(skb, ihl + sizeof(struct tcphdr)))
                 return -1;
             break;
         case IPPROTO_UDP:
-            if (!pskb_may_pull(skb, ip_hdrlen(skb) + sizeof(struct udphdr)))
+            if (!pskb_may_pull(skb, ihl + sizeof(struct udphdr)))
                 return -1;
             break;
         case IPPROTO_ICMP:
-            if (!pskb_may_pull(skb, ip_hdrlen(skb) + sizeof(struct icmphdr)))
+            if (!pskb_may_pull(skb, ihl + sizeof(struct icmphdr)))
                 return -1;
             break;
         case IPPROTO_IGMP:
-            if (!pskb_may_pull(skb, ip_hdrlen(skb) + sizeof(struct igmphdr)))
+            if (!pskb_may_pull(skb, ihl + sizeof(struct igmphdr)))
                 return -1;
             break;
+        case IPPROTO_GRE:
+        case IPPROTO_PIM:
+            /* protocols only for L2/L3 matching, no further pull needed */
+            break;
         default:
-            IPFI_PRINTK("ipfire_core: check_headers: unsupported protocol %d", ih->protocol);
-            return -1;
+            /* other protocols are allowed but not specifically handled here */
+            break;
         }
         return 0;
     }
@@ -403,6 +425,8 @@ int ipfi_pre_process(struct sk_buff *skb, const ipfi_flow *flow) {
     if(saved_packet == NULL || packet == NULL) /* alloc failed! */
     {
         IPFI_PRINTK("IPFIRE: ipfi_pre_process(): memory allocation failed. Dropping packet.\n");
+        if (packet) kfree(packet);
+        if (saved_packet) kfree(saved_packet);
         return IPFI_DROP;
     }
 
@@ -595,13 +619,13 @@ inline int copy_headers(const struct sk_buff *skb, ipfire_info_t * fireinfo) {
     memcpy(&fireinfo->packet.iphead, iph, sizeof(struct iphdr));
     /* tcp, udp icmp headers? */
     if (iph->protocol == IPPROTO_TCP)
-        build_tcph_usermess(tcp_hdr(skb), fireinfo);
+        build_tcph_usermess((struct tcphdr *)((void *)iph + iph->ihl * 4), fireinfo);
     else if (iph->protocol == IPPROTO_UDP)
-        build_udph_usermess(udp_hdr(skb), fireinfo);
+        build_udph_usermess((struct udphdr *)((void *)iph + iph->ihl * 4), fireinfo);
     else if (iph->protocol == IPPROTO_ICMP)
-        build_icmph_usermess(icmp_hdr(skb), fireinfo);
+        build_icmph_usermess((struct icmphdr *)((void *)iph + iph->ihl * 4), fireinfo);
     else if (iph->protocol == IPPROTO_IGMP)
-        build_igmph_usermess(igmp_hdr(skb), fireinfo); /* since 0.98.7 */
+        build_igmph_usermess((struct igmphdr *)((void *)iph + iph->ihl * 4), fireinfo); /* since 0.98.7 */
     else
         return -1;
     return 0;
@@ -728,17 +752,12 @@ int recalculate_ip_checksum(struct sk_buff *skb, int direction)
     struct iphdr *iph;
     struct tcphdr *th;
     struct udphdr *uh;
-    struct udphdr udphead;
-    struct tcphdr tcphead;
 
     if (skb == NULL)
         return network_header_null("recalculate_ip_checksum()",
                                    "socket buffer NULL");
     len = skb->len;
     iph = ip_hdr(skb);
-
-    if(iph == NULL)
-        return network_header_null("recalculate_ip_checksum()", "IP header NULL");
 
     datalen = skb->len - iph->ihl * 4;
     iph_sum_old = iph->check;
@@ -749,23 +768,17 @@ int recalculate_ip_checksum(struct sk_buff *skb, int direction)
     switch (iph->protocol)
     {
     case IPPROTO_TCP:
-        th = tcp_hdr(skb);
-        /* check not null and not malformed */
+        th = (struct tcphdr *)((void *)iph + iph->ihl * 4);
         th->check = 0;
-        th->check =  csum_tcpudp_magic(iph->saddr, iph->daddr, datalen,
-                                       IPPROTO_TCP, skb_checksum(skb, iph->ihl * 4, datalen, 0));
+        th->check = tcp_v4_check(datalen, iph->saddr, iph->daddr,
+                                 skb_checksum(skb, iph->ihl * 4, datalen, 0));
         break;
     case IPPROTO_UDP:
-        uh = udp_hdr(skb);
-        /* udp sum not present */
-        if (!uh->check)
-            break;
+        uh = (struct udphdr *)((void *)iph + iph->ihl * 4);
         uh->check = 0;
-        uh->check = csum_tcpudp_magic(iph->saddr,
-                                  iph->daddr,
-                                  datalen,
-                                  IPPROTO_UDP,
-                                  csum_partial((char *) uh, datalen, 0));
+        uh->check = udp_v4_check(datalen, iph->saddr, iph->daddr,
+                                 skb_checksum(skb, iph->ihl * 4, datalen, 0));
+        break;
     default:
         break;
     }

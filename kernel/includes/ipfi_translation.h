@@ -55,8 +55,8 @@ struct dnatted_table
 	unsigned int id;
 	unsigned int position;
 
-	char in_devname[IFNAMSIZ];
-	char out_devname[IFNAMSIZ];
+    int in_ifindex;
+    int out_ifindex;
 #ifdef ENABLE_RULENAME
 	char rulename[RULENAMELEN];
 #endif	
@@ -86,11 +86,9 @@ struct snatted_table
 	unsigned int id;
 	unsigned int position;
 
-	char in_devname[IFNAMSIZ];
-	char out_devname[IFNAMSIZ];
-#ifdef ENABLE_RULENAME
-	char rulename[RULENAMELEN];
-#endif	
+    int in_ifindex;
+    int out_ifindex;
+
 	struct timer_list timer_snattedlist;
 	struct list_head list;
 	/* RCU */
@@ -101,12 +99,9 @@ int init_translation(void);
 
 void fini_translation(void);
 
-int 
-get_orig_from_dnat_entry(const struct dnatted_table* dnt,
-					 const ipfire_info_t* iit, struct sockaddr_in* sin);
+int get_orig_from_dnat_entry(const struct dnatted_table* dnt, const net_quadruplet *n4, struct sockaddr_in* sin);
 
-int  lookup_dnat_table_and_getorigdst(const ipfire_info_t* iit,
-		struct sockaddr_in* sin);
+int  lookup_dnat_table_and_getorigdst(const net_quadruplet *n4, struct sockaddr_in* sin);
 
 int get_original_dest(struct sock *sk, int optval, void __user *user, int *len);
 
@@ -289,5 +284,13 @@ void free_dnat_entry_rcu_call(struct rcu_head *head);
 
 void free_snat_entry_rcu_call(struct rcu_head *head);
 
+void handle_dnatted_entry_timeout(struct timer_list *t);
+
+void handle_snatted_entry_timeout(struct timer_list *t);
+
+int de_dnat(struct sk_buff *skb, const struct dnatted_table *dnatt);
+
+int de_dnat_table_match(const struct dnatted_table *dnt,
+                        const struct sk_buff *skb, ipfire_info_t * packet);
 
 #endif

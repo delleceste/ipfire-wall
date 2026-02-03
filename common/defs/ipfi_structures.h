@@ -419,6 +419,7 @@ typedef struct {
 typedef struct {
     char in_devname[IFNAMSIZ];
     char out_devname[IFNAMSIZ];
+    int in_ifindex, out_ifindex; // filled in in kernel space
 } deviceparams;
 
 /* NOTE: only user who inserted a rule is able to
@@ -503,8 +504,7 @@ struct state_info
     unsigned int originating_rule;
     unsigned int timeout;
     __u8 protocol;
-    char in_devname[IFNAMSIZ];
-    char out_devname[IFNAMSIZ];
+    int in_ifindex, out_ifindex;
     struct state_t state;
     __u8 notify:1, admin:1,other:6;
 };
@@ -523,8 +523,8 @@ struct dnat_info
     unsigned int id;
     unsigned int timeout;
     __u8 protocol;
-    char in_devname[IFNAMSIZ];
-    char out_devname[IFNAMSIZ];
+    int in_ifindex;
+    int out_ifindex;
     struct state_t state;
 };
 
@@ -541,8 +541,7 @@ struct snat_info
     unsigned int id;
     unsigned int timeout;
     __u8 protocol;
-    char in_devname[IFNAMSIZ];
-    char out_devname[IFNAMSIZ];
+    int in_ifindex, out_ifindex;
     struct state_t state;
 };
 

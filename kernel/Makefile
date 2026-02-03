@@ -32,7 +32,8 @@ $(MODULE_NAME)-objs := \
 		ipfi_netl_packet_builder.o \
 		ipfi_proc.o \
 		ipfi_header_check.o \
-		ipfi_defrag.o
+		ipfi_defrag.o \
+		globals.o
 obj-m += ipfi.o
 
 # Second pass, the actual build.
