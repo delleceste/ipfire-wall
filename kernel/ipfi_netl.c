@@ -715,6 +715,25 @@ int add_rule_to_list_by_command(command *cmd_with_rule)
      */
     memcpy(newrule, &(cmd_with_rule->content.rule), sizeof(ipfire_rule));
 
+    if (newrule->nflags.indev) {
+        struct net_device *dev = dev_get_by_name(&init_net, newrule->devpar.in_devname);
+        if (dev) {
+            newrule->devpar.in_ifindex = dev->ifindex;
+            dev_put(dev);
+        } else {
+            newrule->devpar.in_ifindex = -1;
+        }
+    }
+    if (newrule->nflags.outdev) {
+        struct net_device *dev = dev_get_by_name(&init_net, newrule->devpar.out_devname);
+        if (dev) {
+            newrule->devpar.out_ifindex = dev->ifindex;
+            dev_put(dev);
+        } else {
+            newrule->devpar.out_ifindex = -1;
+        }
+    }
+
     INIT_LIST_HEAD(&newrule->list);
 
     /* Lock list while adding */
@@ -1084,6 +1103,25 @@ int send_back_fw_busy(pid_t pid)
     return status;
 }
 
+void update_ifindex_in_rules(const char *name, int new_index)
+{
+    ipfire_rule *roots[] = {&in_acc, &in_drop, &out_acc, &out_drop, &fwd_acc, &fwd_drop,
+                            &translation_pre, &translation_post, &translation_out, &masquerade_post};
+    int i;
+    ipfire_rule *rule;
+
+    spin_lock(&rulelist_lock);
+    for (i = 0; i < 10; i++) {
+        list_for_each_entry(rule, &roots[i]->list, list) {
+            if (rule->nflags.indev && strcmp(rule->devpar.in_devname, name) == 0)
+                rule->devpar.in_ifindex = new_index;
+            if (rule->nflags.outdev && strcmp(rule->devpar.out_devname, name) == 0)
+                rule->devpar.out_ifindex = new_index;
+        }
+    }
+    spin_unlock(&rulelist_lock);
+}
+
 static void nl_receive_control(struct sk_buff* skb)
 {
     pid_t pid;
@@ -1121,13 +1159,15 @@ int is_to_send(const struct sk_buff * skb,
         if (fwopts->loguser >= 6)
             return 1;
         /* implicit denial */
-        if (res->verdict == 0 && fwopts->loguser >= 2) {
+        if (res->verdict == IPFI_IMPLICIT && fwopts->loguser >= 2) {
                 return 1;
         }
-        else if (res->verdict > 0 && fwopts->loguser >= 5) {
+        /* explicit accept */
+        else if (res->verdict == IPFI_ACCEPT && fwopts->loguser >= 5) {
             return 1;
         }
-        else if (res->verdict < 0 && fwopts->loguser >= 4) {
+        /* explicit drop */
+        else if (res->verdict == IPFI_DROP && fwopts->loguser >= 4) {
             return 1;
         }
     }
@@ -1384,7 +1424,7 @@ int fill_state_info(struct state_info *stinfo,
     stinfo->daddr = stt->daddr;
     stinfo->sport = stt->sport;
     stinfo->dport = stt->dport;
-    stinfo->originating_rule = stt->originating_rule;
+    stinfo->rule_id = stt->rule_id;
     stinfo->admin = stt->admin;
     stinfo->timeout = (stt->timer_statelist.expires - jiffies) / HZ;
     stinfo->direction = stt->direction;
@@ -1453,7 +1493,7 @@ int fill_dnat_info(struct dnat_info *dninfo,
     dninfo->newdport = dntt->new_dport;
     dninfo->newdaddr = dntt->new_daddr;
 
-    dninfo->id = dntt->id;
+    dninfo->id = dntt->rule_id;
     dninfo->timeout = (dntt->timer_dnattedlist.expires - jiffies) / HZ;
     dninfo->direction = dntt->direction;
     dninfo->state.state = dntt->state;
@@ -1515,7 +1555,7 @@ int fill_snat_info(struct snat_info *sninfo, const struct snatted_table *sntt)
     sninfo->newsport = sntt->new_sport;
     sninfo->newsaddr = sntt->new_saddr;
 
-    sninfo->id = sntt->id;
+    sninfo->id = sntt->rule_id;
     sninfo->timeout = (sntt->timer_snattedlist.expires - jiffies) / HZ;
     sninfo->direction = sntt->direction;
     sninfo->state.state = sntt->state;
@@ -1610,6 +1650,16 @@ int flush_ruleset(uid_t userspace_commander, int flush_com)
         l = free_rules(&in_drop, userspace_commander);
         m = free_rules(&out_drop, userspace_commander);
         n = free_rules(&fwd_drop, userspace_commander);
+        
+        /* SECURITY: Flush state tables when denial rules change to prevent
+         * existing state entries from bypassing new denial rules.
+         * Established connections will be terminated and must re-establish,
+         * ensuring new denial rules are immediately enforced. */
+        if (flush_com == FLUSH_DENIAL_RULES) {
+            unsigned state_freed = free_state_tables();
+            IPFI_PRINTK("IPFIRE: flushed %u state table entries due to denial rule changes\n", 
+                        state_freed);
+        }
     }
     if ((flush_com == FLUSH_RULES) ||
             (flush_com == FLUSH_PERMISSION_RULES))
@@ -1785,19 +1835,19 @@ void update_kernel_stats(int counter_to_increment, short int response)
         //		       kstats.in_rcv);
 
         /* response */
-        if (response == 0 && default_policy == 0)
+        if (response == IPFI_IMPLICIT && default_policy == IPFI_DROP)
         {
             kstats.in_drop++;
             kslight.blocked++;
             kstats.in_drop_impl++;
         }
-        else if(response == 0 && default_policy == 1)
+        else if(response == IPFI_IMPLICIT && default_policy == IPFI_ACCEPT)
         {
             kstats.in_acc++;
             kslight.allowed++;
             kstats.in_acc_impl++;
         }
-        else if (response < 0)
+        else if (response == IPFI_DROP)
         {
             kslight.blocked++;
             kstats.in_drop++;
@@ -1815,19 +1865,19 @@ void update_kernel_stats(int counter_to_increment, short int response)
         //		IPFI_PRINTK("IPFIRE: output counter: %llu.\n",
         //		       kstats.out_rcv);
         /* response */
-        if (response == 0 && default_policy == 0)
+        if (response == IPFI_IMPLICIT && default_policy == IPFI_DROP)
         {
             kstats.out_drop++;
             kslight.blocked++;
             kstats.out_drop_impl++;
         }
-        else if(response == 0 && default_policy == 1)
+        else if(response == IPFI_IMPLICIT && default_policy == IPFI_ACCEPT)
         {
             kstats.out_acc++;
             kslight.allowed++;
             kstats.out_acc_impl++;
         }
-        else if (response < 0)
+        else if (response == IPFI_DROP)
         {
             kslight.blocked++;
             kstats.out_drop++;
@@ -1845,19 +1895,19 @@ void update_kernel_stats(int counter_to_increment, short int response)
         //		IPFI_PRINTK("IPFIRE: forward counter: %llu.\n",
         //		       kstats.fwd_rcv);
         /* response */
-        if (response == 0 && default_policy == 0)
+        if (response == IPFI_IMPLICIT && default_policy == IPFI_DROP)
         {
             kslight.blocked++;
             kstats.fwd_drop++;
             kstats.fwd_drop_impl++;
         }
-        else if(response == 0 && default_policy == 1)
+        else if(response == IPFI_IMPLICIT && default_policy == IPFI_ACCEPT)
         {
             kslight.allowed++;
             kstats.fwd_acc++;
             kstats.fwd_acc_impl++;
         }
-        else if (response < 0)
+        else if (response == IPFI_DROP)
         {
             kstats.fwd_drop++;
             kslight.blocked++;

@@ -1,26 +1,32 @@
 #include "includes/ipfi_mangle.h"
 #include "includes/ipfi_tcpmss.h"
 
-/* given a rule and a socket buffer, this function determines if the rule 
- *  wants to manipulate the packet.
- *  If yes, mangle_skb() calls the adequate mangle function, depending on the manip option(s)
- *  specified inside struct packet_manip of the rule.
+/**
+ * mangle_skb() - Apply packet manipulations based on firewall rule settings
+ * @pm: packet manipulation structure from the firewall rule
+ * @skb: socket buffer to modify
+ * @flow: flow information (direction, interfaces)
+ * @reverse: flag indicating if this is a reverse-direction packet
  *
- * param pm: pointer to the packet manipulation structure.
- * skb:     socket buffer to modify in case mangle is needed.
- * info:    ipfire_info_t to update with mangle information, if needed. This is done
- *          in order to allow the userspace console to reveal if some packet mangling has been performed.
- * mangle_skb() returns < 0 in case of error, 0 if mangle not needed
- * (or not appliable - for instance changing mss is suitable only for tcp syn packets -)
- * > 0 if mangle is applied.
+ * This function examines the packet_manip structure from a firewall rule
+ * and applies any enabled manipulations. Currently supports:
+ * - TCP MSS clamping (for PMTU discovery)
+ *
+ * Returns: <0 on error, 0 if no manipulation needed/applied, >0 if manipulation succeeded
  */
-
-int mangle_skb(const struct packet_manip* pm, struct sk_buff *skb, ipfire_info_t *info)
+int mangle_skb(const struct packet_manip* pm, struct sk_buff *skb, 
+               const ipfi_flow *flow, short reverse)
 {
   int ret = 0;
-  /* Maximum segment size */
-  if(pm->mss.enabled && packet_suitable_for_mss_change(info) > 0)
-    ret = tcpmss_mangle_packet(skb, pm->mss.option, pm->mss.mss, info);
+  
+  /* TCP Maximum Segment Size manipulation 
+   * Only applied if:
+   * 1. MSS mangling is enabled in the rule (pm->mss.enabled)
+   * 2. Packet is suitable (TCP SYN or SYN/ACK)
+   */
+  if(pm->mss.enabled && packet_suitable_for_mss_change(skb, flow, reverse) > 0)
+    ret = tcpmss_mangle_packet(skb, pm->mss.option, pm->mss.mss);
+    
   return ret;
 }
 

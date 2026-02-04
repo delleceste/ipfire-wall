@@ -11,6 +11,10 @@
 #include "ipfi_netl.h"
 #include "ipfi_ftp.h"
 #include "../../common/defs/ipfi_structures.h"
+#include <linux/hashtable.h>
+#include <linux/jhash.h>
+
+#define STATE_HASH_BITS 12
 
 /* ftp passive support */
 #define FTP_NONE 0         /* not an ftp rule */
@@ -39,18 +43,23 @@ struct state_table
         ftp:3, /* passive ftp support */
         notify:1,
         admin:1;
-    unsigned int originating_rule;
+    uint32_t rule_id;  /* ID of the rule that originated this state */
     __u8 protocol;
+    char in_devname[IFNAMSIZ];
+    char out_devname[IFNAMSIZ];
     int in_ifindex, out_ifindex;
 
-    struct packet_manip *pkmanip;
+    /* Note: pkmanip removed - MSS mangling applied directly on rule match,
+     * no need to store in state tables */
 
     struct timer_list timer_statelist;
+    unsigned long last_timer_update;
     struct list_head list;
     struct state_t state;
 
     /* RCU */
     struct rcu_head state_rcuh;
+    struct hlist_node hnode;
 };
 
 int init_machine(void);
@@ -205,6 +214,11 @@ int get_dev_ifaddr( __u32* addr,
 int get_ifaddr_by_name(const char* ifname, __u32* addr);
 
 int free_state_tables(void);
+
+void update_ifindex_in_state_tables(const char *name, int new_index);
+
+void register_ipfire_netdev_notifier(void);
+void unregister_ipfire_netdev_notifier(void);
 
 
 /* Passive FTP support */

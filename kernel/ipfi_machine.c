@@ -67,6 +67,19 @@ unsigned int l3generic_proto_lifetime = 180 * SECS;
 
 unsigned int table_id = 0;
 
+static u32 get_state_hash(__u32 saddr, __u32 daddr, __u16 sport, __u16 dport, __u8 proto)
+{
+    __u32 a1 = saddr, a2 = daddr;
+    __u16 p1 = sport, p2 = dport;
+
+    if (a1 > a2 || (a1 == a2 && p1 > p2)) {
+        swap(a1, a2);
+        swap(p1, p2);
+    }
+
+    return jhash_3words(a1, a2, (p1 << 16) | p2, proto);
+}
+
 int direct_state_match(const struct sk_buff *skb,
 
                        const struct state_table *entry,
@@ -221,11 +234,9 @@ void free_state_entry_rcu_call(struct rcu_head *head)
     ipst = container_of(head, struct state_table, state_rcuh);
     if(ipst != NULL)
     {
-        if(ipst->pkmanip != NULL)
-        {
-            kfree(ipst->pkmanip);
-        }
-        /* free state table */
+        /* Free the state table entry 
+         * Note: pkmanip cleanup removed - MSS mangling no longer stores data in state tables
+         */
         kfree(ipst);
     }
 }
@@ -320,9 +331,11 @@ inline void update_timer_of_state_entry(struct state_table *sttable)
 {
     unsigned int timeout = get_timeout_by_state(sttable->protocol, sttable->state.state);
 
-    /* Modify the timer for TCP, UDP or ICMP tables */
-    mod_timer(&sttable->timer_statelist,
-              jiffies + HZ * timeout);
+    /* Only update timer at most once per second to avoid costly mod_timer for each packet */
+    if (time_after(jiffies, sttable->last_timer_update + HZ)) {
+        mod_timer(&sttable->timer_statelist, jiffies + HZ * timeout);
+        sttable->last_timer_update = jiffies;
+    }
 }
 
 struct response check_state(struct sk_buff* skb, const ipfi_flow *flow)
@@ -331,14 +344,32 @@ struct response check_state(struct sk_buff* skb, const ipfi_flow *flow)
     struct response ret = {};
     unsigned counter = 0;
     short reverse = 0;
+    struct iphdr *iph = ip_hdr(skb);
+    __u16 sport = 0, dport = 0;
+    u32 key;
+
+    if (!iph) return ret;
+
+    if (iph->protocol == IPPROTO_TCP) {
+        struct tcphdr *th = (struct tcphdr *)((void *)iph + iph->ihl * 4);
+        sport = th->source;
+        dport = th->dest;
+    } else if (iph->protocol == IPPROTO_UDP) {
+        struct udphdr *uh = (struct udphdr *)((void *)iph + iph->ihl * 4);
+        sport = uh->source;
+        dport = uh->dest;
+    }
+
+    key = get_state_hash(iph->saddr, iph->daddr, sport, dport, iph->protocol);
+
     /* acquire read lock on list */
     rcu_read_lock_bh();
-    list_for_each_entry_rcu(table_entry, &root_state_table.list, list)
+
+    hash_for_each_possible_rcu(state_hashtable, table_entry, hnode, key)
     {
-        counter++;
-        ret.verdict = skb_matches_state_table(skb, table_entry, &reverse, flow); // -1 or 1
-        if (ret.verdict > 0) /* a match was found! */
+        if (skb_matches_state_table(skb, table_entry, &reverse, flow) > 0) /* a match was found! */
         {
+            ret.verdict = IPFI_ACCEPT;
             // #ifdef ENABLE_RULENAME
             //             fill_packet_with_table_rulename(packet, table_entry);
             // #endif
@@ -384,7 +415,6 @@ struct response check_state(struct sk_buff* skb, const ipfi_flow *flow)
             {
                 table_entry->ftp = FTP_ESTABLISHED;
                 /* correct source port after first packet seen */
-                struct iphdr *iph = ip_hdr(skb);
                 struct tcphdr *th = (struct tcphdr *)((void *)iph + iph->ihl * 4);
                 table_entry->sport = th->source;
             }
@@ -397,7 +427,7 @@ struct response check_state(struct sk_buff* skb, const ipfi_flow *flow)
             * compare the result with the rules inserted. With F5 it will be easy to
             * find out also the position of the state table in the list, if one was interested.
             */
-            ret.rulepos = table_entry->originating_rule;
+            ret.rule_id = table_entry->rule_id;
             return ret;
         } /* if(ret > 0) */
     }
@@ -522,7 +552,7 @@ struct response ipfire_filter(const ipfire_rule *dropped,
             */
             response.notify = rule->notify;
             /* v. 0.98.5: packet_id reminds the position of the rule */
-            response.rulepos = rule->position;
+            response.rule_id = rule->rule_id;
             /* Unlock RCU before returning  */
             rcu_read_unlock();
             return response;
@@ -588,7 +618,7 @@ next_drop_rule:
             response.state = 0U;
             response.verdict = IPFI_ACCEPT;
             response.notify = rule->notify;
-            response.rulepos = rule->position;
+            response.rule_id = rule->rule_id;
         }
         /* to add to connection table, stateful must be enabled in rule
         * AND in global options.
@@ -611,17 +641,15 @@ next_drop_rule:
                 /* Add the table to the list, without any lock held */
                 add_state_table_to_list(newtable);
             }
-            /* maybe we want to manipulate the packet in this place. Up to now, MSS mangle is
-             * supported. mangle_skb() returns < 0 in case of error, 0 if mangle not needed
-             * (or not suitable - for instance changing mss is suitable only for tcp syn packets -)
-             * > 0 if mangle is applied. rule is a pointer taken from the list of rules (global).
+            /* TCP MSS (Maximum Segment Size) Manipulation
+             * If this rule has MSS mangling enabled, apply it now.
+             * mangle_skb() checks if packet is suitable (SYN or SYN/ACK) before mangling.
+             * Returns: <0 on error, 0 if not applicable, >0 if mangling applied
              */
-            // if(mangle_skb(&rule->pkmangle, skb, packet) < 0)
-            // {
-            //   packet->manipinfo.pmanip.mss.error = 1;
-            //   IPFI_PRINTK("IPFIRE: mangle_skb() failed for rule \"%s\"\n", rule->rulename);
-            // }
-            /* see the  comment in the 'drop' case above */
+            if(mangle_skb(&rule->pkmangle, skb, flow, 0) < 0) {
+                IPFI_PRINTK("IPFIRE: ipfire_filter(): MSS mangle failed for rule\n");
+            }
+            /* See the comment in the 'drop' case above */
             return response;
         }
 next_pass_rule:
@@ -1138,10 +1166,14 @@ int fill_net_table_fields(struct state_table *state_t,
         }
         state_t->direction = flow->direction;
         state_t->protocol = iph->protocol;
-        if(flow->in)
+        if(flow->in) {
             state_t->in_ifindex = flow->in->ifindex;
-        if(flow->out)
+            strncpy(state_t->in_devname, flow->in->name, IFNAMSIZ);
+        }
+        if(flow->out) {
             state_t->out_ifindex = flow->out->ifindex;
+            strncpy(state_t->out_devname, flow->out->name, IFNAMSIZ);
+        }
         return 0;
     }
     return -1;
@@ -1169,6 +1201,7 @@ void fill_timer_table_fields(struct state_table *state_t)
 
     timer_setup(&state_t->timer_statelist, handle_keep_state_timeout, 0);
     state_t->timer_statelist.expires = jiffies + expi * HZ;
+    state_t->last_timer_update = jiffies;
 }
 
 /* scans root list looking for already present entries.
@@ -1181,9 +1214,12 @@ void fill_timer_table_fields(struct state_table *state_t)
 struct state_table *lookup_state_table_n_update_timer(const struct state_table *stt, int lock) {
     int counter = 0;
     struct state_table *statet;
+    u32 key = get_state_hash(stt->saddr, stt->daddr, stt->sport, stt->dport, stt->protocol);
+
     if(lock == ACQUIRE_LOCK)
         rcu_read_lock_bh();
-    list_for_each_entry_rcu(statet, &root_state_table.list, list) {
+
+    hash_for_each_possible_rcu(state_hashtable, statet, hnode, key) {
         counter++;
         if (compare_state_entries(statet, stt) == 1)
         {
@@ -1244,7 +1280,7 @@ struct state_table* keep_state(const struct sk_buff *skb,
         {
             memset(ipfi_info_warn, 0, sizeof(ipfire_info_t));
             ipfi_info_warn->flags.state_max_entries = 1;
-            ipfi_info_warn->response.rulepos = state_tables_counter; // yes, it may overflow
+            ipfi_info_warn->response.packet_id = state_tables_counter;
             struct sk_buff *skbi = build_info_t_packet(ipfi_info_warn);
             if(skbi != NULL && skb_send_to_user(skbi, LISTENER_DATA) < 0)
                 IPFI_PRINTK("IPFIRE: error notifying maximum number of state entries to user\n");
@@ -1286,24 +1322,16 @@ struct state_table* keep_state(const struct sk_buff *skb,
     * for each new state table. So it will be easy to look for the rule that
     * the state entry was taken from.
     */
-    state_t->originating_rule = p_rule->position;
+    state_t->rule_id = p_rule->rule_id;
     /* notify to userspace? */
     state_t->notify = p_rule->notify;
     /* does the originating rule belong to root or not? */
     state_t->admin = !p_rule->owner;
 
-    /* the rule might contain mangle directives which might affect stateful
-     * connections. For instance, mtu manipulation needs to be done in SYN
-     * packets but also in SYN/ACK ones. For the second case, we need to store
-     * mangle information in state tables. some_manip_table() in ipfi_mangle.h/c
+    /* NOTE: MSS mangling no longer requires state table storage.
+     * MSS is applied directly when SYN/SYN-ACK packets match rules.
+     * No need to store mangle info in state tables anymore.
      */
-    // 	if(some_manip_enabled(&p_rule->pkmangle) && state_t->state.state == SYN_SENT)
-    // 	{
-    // //	  IPFI_PRINTK("----> some_manip_enabled! alloco struttura per state table\n");
-    // 	  state_t->pkmanip = (struct packet_manip*) kmalloc(sizeof(struct packet_manip), GFP_ATOMIC);
-    // 	  if(state_t->pkmanip != NULL) /* copy packet manipulation data from the rule */
-    // 	    memcpy(state_t->pkmanip, &p_rule->pkmangle, sizeof(struct packet_manip));
-    // 	}
     /* Return the new table with all fields filled. It is ready
     * to be added to the list by calling add_state_table_to_list().
     */
@@ -1315,6 +1343,8 @@ struct state_table* keep_state(const struct sk_buff *skb,
 */
 int add_state_table_to_list(struct state_table* newtable)
 {
+    u32 key = get_state_hash(newtable->saddr, newtable->daddr, newtable->sport, newtable->dport, newtable->protocol);
+
     /* acquire lock */
     spin_lock_bh(&state_list_lock);
 
@@ -1323,8 +1353,11 @@ int add_state_table_to_list(struct state_table* newtable)
     add_timer(&newtable->timer_statelist);
     /* add table to list */
     INIT_LIST_HEAD(&newtable->list);
-    /* Add element */
+    /* Add element to linear list (legacy/iteration support) */
     list_add_rcu(&newtable->list, &root_state_table.list);
+    /* Add element to hash table */
+    hash_add_rcu(state_hashtable, &newtable->hnode, key);
+
     /* Update table counter */
     state_tables_counter++;
     table_id++;
@@ -1363,6 +1396,8 @@ void handle_keep_state_timeout(struct timer_list *t)
 
     timer_delete(&st_to_free->timer_statelist);
     list_del_rcu(&st_to_free->list);
+    hash_del_rcu(&st_to_free->hnode);
+
     /* do not decrease table_id, but decrement state_tables_counter. */
     state_tables_counter--;
     /* call_rcu will free memory */
@@ -1450,6 +1485,7 @@ int free_state_tables(void)
         if(timer_delete_sync(&tl->timer_statelist) > 0 )
         {
             list_del_rcu(&tl->list);
+            hash_del_rcu(&tl->hnode);
             call_rcu(&tl->state_rcuh, free_state_entry_rcu_call);
             counter++;
             state_tables_counter--;
@@ -1496,16 +1532,60 @@ int add_ftp_dynamic_rule(struct state_table* ftpt)
 
 
 
+void update_ifindex_in_state_tables(const char *name, int new_index)
+{
+    struct state_table *entry;
+    spin_lock_bh(&state_list_lock);
+    list_for_each_entry(entry, &root_state_table.list, list) {
+        if (entry->in_devname[0] && strcmp(entry->in_devname, name) == 0)
+            entry->in_ifindex = new_index;
+        if (entry->out_devname[0] && strcmp(entry->out_devname, name) == 0)
+            entry->out_ifindex = new_index;
+    }
+    spin_unlock_bh(&state_list_lock);
+}
+
+static int ipfire_netdev_event(struct notifier_block *this, unsigned long event, void *ptr)
+{
+    struct net_device *dev = netdev_notifier_info_to_dev(ptr);
+
+    if (event == NETDEV_UP || event == NETDEV_CHANGENAME || event == NETDEV_REGISTER) {
+        update_ifindex_in_rules(dev->name, dev->ifindex);
+        update_ifindex_in_state_tables(dev->name, dev->ifindex);
+    } else if (event == NETDEV_UNREGISTER) {
+        update_ifindex_in_rules(dev->name, -1);
+        update_ifindex_in_state_tables(dev->name, -1);
+    }
+    return NOTIFY_DONE;
+}
+
+static struct notifier_block ipfire_netdev_notifier = {
+    .notifier_call = ipfire_netdev_event,
+};
+
+void register_ipfire_netdev_notifier(void)
+{
+    register_netdevice_notifier(&ipfire_netdev_notifier);
+}
+
+void unregister_ipfire_netdev_notifier(void)
+{
+    unregister_netdevice_notifier(&ipfire_netdev_notifier);
+}
+
 //static int  init(void)
 int init_machine(void)
 {
     INIT_LIST_HEAD(&root_state_table.list);
+    hash_init(state_hashtable);
+    register_ipfire_netdev_notifier();
     return 0;
 }
 
 //static void __exit fini(void)
 void fini_machine(void)
 {
+    unregister_ipfire_netdev_notifier();
     int ret;
     ret = free_state_tables();
     IPFI_PRINTK("IPFIRE: state tables freed: %d.\n", ret);

@@ -4,7 +4,9 @@
 #include <sys/socket.h>
 #include "list.h"
 #include "build.h" /* For compilation date and system type */
-// #include <linux/types.h>		/* for "__kernel_caddr_t" et al	*/
+#include <sys/types.h>
+#include <linux/types.h>
+#include <asm/types.h> /* for "__u8" et al */
 #include <stddef.h>
 #include <pwd.h>
 #include <time.h>
@@ -16,6 +18,10 @@ struct rcu_head {
 	struct rcu_head *next;
 	void (*func)(struct rcu_head *head);
 };
+
+#define u8 	__u8
+#define u16 	__u16
+#define u32 	__u32
 
 #include <common/defs/ipfi_structures.h>
 
@@ -41,9 +47,6 @@ struct rcu_head {
 #define CFGDIR_UPTODATE			0
 #define CFGDIR_BOTH			10
 
-#define u8 	__u8
-#define u16 	__u16
-#define u32 	__u32
 
 /* for module loading */
 #define MODULENAME "ipfi"

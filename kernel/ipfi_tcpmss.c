@@ -10,21 +10,67 @@ int __tcpmss_mangle_packet(struct sk_buff *skb,  short unsigned int option, __u1
  * TCPOPT_NOP: padding, from include/net/tcp.h
  */
 
-int packet_suitable_for_mss_change(const ipfire_info_t *info)
+/**
+ * packet_suitable_for_mss_change() - Determine if packet is suitable for TCP MSS manipulation
+ * @skb: socket buffer containing the packet
+ * @flow: flow information (direction, interfaces)
+ * @reverse: flag indicating if this is a reverse-direction packet (reply)
+ *
+ * TCP MSS (Maximum Segment Size) mangling is needed for Path MTU Discovery (PMTUD).
+ * When packets traverse networks with different MTUs (e.g., PPPoE with 1492 vs Ethernet 1500),
+ * the firewall may need to clamp MSS to prevent fragmentation issues.
+ *
+ * MSS mangling is ONLY applicable to TCP SYN packets because:
+ * - MSS option is negotiated during connection establishment (SYN, SYN/ACK)
+ * - Once negotiated, it cannot be changed mid-connection
+ * - Mangling non-SYN packets would break the connection
+ *
+ * Returns: 1 if packet is suitable for MSS manipulation, 0 otherwise
+ */
+int packet_suitable_for_mss_change(const struct sk_buff *skb, 
+                                     const ipfi_flow *flow, short reverse)
 {
-    struct iphdr iph = info->packet.iphead;
-    //   return 0;
-    if(iph.protocol == IPPROTO_TCP && info->packet.transport_header.tcphead.syn == 1 &&
-            info->packet.transport_header.tcphead.ack == 0)
+    struct iphdr *iph;
+    struct tcphdr *tcph;
+    
+    /* Extract IP header from socket buffer */
+    iph = ip_hdr(skb);
+    if (!iph)
+        return 0;
+    
+    /* MSS mangling only applies to TCP protocol */
+    if (iph->protocol != IPPROTO_TCP)
+        return 0;
+    
+    /* Extract TCP header (located iph->ihl * 4 bytes after IP header) */
+    tcph = (struct tcphdr *)((void *)iph + iph->ihl * 4);
+    
+    /* CASE 1: Outgoing SYN packet (connection initiation)
+     * - SYN=1, ACK=0 indicates initial SYN packet from client
+     * - This is where initial MSS is advertised
+     * - We may need to clamp it to prevent PMTU issues
+     */
+    if (tcph->syn == 1 && tcph->ack == 0)
         return 1;
-    else if(iph.protocol == IPPROTO_TCP && info->flags.direction == IPFI_FWD
-            && info->packet.transport_header.tcphead.syn == 1 &&
-            info->packet.transport_header.tcphead.ack == 1 && info->response.st.reverse)
+    
+    /* CASE 2: Forwarded SYN/ACK packet in reverse direction (server reply)
+     * - Direction is FORWARD (packet being routed)
+     * - SYN=1, ACK=1 indicates SYN/ACK reply from server  
+     * - reverse=1 means this is the return packet of an established flow
+     * - Server's MSS also needs clamping to match path MTU
+     */
+    if (flow->direction == IPFI_FWD && tcph->syn == 1 && 
+        tcph->ack == 1 && reverse)
         return 1;
-    else if(iph.protocol == IPPROTO_TCP && info->flags.direction == IPFI_FWD
-            && info->packet.transport_header.tcphead.syn == 1 &&
-            info->packet.transport_header.tcphead.ack == 1 && !info->response.st.reverse)
-        IPFI_PRINTK("IPFIRE: syn and ack true but no reverse set: packet not manip suitable\n");
+    
+    /* Diagnostic: SYN/ACK in forward but not reverse - shouldn't happen normally
+     * This indicates a potential state tracking issue
+     */
+    if (flow->direction == IPFI_FWD && tcph->syn == 1 && 
+        tcph->ack == 1 && !reverse)
+        IPFI_PRINTK("IPFIRE: SYN+ACK packet not marked as reverse - unexpected!\\n");
+    
+    /* All other packets (data, ACK, FIN, etc.) are not suitable for MSS mangling */
     return 0;
 }
 
@@ -56,18 +102,40 @@ u_int32_t get_net_mtu(__u32 address)
     return mtu;
 }
 
-int tcpmss_mangle_packet(struct sk_buff *skb, short unsigned int tcpmss_option, __u16 mss, ipfire_info_t *info)
+/**
+ * tcpmss_mangle_packet() - Mangle TCP MSS option in a packet
+ * @skb: socket buffer containing the packet to modify
+ * @tcpmss_option: type of MSS manipulation (MSS_VALUE or ADJUST_MSS_TO_PMTU)
+ * @mss: target MSS value (only used if tcpmss_option == MSS_VALUE)
+ *
+ * This is the main entry point for TCP MSS manipulation. It:
+ * 1. Calls __tcpmss_mangle_packet() to modify the MSS option in TCP header
+ * 2. If successful, updates the IP header total_length and checksum
+ *
+ * The function may enlarge the packet if the MSS option needs to be added.
+ * In this case, ret > 0 indicates how many bytes were added.
+ *
+ * Returns: <0 on error, 0 if no change needed, >0 if packet was enlarged
+ */
+int tcpmss_mangle_packet(struct sk_buff *skb, short unsigned int tcpmss_option, __u16 mss)
 {
     int ret, newlen;
     struct iphdr *iph;
 
+    /* Perform the actual MSS mangling */
     ret = __tcpmss_mangle_packet(skb, tcpmss_option, mss);
 
-    /* __tcpmss_mangle_packet() might add the mss option */
+    /* If packet was enlarged (MSS option was added), update IP header */
     if (ret > 0)  {
         iph = ip_hdr(skb);
-        /* socket buffer has been enlarged */
+        /* Socket buffer has been enlarged by 'ret' bytes
+         * Calculate new total length: old_length + bytes_added
+         */
         newlen = htons(ntohs(iph->tot_len) + ret);
+        
+        /* Update IP header checksum to reflect new total length 
+         * csum_replace2(): efficiently updates checksum by replacing old value with new
+         */
         csum_replace2(&iph->check, iph->tot_len, newlen);
         iph->tot_len = newlen;
     }

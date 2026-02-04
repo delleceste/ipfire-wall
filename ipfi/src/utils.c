@@ -19,6 +19,61 @@
  */
 
 #include "includes/utils.h"
+#include <net/if.h>
+#include <stddef.h>
+
+/* FNV-1a 32-bit hash implementation */
+uint32_t calculate_rule_id(const ipfire_rule *r) {
+    uint32_t hash = 0x811c9dc5;
+    const unsigned char *p;
+    size_t i, len;
+
+    if (strlen(r->rulename) > 0) {
+        p = (const unsigned char *)r->rulename;
+        len = strlen(r->rulename);
+        for (i = 0; i < len; i++) {
+            hash ^= p[i];
+            hash *= 0x01000193;
+        }
+        return hash;
+    }
+    /* Hash criteria: from beginning of struct to notify field */
+    p = (const unsigned char *)r;
+    len = offsetof(ipfire_rule, pkmangle) + sizeof(struct packet_manip);
+    for (i = 0; i < len; i++) {
+        hash ^= p[i];
+        hash *= 0x01000193;
+    }
+    return hash;
+}
+
+ipfire_rule* lookup_rule_by_id(uint32_t id, int *policy) {
+    extern ipfire_rule* denial_rules;
+    extern ipfire_rule* accept_rules;
+    extern ipfire_rule* translation_rules;
+    extern int den_rules_num, acc_rules_num, transl_rules_num;
+    int i;
+
+    for (i = 0; i < acc_rules_num; i++) {
+        if (accept_rules[i].rule_id == id) {
+            if (policy) *policy = (int)ACCEPT;
+            return &accept_rules[i];
+        }
+    }
+    for (i = 0; i < den_rules_num; i++) {
+        if (denial_rules[i].rule_id == id) {
+            if (policy) *policy = (int)DENIAL;
+            return &denial_rules[i];
+        }
+    }
+    for (i = 0; i < transl_rules_num; i++) {
+        if (translation_rules[i].rule_id == id) {
+            if (policy) *policy = (int)TRANSLATION;
+            return &translation_rules[i];
+        }
+    }
+    return NULL;
+}
 
 #define LOGLINELEN			200 		
 #define MAXFILENAMELEN 60
@@ -41,9 +96,9 @@ int filter_packet_to_print(const ipfire_info_t* p, const ipfire_rule_filter* f)
 	if(f->direction)
 	{
 		if(! ( 
-			(f->in && p->direction == IPFI_INPUT) || (f->out && p->direction == IPFI_OUTPUT) ||
-			(f->fwd && p->direction == IPFI_FWD) || (f->pre && p->direction == IPFI_INPUT_PRE) ||
-			(f->post && p->direction == IPFI_OUTPUT_POST)
+			(f->in && p->flags.direction == IPFI_INPUT) || (f->out && p->flags.direction == IPFI_OUTPUT) ||
+			(f->fwd && p->flags.direction == IPFI_FWD) || (f->pre && p->flags.direction == IPFI_INPUT_PRE) ||
+			(f->post && p->flags.direction == IPFI_OUTPUT_POST)
 		     )
 		  )
 			return -1;
@@ -51,10 +106,10 @@ int filter_packet_to_print(const ipfire_info_t* p, const ipfire_rule_filter* f)
 	/* protocol */
 	if(f->protocol)
 	{
-		if( ! ((f->tcp && p->protocol == IPPROTO_TCP) ||
-			(f->udp && p->protocol == IPPROTO_UDP) ||
-			(f->icmp && p->protocol == IPPROTO_ICMP) ||
-			(f->igmp && p->protocol == IPPROTO_IGMP)
+		if( ! ((f->tcp && p->packet.iphead.protocol == IPPROTO_TCP) ||
+			(f->udp && p->packet.iphead.protocol == IPPROTO_UDP) ||
+			(f->icmp && p->packet.iphead.protocol == IPPROTO_ICMP) ||
+			(f->igmp && p->packet.iphead.protocol == IPPROTO_IGMP)
 		      )	
 		  )
 			return -1;
@@ -64,55 +119,48 @@ int filter_packet_to_print(const ipfire_info_t* p, const ipfire_rule_filter* f)
 	if(f->policy)
 	{
 		if( ! (
-			(f->rule->nflags.policy == IPFI_ACCEPT && p->response > 0) ||
-			(f->rule->nflags.policy == IPFI_DROP && p->response < 0) ||
-			(f->rule->nflags.policy == IPFI_IMPLICIT && p->response == 0) 
+			(f->rule->nflags.policy == IPFI_ACCEPT && p->response.verdict == IPFI_ACCEPT) ||
+			(f->rule->nflags.policy == IPFI_DROP && p->response.verdict == IPFI_DROP) ||
+			(f->rule->nflags.policy == IPFI_IMPLICIT && p->response.verdict == IPFI_IMPLICIT) 
 		      )
 		  )
 			return -1;
-		if(p->response == 0 && (p->direction == IPFI_OUTPUT_POST || p->direction == IPFI_INPUT_PRE ))
-				return -1;
 	}
 
-	if(f->snat && !p->snat)
+	if(f->snat && !p->flags.snat)
 		return -1;
-	if( (f->dnat || f->masquerade) && !p->nat)
+	if( (f->dnat || f->masquerade) && !p->flags.nat)
 		return -1;
 	/* With f->nat we suppose we are interested in any kind of nat */
-	if(f->nat && ! (p->nat || p->snat ))
+	if(f->nat && ! (p->flags.nat || p->flags.snat ))
 		return -1;
 	if(f->direction)
 	{
-		if(f->out && p->direction != IPFI_OUTPUT)
+		if(f->out && p->flags.direction != IPFI_OUTPUT)
 			return -1;
-		if(f->in && p->direction != IPFI_INPUT)
+		if(f->in && p->flags.direction != IPFI_INPUT)
 			return -1;
-		if(f->fwd && p->direction != IPFI_FWD)
+		if(f->fwd && p->flags.direction != IPFI_FWD)
 			return -1;
-		if(f->pre && p->direction != IPFI_INPUT_PRE)
+		if(f->pre && p->flags.direction != IPFI_INPUT_PRE)
 			return -1;
-		if(f->post && p->direction != IPFI_OUTPUT_POST)
+		if(f->post && p->flags.direction != IPFI_OUTPUT_POST)
 			return -1;
 	}
 	if(f->ip)
 	{
 		if(f->ip && !f->sip && !f->dip) /* any of sip or dip */
 		{
-			/* if only ip is enabled, we have saved an ip in the
-			 * source ip field of the rule.
-			 * To have a success, it is enuogh that such rule field
-			 * be equal to source or dest ip in the packet
-			 */
 			if(! ( 
-				(f->rule->ip.ipsrc[0] == p->iphead.saddr ) ||
-				(f->rule->ip.ipsrc[0] == p->iphead.daddr )
+				(f->rule->ip.ipsrc[0] == p->packet.iphead.saddr ) ||
+				(f->rule->ip.ipsrc[0] == p->packet.iphead.daddr )
 			     )
 			  )
 				return -1;
 		}
-		if(f->sip && (f->rule->ip.ipsrc[0] != p->iphead.saddr))
+		if(f->sip && (f->rule->ip.ipsrc[0] != p->packet.iphead.saddr))
 			return -1;
-		if(f->dip && (f->rule->ip.ipdst[0] != p->iphead.daddr))
+		if(f->dip && (f->rule->ip.ipdst[0] != p->packet.iphead.daddr))
 			return -1;
 	}
 
@@ -120,41 +168,41 @@ int filter_packet_to_print(const ipfire_info_t* p, const ipfire_rule_filter* f)
 	 * the other state. If no specific states are activated, it is enough to
 	 * have both f->state and p->state active
 	 */
-	if(f->state && p->state && ! (f->setup | f->setupok | f->est | f->finwait | f->closewait |
+	if(f->state && p->response.state && ! (f->setup | f->setupok | f->est | f->finwait | f->closewait |
 			f->lastack | f->closed | f->timewait) )
 		;
 
-	else if(f->state && p->state &&
-			! ( (f->setup &&  p->st.state == SYN_SENT ) ||
-			    (f->setupok && p->st.state == SYN_RECV) ||
-			    (f->est && p->st.state == ESTABLISHED ) ||
-			    (f->finwait && p->st.state == FIN_WAIT) ||
-			    (f->closewait && p->st.state == CLOSE_WAIT) ||
-			    (f->lastack && p->st.state == LAST_ACK) ||
-			    (f->closed && p->st.state == CLOSED ) ||
-			    (f->timewait && p->st.state == IPFI_TIME_WAIT ) ||
-			    (f->est && p->st.state == GUESS_ESTABLISHED) ||
-			    (f->setupok && p->st.state == GUESS_SYN_RECV)
+	else if(f->state && p->response.state &&
+			! ( (f->setup &&  p->response.st.state == SYN_SENT ) ||
+			    (f->setupok && p->response.st.state == SYN_RECV) ||
+			    (f->est && p->response.st.state == ESTABLISHED ) ||
+			    (f->finwait && p->response.st.state == FIN_WAIT) ||
+			    (f->closewait && p->response.st.state == CLOSE_WAIT) ||
+			    (f->lastack && p->response.st.state == LAST_ACK) ||
+			    (f->closed && p->response.st.state == CLOSED ) ||
+			    (f->timewait && p->response.st.state == IPFI_TIME_WAIT ) ||
+			    (f->est && p->response.st.state == GUESS_ESTABLISHED) ||
+			    (f->setupok && p->response.st.state == GUESS_SYN_RECV)
 			  ) )
 		return -1;
 	else if(f->stateless)
 		;
-	else if(f->state && !p->state)
+	else if(f->state && !p->response.state)
 		return -1;
 
 
 	/* source or destination port */
 	if(f->port)
 	{
-		switch(p->protocol)
+		switch(p->packet.iphead.protocol)
 		{
 			case IPPROTO_TCP:
-				sport = p->transport_header.tcphead.source;
-				dport = p->transport_header.tcphead.dest;
+				sport = p->packet.transport_header.tcphead.th_sport;
+				dport = p->packet.transport_header.tcphead.th_dport;
 				break;
 			case IPPROTO_UDP:
-				sport = p->transport_header.udphead.source;
-				dport = p->transport_header.udphead.dest;
+				sport = p->packet.transport_header.udphead.uh_sport;
+				dport = p->packet.transport_header.udphead.uh_dport;
 				break;
 			default:
 				sport = dport = 0;
@@ -178,22 +226,36 @@ int filter_packet_to_print(const ipfire_info_t* p, const ipfire_rule_filter* f)
 			return -1;
 	}
 	/* interfaces */
+	/* interfaces */
 	if(f->device)
 	{
+        char devnbuf[IFNAMSIZ];
 		if(f->indevice)
 		{
-			if(strcmp(f->rule->devpar.in_devname, p->devpar.in_devname) )
+            if (p->netdevs.in_idx == -1 || 
+                !if_indextoname(p->netdevs.in_idx, devnbuf) ||
+                strcmp(f->rule->devpar.in_devname, devnbuf))
 				return -1;
 		}
 		if(f->outdevice)
 		{
-			if(strcmp(f->rule->devpar.out_devname, p->devpar.out_devname) )
+            if (p->netdevs.out_idx == -1 || 
+                !if_indextoname(p->netdevs.out_idx, devnbuf) ||
+                strcmp(f->rule->devpar.out_devname, devnbuf))
 				return -1;
 		}
 		if(!f->indevice && !f->outdevice) /* match any between in and out interfaces */
 		{
-			if(strcmp(f->rule->devpar.in_devname, p->devpar.in_devname) && 
-					strcmp(f->rule->devpar.in_devname, p->devpar.out_devname) )
+            int match_in = 0;
+            int match_out = 0;
+
+            if (p->netdevs.in_idx != -1 && if_indextoname(p->netdevs.in_idx, devnbuf))
+                    if (!strcmp(f->rule->devpar.in_devname, devnbuf)) match_in = 1;
+
+            if (p->netdevs.out_idx != -1 && if_indextoname(p->netdevs.out_idx, devnbuf))
+                    if (!strcmp(f->rule->devpar.in_devname, devnbuf)) match_out = 1;
+
+			if(!match_in && !match_out)
 				return -1;
 		}
 
@@ -596,36 +658,29 @@ int print_packet(const ipfire_info_t *pack,
 	char icmp_code[MAXLEN];
 	char igmp_type[MAXLEN];
 	char igmp_code[MAXLEN];
-	source_addr.s_addr = pack->iphead.saddr;
-	dest_addr.s_addr = pack->iphead.daddr;
+    char in_name[IFNAMSIZ] = "n.a.";
+    char out_name[IFNAMSIZ] = "n.a.";
+
+	source_addr.s_addr = pack->packet.iphead.saddr;
+	dest_addr.s_addr = pack->packet.iphead.daddr;
 	
 
-	if(pack->state_max_entries)
+	if(pack->flags.state_max_entries)
 	{
-		PRED, PUND, printf(TR("WARNING")), PCL, printf(TR(": maximum number of entries "
-		"reached for the state tables: %d"), pack->packet_id);
-		PNL;
-		PGRN, printf(TR("HINT")); PCL;
-		printf(TR(":    in the options, the administrator should"));
-		PNL, printf(TR("         increase the maximum number of the state table entries."));
+		PRED, PUND, printf(TR("WARNING")), PCL, printf(TR(": maximum number of entries reached for the state tables."));
 		PNL;
 		return -1;
 	}
-	else if(pack->nat_max_entries)
+	else if(pack->flags.nat_max_entries)
 	{
-		PRED, PUND, printf(TR("WARNING")), PCL, printf(TR(": maximum number of entries "
-		"reached for the NAT tables: %d"), pack->packet_id);
-		PNL;
-		PGRN, printf(TR("HINT")); PCL;
-		printf(TR(":    in the options, the administrator should"));
-		PNL, printf(TR("         increase the maximum number of the nat tables entries."));
+		PRED, PUND, printf(TR("WARNING")), PCL, printf(TR(": maximum number of entries reached for the NAT tables."));
 		PNL;
 		return -1;
 	}
-	else if(pack->snat_max_entries)
+	else if(pack->flags.snat_max_entries)
 	{
 		PRED, PUND, printf(TR("WARNING")), PCL, printf(TR(": maximum number of entries "
-		"reached for the source nat tables: %d"), pack->packet_id);
+		"reached for the source nat tables: %u"), pack->response.packet_id);
 		PNL;
 		PGRN, printf(TR("HINT")); PCL;
 		printf(TR(":    in the options, the administrator should"));
@@ -641,27 +696,33 @@ int print_packet(const ipfire_info_t *pack,
 		  INET_ADDRSTRLEN);
 	inet_ntop(AF_INET, (void*)  &dest_addr, dst_address, 
 		  INET_ADDRSTRLEN);
-	if( (pack->nat) & (!pack->snat) )
-	{
+
+    if (pack->netdevs.in_idx > 0) if_indextoname(pack->netdevs.in_idx, in_name);
+    if (pack->netdevs.out_idx > 0) if_indextoname(pack->netdevs.out_idx, out_name);
+
+	if( (pack->flags.nat) & (!pack->flags.snat) )
 		printf("[" YELLOW "DNAT" CLR "]");
-		goto direction;
-	}
-	else if( (pack->snat) )
-	{
+	else if( (pack->flags.snat) )
 		printf("[" MAROON "SNAT" CLR "]");
-		goto direction;
-	}
 	
-	if(pack->badsum)
+	if(pack->flags.badsum)
 		PRED, printf(TR("CKSUM ERR!")), PCL;
-	else if(pack->response < 0)
-		printf(RED "[X %d]" CLR, -pack->response);
-	else if(pack->response > 0)
-		printf(GREEN "[OK %d]" CLR, pack->response);
-	else
-		printf(VIOLET "[?X]  " CLR);
-	direction:
-			switch(pack->direction)
+	else {
+        if(pack->response.verdict == IPFI_DROP)
+            printf(RED "[X " CLR);
+        else if(pack->response.verdict == IPFI_ACCEPT)
+            printf(GREEN "[OK " CLR);
+        else if(pack->response.verdict == IPFI_IMPLICIT)
+            printf(VIOLET "[IMPL]" CLR);
+        else
+            printf(VIOLET "[? %d]" CLR, pack->response.verdict);
+
+        
+        if (pack->response.verdict == IPFI_DROP) printf(RED "]" CLR);
+        else if (pack->response.verdict == IPFI_ACCEPT) printf(GREEN "]" CLR);
+    }
+
+			switch(pack->flags.direction)
 			{
 				case IPFI_INPUT:
 					printf("\e[1;32mIN:  ");
@@ -679,36 +740,34 @@ int print_packet(const ipfire_info_t *pack,
 					printf("\e[0;36mPOST:");
 					break;
 			}
-			if(pack->direction == IPFI_FWD)
-				printf("[%s->%s] ", pack->devpar.in_devname,
-				       pack->devpar.out_devname);
+			if(pack->flags.direction == IPFI_FWD)
+				printf("[%s->%s] ", in_name, out_name);
 			else
 			{
-				if(strcmp(pack->devpar.in_devname, "n.a.") )
+				if(strcmp(in_name, "n.a.") )
 				{
-					printf("[%s] ", pack->devpar.in_devname);
-					if(strlen(pack->devpar.in_devname) == 2) /* lo */
+					printf("[%s] ", in_name);
+					if(strlen(in_name) == 2) /* lo */
 						printf("  "); /* just to align print */
 				}
 		
-				if(strcmp(pack->devpar.out_devname, "n.a.") )
+				if(strcmp(out_name, "n.a.") )
 				{
-					printf("[%s] ", pack->devpar.out_devname);
-					if(strlen(pack->devpar.out_devname) == 2) /* lo */
+					printf("[%s] ", out_name);
+					if(strlen(out_name) == 2) /* lo */
 						printf("  ");
 				}
 			}
-			//	printf("%lu:", pack->packet_id); /* removed this since 0.98.6 */
 
 			if(ipfi_svent != NULL)
 			{		
 				resolv_ports(ipfi_svent, 
-					     pack->protocol, sport_res, dport_res,
-	  pack->transport_header.tcphead.source,
-   pack->transport_header.tcphead.dest);
+					     pack->packet.iphead.protocol, sport_res, dport_res,
+	  pack->packet.transport_header.tcphead.source,
+   pack->packet.transport_header.tcphead.dest);
 			}
 	
-			switch(pack->protocol)
+			switch(pack->packet.iphead.protocol)
 			{
 				case IPPROTO_TCP:
 					printf("|TCP| ");
@@ -716,56 +775,41 @@ int print_packet(const ipfire_info_t *pack,
 					if(strlen(sport_res) > 0)
 					{
 						printf( UNDERL "%s", sport_res);
-						restore_color(pack->direction);
+						restore_color(pack->flags.direction);
 					}
 					else
-						printf("%u", ntohs(pack->transport_header.tcphead.source) );
+						printf("%u", ntohs(pack->packet.transport_header.tcphead.source) );
 					printf(GRAY"-->");
-					restore_color(pack->direction);
+					restore_color(pack->flags.direction);
 		
 					printf("%s:", dst_address);
 					if(strlen(dport_res) > 0)
 					{
 						printf( UNDERL "%s" , dport_res);
-						restore_color(pack->direction);
+						restore_color(pack->flags.direction);
 						printf(" |");
 					}
 					else
-						printf("%u |", ntohs(pack->transport_header.tcphead.dest));
+						printf("%u |", ntohs(pack->packet.transport_header.tcphead.dest));
 		
-					if(pack->transport_header.tcphead.fin)
+					if(pack->packet.transport_header.tcphead.fin)
 						printf("F|");
-					if(pack->transport_header.tcphead.syn)
+					if(pack->packet.transport_header.tcphead.syn)
 						printf("S|");	
-					if(pack->transport_header.tcphead.rst)
+					if(pack->packet.transport_header.tcphead.rst)
 					{
 						printf(RED "R" );
-						restore_color(pack->direction);
+						restore_color(pack->flags.direction);
 						printf("|");
 					}
-					if(pack->transport_header.tcphead.psh)
+					if(pack->packet.transport_header.tcphead.psh)
 						printf("P|");
-					if(pack->transport_header.tcphead.ack)
+					if(pack->packet.transport_header.tcphead.ack)
 						printf("A|");
-					if(pack->transport_header.tcphead.urg)
+					if(pack->packet.transport_header.tcphead.urg)
 					{
 						printf(DRED "U|");
-						restore_color(pack->direction);
-					}
-					/* mss option */
-					if(pack->manipinfo.pmanip.mss.enabled)
-					{
-					  PCL;
-					  printf("MTU:");
-					  PDVIO;
-					  if(pack->manipinfo.pmanip.mss.old_lessthan)
-					    printf("%u unchanged", pack->manipinfo.pmanip.mss.mss + mtu_minlen);
-					  else
-					  {
-					    PUND, printf("%u", pack->manipinfo.pmanip.mss.mss + mtu_minlen);
-					  }
-					   PCL; printf("|");
-					  restore_color(pack->direction);
+						restore_color(pack->flags.direction);
 					}
 					break;
 		
@@ -777,41 +821,41 @@ int print_packet(const ipfire_info_t *pack,
 					if(strlen(sport_res) > 0)
 					{
 						printf( UNDERL "%s", sport_res);
-						restore_color(pack->direction);
+						restore_color(pack->flags.direction);
 					}
 					else
-						printf("%u", ntohs(pack->transport_header.udphead.source ));
+						printf("%u", ntohs(pack->packet.transport_header.udphead.source ));
 					printf(GRAY "-->");
-					restore_color(pack->direction);
+					restore_color(pack->flags.direction);
 		
 					printf("%s:", dst_address);
 					if(strlen(dport_res) > 0)
 					{
 						printf( UNDERL "%s", dport_res);
-						restore_color(pack->direction);
+						restore_color(pack->flags.direction);
 						printf(" ");
 					}
 					else
-						printf("%u ", ntohs(pack->transport_header.udphead.dest) );
+						printf("%u ", ntohs(pack->packet.transport_header.udphead.dest) );
 			
 					break;
 				case IPPROTO_ICMP:
 					printf("|ICMP| SRC:%s --> DST:%s |",
 					       src_address, dst_address);
-					get_icmp_type_code(pack->transport_header.icmphead.type,
-							pack->transport_header.icmphead.code, icmp_type,
+					get_icmp_type_code(pack->packet.transport_header.icmphead.type,
+							pack->packet.transport_header.icmphead.code, icmp_type,
        						icmp_code);	
 					printf("{%s%s}|", icmp_type, icmp_code);
 					break;
 				case IPPROTO_IGMP:
-					get_igmp_type_code(pack->transport_header.igmphead.type,
-							pack->transport_header.igmphead.code, igmp_type,
+					get_igmp_type_code(pack->packet.transport_header.igmphead.igmp_type,
+							pack->packet.transport_header.igmphead.igmp_code, igmp_type,
 							igmp_code);	
-					igmp_group.s_addr = pack->transport_header.igmphead.group;
+					igmp_group = pack->packet.transport_header.igmphead.igmp_group;
 					inet_ntop(AF_INET, (void*)  &igmp_group, igmp_grp_address, 
 							INET_ADDRSTRLEN);
 					printf("|"), PVIO, PBOLD, printf("IGMP");
-					restore_color(pack->direction);
+					restore_color(pack->flags.direction);
 					printf("| SRC:%s --> DST:%s |",
 					       src_address, dst_address);	
 					printf("GROUP: %s|",igmp_grp_address);
@@ -819,17 +863,17 @@ int print_packet(const ipfire_info_t *pack,
 					break;
 				case IPPROTO_GRE:
 				  printf("|"), PGRAY, PBOLD, printf("CISCO GRE (RFC 1701, 1702)");
-				  restore_color(pack->direction);
+				  restore_color(pack->flags.direction);
 				  printf("| SRC:%s --> DST:%s |", src_address, dst_address);
 				  break;
 				case IPPROTO_PIM:
 				  printf("|"), PGRAY, PBOLD, printf("INDEPENDENT MULTICAST [\"PIM\"]");
-				  restore_color(pack->direction);
+				  restore_color(pack->flags.direction);
 				  printf("| SRC:%s --> DST:%s |", src_address, dst_address);
 				  break;
 				default:
 					printf("Protocol ");
-					switch(pack->protocol)
+					switch(pack->packet.iphead.protocol)
 					{
 						case IPPROTO_IGMP:
 							printf(GRAY "IGMP" CLR);
@@ -878,72 +922,69 @@ int print_packet(const ipfire_info_t *pack,
 							printf( GRAY "RAW" CLR );
 							break;
 					}
-					restore_color(pack->direction);
+					restore_color(pack->flags.direction);
 					printf(" not supported!");
 					break;
 			}
-			if( (pack->state) && (pack->response > 0) )
+			if( (pack->flags.state) && (pack->response.verdict == IPFI_ACCEPT) )
 			{
-				if(pack->st.state == SYN_SENT)
+				if(pack->response.st.state == SYN_SENT)
 					printf(BLUE "SETUP" CLR);
-				else if(pack->st.state == SYN_RECV)
+				else if(pack->response.st.state == SYN_RECV)
 					printf(BLUE "SETUP OK" CLR);
-				else if(pack->st.state == ESTABLISHED)
+				else if(pack->response.st.state == ESTABLISHED)
 					printf( BLUE "EST" CLR); 
-				else if(pack->st.state == LAST_ACK)
+				else if(pack->response.st.state == LAST_ACK)
 					printf(BLUE "LAST ACK" CLR);
-				else if(pack->st.state == CLOSE_WAIT)
+				else if(pack->response.st.state == CLOSE_WAIT)
 					printf(BLUE "CLOSE WAIT" CLR);
-				else if(pack->st.state == INVALID_STATE)
+				else if(pack->response.st.state == INVALID_STATE)
 					printf(RED "?" CLR);
-				else if(pack->st.state == FIN_WAIT)
+				else if(pack->response.st.state == FIN_WAIT)
 					printf(BLUE "FIN WAIT" CLR);
-				else if(pack->st.state == IPFI_TIME_WAIT)
+				else if(pack->response.st.state == IPFI_TIME_WAIT)
 					printf(BLUE "TIME WAIT" CLR);
-				else if(pack->st.state == NOTCP)
+				else if(pack->response.st.state == NOTCP)
 					printf(YELLOW "???" CLR);
-				else if(pack->st.state == UDP_NEW)
+				else if(pack->response.st.state == UDP_NEW)
 					printf(YELLOW "NEW" CLR);
-				else if(pack->st.state == UDP_ESTAB)
+				else if(pack->response.st.state == UDP_ESTAB)
 					printf(YELLOW "STREAM" CLR);
-				else if(pack->st.state == ICMP_STATE)
+				else if(pack->response.st.state == ICMP_STATE)
 					printf(DRED "ICMP" CLR);
-				else if(pack->st.state == IGMP_STATE)
+				else if(pack->response.st.state == IGMP_STATE)
 				  printf(DVIOLET "IGMP" CLR);
-				else if(pack->st.state == GRE_STATE)
+				else if(pack->response.st.state == GRE_STATE)
 				  printf(CYAN "GRE" CLR);
-				else if(pack->st.state == GUESS_ESTABLISHED)
+				else if(pack->response.st.state == GUESS_ESTABLISHED)
 					printf(MAROON "EST?" CLR);
-				else if(pack->st.state == CLOSED)
+				else if(pack->response.st.state == CLOSED)
 					printf(BLUE "CLOSED" CLR);
-				else if(pack->st.state == NOTCP)
+				else if(pack->response.st.state == NOTCP)
 					printf(YELLOW "S" CLR);
-				else if(pack->st.state == GUESS_CLOSING)
+				else if(pack->response.st.state == GUESS_CLOSING)
 					printf(MAROON "CLOSING?" CLR);
-				else if(pack->st.state == INVALID_FLAGS)
+				else if(pack->response.st.state == INVALID_FLAGS)
 					printf(RED "INVALID FLAGS!" CLR);
-				else if(pack->st.state == NULL_FLAGS)
+				else if(pack->response.st.state == NULL_FLAGS)
 					printf(RED "NULL syn fin rst ack FLAGS!"CLR );
-				else if(pack->st.state == GUESS_SYN_RECV)
+				else if(pack->response.st.state == GUESS_SYN_RECV)
 					printf(MAROON "SETUP OK?" CLR);
-				else if(pack->st.state != IPFI_NOSTATE)
-					printf("STATE: %d", pack->st.state);
+				else if(pack->response.st.state != IPFI_NOSTATE)
+					printf("STATE: %d", pack->response.st.state);
 			
 			}
 			else
 				printf("  ");
-#ifdef ENABLE_RULENAME
-			/* finally, print rule name */
-			if(strlen(pack->rulename) > 0)
-			{
-				if(pack->response > 0)
-					printf(GREEN "[" CLR "%s" GREEN "]", pack->rulename);
-				else if(pack->response < 0)
-					printf(RED "[" CLR "%s" RED "]", pack->rulename);
-				else
-					printf(MAROON "[" CLR "%s" MAROON "]", pack->rulename);
-			}	
-#endif
+
+            if (pack->response.rule_id != 0 && pack->response.verdict != IPFI_IMPLICIT) {
+                ipfire_rule *matched = lookup_rule_by_id(pack->response.rule_id, NULL);
+                if (matched && strlen(matched->rulename) > 0)
+                    printf(" [%s]", matched->rulename);
+                else if (pack->response.rule_id != 0)
+                    printf(" [%u]", pack->response.rule_id);
+            }
+
 			if(filter != NULL) /* if we are here we have passed the filter */
 				PCL, printf(" "),  PVIO, PBOLD, printf("F" CLR);
 

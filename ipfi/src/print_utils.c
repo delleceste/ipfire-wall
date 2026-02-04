@@ -1,4 +1,5 @@
 #include "includes/utils.h"
+#include <net/if.h>
 
 int log_packet(const ipfire_info_t *pack, int loglevel)
 {
@@ -7,8 +8,11 @@ int log_packet(const ipfire_info_t *pack, int loglevel)
 	char c[LOGLINELEN];
 	char src_address[INET_ADDRSTRLEN];
 	char dst_address[INET_ADDRSTRLEN];
-	source_addr.s_addr = pack->iphead.saddr;
-	dest_addr.s_addr = pack->iphead.daddr;
+    char in_name[IFNAMSIZ] = "n.a.";
+    char out_name[IFNAMSIZ] = "n.a.";
+
+	source_addr.s_addr = pack->packet.iphead.saddr;
+	dest_addr.s_addr = pack->packet.iphead.daddr;
 	inet_ntop(AF_INET, (void*)  &source_addr, src_address, 
 					INET_ADDRSTRLEN);
 	inet_ntop(AF_INET, (void*)  &dest_addr, dst_address, 
@@ -18,32 +22,32 @@ int log_packet(const ipfire_info_t *pack, int loglevel)
 	if(loglevel < 6)
 	{
 		/* don't log translation */
-		if( (pack->direction == IPFI_INPUT_PRE) |
-			(pack->direction == IPFI_OUTPUT_POST) )
+		if( (pack->flags.direction == IPFI_INPUT_PRE) |
+			(pack->flags.direction == IPFI_OUTPUT_POST) )
 			return 0;
 	}
 	if(loglevel < 3)
 	{
 		/* log only implicit */
-		if(pack->response != 0)
+		if(pack->response.verdict != IPFI_IMPLICIT)
 			return 0;
 	}
 	if(loglevel < 5)
 	{
 		/* log only explicit and implicit denial */
-		if(pack->response > 0)
+		if(pack->response.verdict == IPFI_ACCEPT)
 			return 0;
 	}
 
 	/* 1. NAT FIELD */
-	if( (pack->nat) & (!pack->snat) )
+	if( (pack->flags.nat) & (!pack->flags.snat) )
 	{
 		flogpack(DNAT);
 		flogpack(EMPTY); /* two empty fields for state.. */
 		flogpack(EMPTY); /* .. and response */
 		goto direction;
 	}
-	else if( (pack->snat) )
+	else if( (pack->flags.snat) )
 	{
 		flogpack(SNAT);
 		flogpack(EMPTY);
@@ -54,15 +58,15 @@ int log_packet(const ipfire_info_t *pack, int loglevel)
 		flogpack(EMPTY); /* nat field */
 	
 	/* RESPONSE FIELD */
-	if(pack->response < 0)
+	if(pack->response.verdict == IPFI_DROP)
 	{
 		flogpack(DEN);
 		flogpack(EMPTY); /* fill state field */
 	}
-	else if(pack->response > 0)
+	else if(pack->response.verdict == IPFI_ACCEPT)
 	{
 		flogpack(PERM);
-		if(pack->state)
+		if(pack->flags.state)
 			flogpack(STATE);
 		else
 			flogpack(NOSTATE);
@@ -75,7 +79,7 @@ int log_packet(const ipfire_info_t *pack, int loglevel)
 	
 	/* DIRECTION FIELD, ALWAYS PRESENT */
 	direction:
-	switch(pack->direction)
+	switch(pack->flags.direction)
 	{
 		case IPFI_INPUT:
 			flogpack(IN);
@@ -95,51 +99,55 @@ int log_packet(const ipfire_info_t *pack, int loglevel)
 	}
 	
 	/* DEVICE NAME FIELD */
-	snprintf(c, LOGLINELEN, "|%s", pack->devpar.in_devname);
+    if (pack->netdevs.in_idx > 0) if_indextoname(pack->netdevs.in_idx, in_name);
+    if (pack->netdevs.out_idx > 0) if_indextoname(pack->netdevs.out_idx, out_name);
+
+	snprintf(c, LOGLINELEN, "|%s", in_name);
 	flog(c);
-	snprintf(c, LOGLINELEN, "|%s", pack->devpar.out_devname);
+	snprintf(c, LOGLINELEN, "|%s", out_name);
 	flog(c);
 	
 	/* PROTOCOL, ALWAYS */
-	switch(pack->protocol)
+	switch(pack->packet.iphead.protocol)
 	{
 		case IPPROTO_TCP:
 		flogpack(TCP);
-		snprintf(c, LOGLINELEN, "|%u|%s|%d|%s|%d",
-			pack->packet_id,
+		snprintf(c, LOGLINELEN, "|%lu|%s|%d|%s|%d",
+			pack->response.packet_id,
 			src_address, 		
-			ntohs(pack->transport_header.tcphead.source ),
+			ntohs(pack->packet.transport_header.tcphead.th_sport ),
 			dst_address,
-			ntohs(pack->transport_header.tcphead.dest ) );
+			ntohs(pack->packet.transport_header.tcphead.th_dport ) );
 		flog(c);	
 		
 		/* SYN */		
-		if(pack->transport_header.tcphead.syn)
+		/* SYN */		
+		if(pack->packet.transport_header.tcphead.th_flags & TH_SYN)
 			flogpack(SYN);
 		else
 			flogpack(SYN0);
 		/* ACK */
-		if(pack->transport_header.tcphead.ack)
+		if(pack->packet.transport_header.tcphead.th_flags & TH_ACK)
 			flogpack(ACK);
 		else
 			flogpack(ACK0);
 		/* FIN */
-		if(pack->transport_header.tcphead.fin)
+		if(pack->packet.transport_header.tcphead.th_flags & TH_FIN)
 			flogpack(FIN);
 		else
 			flogpack(FIN0);
 		/* URG */		
-		if(pack->transport_header.tcphead.urg)
+		if(pack->packet.transport_header.tcphead.th_flags & TH_URG)
 			flogpack(URG);
 		else
 			flogpack(URG0);
 		/* PSH */
-		if(pack->transport_header.tcphead.psh)
+		if(pack->packet.transport_header.tcphead.th_flags & TH_PUSH)
 			flogpack(PSH);
 		else
 			flogpack(PSH0);
 		/* RST */
-		if(pack->transport_header.tcphead.rst)
+		if(pack->packet.transport_header.tcphead.th_flags & TH_RST)
 			flogpack(RST);
 		else
 			flogpack(RST0);
@@ -147,20 +155,20 @@ int log_packet(const ipfire_info_t *pack, int loglevel)
 		break;
 		case IPPROTO_UDP:
 		flogpack(UDP);
-		snprintf(c, LOGLINELEN, "|%u|%s|%d|%s|%d",
-			pack->packet_id,
+		snprintf(c, LOGLINELEN, "|%lu|%s|%d|%s|%d",
+			pack->response.packet_id,
 			src_address, 		
-			ntohs(pack->transport_header.udphead.source ),
+			ntohs(pack->packet.transport_header.udphead.uh_sport ),
 			dst_address,
-			ntohs(pack->transport_header.udphead.dest ) );	
+			ntohs(pack->packet.transport_header.udphead.uh_dport ) );	
 		flog(c);
 		/* fill 6 flags  fields with don't cares */
 		flog("|0|0|0|0|0|0");		
 		break;
 		case IPPROTO_ICMP:
 		flogpack(ICMP);
-		snprintf(c, LOGLINELEN, "|%u|%s|0|%s|0",
-			pack->packet_id,
+		snprintf(c, LOGLINELEN, "|%lu|%s|0|%s|0",
+			pack->response.packet_id,
 			src_address, 		
 			dst_address);	
 		flog(c);
@@ -169,21 +177,25 @@ int log_packet(const ipfire_info_t *pack, int loglevel)
 		break;
 		default:
 			flogpack(OTHER_PROTO);
-			snprintf(c, LOGLINELEN, "|%u", pack->packet_id);
+			snprintf(c, LOGLINELEN, "|%lu", pack->response.packet_id);
                         flog(c);
 			flog("|0|0|0|0|0|0|0|0|0|0");
 		break;
 	}
-	#ifdef ENABLE_RULENAME
 	/* finally, log rule name */
-	if(strlen(pack->rulename) > 0)
-	{
-		snprintf(c, LOGLINELEN, "|%s", pack->rulename);
-		flog(c);
-	}
+    if (pack->response.rule_id != 0 && pack->response.verdict != IPFI_IMPLICIT) {
+        ipfire_rule *matched = lookup_rule_by_id(pack->response.rule_id, NULL);
+        if (matched && strlen(matched->rulename) > 0)
+        {
+            snprintf(c, LOGLINELEN, "|%s", matched->rulename);
+            flog(c);
+        } else {
+            snprintf(c, LOGLINELEN, "|%u", pack->response.rule_id);
+            flog(c);
+        }
+    }
 	else
 		flog("|x");
-	#endif
 	
 	flog("|\n");
 	return 0;
@@ -213,4 +225,3 @@ int seconds_to_dhms(unsigned seconds, unsigned* d, unsigned short *h,
 	
 	return 0;
 }
-

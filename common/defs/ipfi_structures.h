@@ -16,12 +16,13 @@
 #include <linux/netdevice.h>
 #else
 #include <netinet/tcp.h>
-#include <linux/udp.h>
-#include <linux/ip.h>
-#include <linux/icmp.h>
-#include <linux/igmp.h>
+#include <netinet/udp.h>
+#include <netinet/ip.h>
+#include <netinet/ip_icmp.h>
+#include <netinet/igmp.h>
+#define igmphdr igmp
 #include <linux/netlink.h>
-#include <linux/netdevice.h>
+struct net_device;
 #endif
 
 //#include <linux/in.h>
@@ -29,14 +30,12 @@
 /* return values from function processing received data */
 enum ipfire_response
 {
-    /* functions in kernel space will always return DROP or ACCEPT.
-  * The value IPFI_IMPLICIT is sent back to userspace to inform
-  * the user that no matching rule was found in the list
-  */
-    IPFI_IMPLICIT = -1,
-    /* IPFI_DROP,  equivalent to NF_DROP from linux/netfilter.h: do not continue to process the packet and deallocate it */
-    IPFI_DROP = 0,
-    IPFI_ACCEPT, /* from linux/netfilter.h, equivalent to NF_ACCEPT */
+    /* no matching rule was found in the list: the default policy will be applied */
+    IPFI_IMPLICIT = 0,
+    /* IPFI_DROP, equivalent to NF_DROP: do not continue to process the packet and deallocate it */
+    IPFI_DROP = 1,
+    /* IPFI_ACCEPT, equivalent to NF_ACCEPT: the packet is allowed to continue */
+    IPFI_ACCEPT = 2,
     /* from IPFI_ACCEPT on, use include/linux/netfilter.h  `responses from hook functions' definitions */
 };
 
@@ -185,13 +184,14 @@ enum son_message
  * characters. RULENAMELEN actually takes into
  * account the terminating '\o'
  */
-#ifdef ENABLE_RULENAME
 /* length of rule name */
 #define RULENAMELEN		31
-#endif
+
 
 #define IDLEN	20
+#ifndef IFNAMSIZ
 #define IFNAMSIZ        16 	/* from linux/if.h */
+#endif
 
 #ifndef INET_ADDRSTRLEN
 #define INET_ADDRSTRLEN 16 /* from in.h */
@@ -274,8 +274,9 @@ struct state_t {
 
 struct response {
     struct state_t st;
-    uint8_t notify:1,state:1,verdict:6;
-    short rulepos;
+    uint8_t notify:1, state:1, verdict:6;
+    uint32_t rule_id;   /* 32-bit hash or unique ID */
+    uint32_t packet_id; /* sequence number or table limit indicator */
 };
 
 struct info_flags {
@@ -310,6 +311,7 @@ struct packet_headers {
      * has been found.
      */
 typedef struct {		/* see linux/skbuff.h */
+    uint32_t logu_id;   /* sequence number for packets sent to userspace */
     struct packet_headers packet;
     struct info_flags flags;
     net_dev netdevs;
@@ -451,11 +453,10 @@ typedef struct {
     /* natural and has_id not used by the kernel */
     __u8 notify:1, natural:1, other:6;
 
-#ifdef ENABLE_RULENAME
     char rulename[RULENAMELEN];
-#endif
     struct list_head list;
     uid_t owner;
+    uint32_t rule_id;   /* 32-bit hash or unique ID */
     unsigned int position;	/* position of the rule in list. Starts from 0 */
 
     struct rcu_head rule_rcuh;
@@ -501,7 +502,7 @@ struct state_info
     __u16 sport;
     __u16 dport;
     short direction;
-    unsigned int originating_rule;
+    uint32_t rule_id;
     unsigned int timeout;
     __u8 protocol;
     int in_ifindex, out_ifindex;

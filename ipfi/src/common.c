@@ -1575,55 +1575,55 @@ int check_stats(struct netlink_stats* ns, const ipfire_info_t* msg)
   /* update total sum */
   ns->difference = 0;
   ns->lost = 0;
-  ns->direction_now = msg->direction;
+  ns->direction_now = msg->flags.direction;
   count ++;
 	
-  switch(msg->direction)
+  switch(msg->flags.direction)
     {
     case IPFI_INPUT:
       /* if firewall is already up counters mismatch.
        * This does not affect lost packets counter: it is
        * reset every time userspace exits */
-      if( (ns->in_rcv == 0) && (msg->packet_id > 0))
-	ns->in_rcv = msg->packet_id-1;
+      if( (ns->in_rcv == 0) && (msg->response.packet_id > 0))
+	ns->in_rcv = msg->response.packet_id-1;
       /* lost packets */
-      ns->difference = msg->packet_id - ns->in_rcv;
+      ns->difference = msg->response.packet_id - ns->in_rcv;
       ns->in_rcv += ns->difference;
       ns->lost = msg->logu_id - ns->last_in_rcv;
       ns->last_in_rcv = msg->logu_id +1;
       break;
 			
     case IPFI_OUTPUT:
-      if( (ns->out_rcv == 0) && (msg->packet_id > 0))
-	ns->out_rcv = msg->packet_id-1;
-      ns->difference = msg->packet_id - ns->out_rcv;
+      if( (ns->out_rcv == 0) && (msg->response.packet_id > 0))
+	ns->out_rcv = msg->response.packet_id-1;
+      ns->difference = msg->response.packet_id - ns->out_rcv;
       ns->out_rcv += ns->difference;
       ns->lost = msg->logu_id - ns->last_out_rcv;
       ns->last_out_rcv = msg->logu_id +1;
       break;
 			
     case IPFI_INPUT_PRE:
-      if( (ns->pre_rcv == 0) && (msg->packet_id > 0))
-	ns->pre_rcv = msg->packet_id-1;
-      ns->difference = msg->packet_id - ns->pre_rcv;
+      if( (ns->pre_rcv == 0) && (msg->response.packet_id > 0))
+	ns->pre_rcv = msg->response.packet_id-1;
+      ns->difference = msg->response.packet_id - ns->pre_rcv;
       ns->pre_rcv += ns->difference;
       ns->lost = msg->logu_id - ns->last_pre_rcv;
       ns->last_pre_rcv = msg->logu_id +1;
       break;
 			
     case IPFI_OUTPUT_POST:
-      if( (ns->post_rcv == 0) && (msg->packet_id > 0))
-	ns->post_rcv = msg->packet_id-1;
-      ns->difference = msg->packet_id - ns->post_rcv;
+      if( (ns->post_rcv == 0) && (msg->response.packet_id > 0))
+	ns->post_rcv = msg->response.packet_id-1;
+      ns->difference = msg->response.packet_id - ns->post_rcv;
       ns->post_rcv += ns->difference;
       ns->lost = msg->logu_id - ns->last_post_rcv;
       ns->last_post_rcv = msg->logu_id +1;
       break;
 			
     case IPFI_FWD:
-      if( (ns->fwd_rcv == 0) && (msg->packet_id > 0))
-	ns->fwd_rcv = msg->packet_id-1;
-      ns->difference = msg->packet_id - ns->fwd_rcv;
+      if( (ns->fwd_rcv == 0) && (msg->response.packet_id > 0))
+	ns->fwd_rcv = msg->response.packet_id-1;
+      ns->difference = msg->response.packet_id - ns->fwd_rcv;
       ns->fwd_rcv += ns->difference;
       ns->lost = msg->logu_id - ns->last_fwd_rcv;
       ns->last_fwd_rcv = msg->logu_id +1;

@@ -21,6 +21,7 @@
 
 
 #include "includes/ipfire_userspace.h"
+#include "includes/utils.h"
 #include "includes/languages.h"
 /* for constants SOURCE, DEST: */
 #include "includes/interface.h" 
@@ -754,6 +755,8 @@ int parse_rulefile_and_fill(FILE* fp, ipfire_rule* ipfr, int whichfile)
 	  //~ printf(RED "RULE N. %d" NL, ruleno);
 	  //~ goto error;
 	  //~ }
+	  /* calculate unique rule id */
+	  arule.rule_id = calculate_rule_id(&arule);
 	  /* put ruleno in vector, at position ruleno -1 */
 	  arule.position = ruleno;  /* set the rule position, will start from 1 */
 	  ipfr[ruleno - 1] = arule;

@@ -3,18 +3,17 @@
 
 #include "ipfi.h"
 
-/** given a rule and a socket buffer, this function determines if the rule 
- *  wants to manipulate the packet.
- *  If yes, mangle_skb() calls the adequate mangle function, depending on the manip option(s)
- *  specified inside struct packet_manip of the rule.
+/**
+ * mangle_skb() - Apply packet manipulations based on firewall rule settings
+ * @pm: packet manipulation structure from the firewall rule
+ * @skb: socket buffer to modify
+ * @flow: flow information (direction, interfaces)
+ * @reverse: flag indicating if this is a reverse-direction packet
  *
- * @param pm pointer to the packet manipulation structure. 
- * @param skb socket buffer to modify in case mangle is needed.
- * @param info ipfire_info_t to update with mangle information, if needed. This is done
- * in order to allow the userspace console to reveal if some packet mangling has been performed.
- * @return < 0 if an error occurred somewhere, 0 in case of success.
+ * Returns: <0 on error, 0 if no manipulation needed/applied, >0 if manipulation succeeded
  */
-int mangle_skb(const struct packet_manip* pm, struct sk_buff *skb, ipfire_info_t *info);
+int mangle_skb(const struct packet_manip* pm, struct sk_buff *skb, 
+               const ipfi_flow *flow, short reverse);
 
 /** @return != 0 if some field is set inside packet_manip *pm, 0 otherwise 
  *  @param pm pointer to struct packet_manip to evaluate.
