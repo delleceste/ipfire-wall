@@ -680,7 +680,7 @@ int print_packet(const ipfire_info_t *pack,
 	else if(pack->flags.snat_max_entries)
 	{
 		PRED, PUND, printf(TR("WARNING")), PCL, printf(TR(": maximum number of entries "
-		"reached for the source nat tables: %u"), pack->response.packet_id);
+		"reached for the source nat tables"));
 		PNL;
 		PGRN, printf(TR("HINT")); PCL;
 		printf(TR(":    in the options, the administrator should"));

@@ -470,12 +470,15 @@ int listener(void)
 		PRED, printf(TR("read 0 bytes!")), PNL;
       else
 	{
-	  if((packs_lost = check_stats(&nlstats, &mes_from_kern)) )
-	    {
-	      print_lostpack_info(&nlstats);
-	      //print_packet(&mes_from_kern);
-	      //quiet_modality(quiet);
-	    }
+	  /* update userspace-side counters */
+	  switch(mes_from_kern.flags.direction)
+	  {
+	    case IPFI_INPUT: nlstats.in_rcv++; nlstats.last_in_rcv++; break;
+	    case IPFI_OUTPUT: nlstats.out_rcv++; nlstats.last_out_rcv++; break;
+	    case IPFI_FWD: nlstats.fwd_rcv++; nlstats.last_fwd_rcv++; break;
+	    case IPFI_INPUT_PRE: nlstats.pre_rcv++; nlstats.last_pre_rcv++; break;
+	    case IPFI_OUTPUT_POST: nlstats.post_rcv++; nlstats.last_post_rcv++; break;
+	  }
 	  if(quiet == 0)
 	    print_packet(&mes_from_kern, svent, filter);
 	  if(uops.loglevel > 0)

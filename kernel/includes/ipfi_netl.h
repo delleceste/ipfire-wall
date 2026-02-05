@@ -18,7 +18,9 @@
 #include "ipfi_log.h"
 #include "ipfi_machine.h"
 #include "ipfi_translation.h"
-#include "../../common/defs/ipfi_structures.h"
+#include <common/ipfi_structures.h>
+
+struct state_table;
 
 /* Smart logging */
 enum smartlog_type
@@ -45,6 +47,9 @@ enum smartlog_type
  * @return less than zero if an error occurred.
  */
 int process_control_received(struct sk_buff *skb);
+void *extract_data(struct sk_buff *skb);
+int send_back_fw_busy(pid_t pid);
+
 
 /** Handshake with userspace program: checks if structure sizes
   * are correct
@@ -63,8 +68,8 @@ void fill_firesizes_with_kernel_values(command* cmd, size_t krulesize, size_t ki
 int init_netl(void);
 void fini_netl(void);
 
-int fill_dnat_info(struct dnat_info *dninfo, const struct dnatted_table *dntt);
-int fill_snat_info(struct snat_info *sninfo, const struct snatted_table *sntt);
+void fill_dnat_info(struct dnat_info *dninfo, const struct dnatted_table *dntt);
+void fill_snat_info(struct snat_info *sninfo, const struct snatted_table *sntt);
 
 /* Sends in userspace the struct sizes */
 int send_struct_sizes(void);
@@ -128,6 +133,8 @@ int print_command(const command* cmd);
  * rules, depending on direction and policy */
 int add_rule_to_list_by_command(command *cmd);
 
+void update_ifindex_in_rules(const char *name, int new_index);
+
 void print_loginfo_memory_usage(unsigned long lifetime);
 
 void print_state_entries_memory_usage(void);
@@ -147,6 +154,14 @@ int free_dynamic_tables(void);
 int free_dnatted_table(void);
 int free_snatted_table(void);
 int tell_user_howmany_rules_flushed(int howmany);
+int send_loguser_enabled(int logu_enabled);
+int initial_handshake(command *hello, uid_t userspace_uid);
+int register_log_function(int loglevel);
+int send_back_command(const command *cmd);
+int process_data_received(struct sk_buff *skb);
+void fill_state_info(struct state_info *stinfo, const struct state_table *stt);
+
+
 
 /** @param cmd a kmallocated command.
  *  @return less than 0 in case of error (-ENOMEM)
@@ -157,11 +172,8 @@ int tell_user_howmany_rules_flushed(int howmany);
  *  If that pointer is not NULL, the command is ready to be sent to userspace via the
  *  netlink CONTROL socket.
  */
-int send_back_command(const command* cmd);
-int send_back_fw_busy(pid_t pid);
 int manage_rule(command* rule_from_user);
 
-int register_log_function(int loguserlevel); /* SMART_SIMPLE or SMART_STATE */
 
 int skb_send_to_user(struct sk_buff* skb, int type_of_message);
 int get_input_response(void);
@@ -174,8 +186,8 @@ int get_forward_response(void);
  * userspace firewalls */
 int simple_exit(void);
 
-int do_userspace_exit_tasks(uid_t userspace_commander);
 void init_options(struct ipfire_options* opts);
+
 
 /** @cmd the command containing the rule as content. The rule is compared with all
  * the rules in the list to establish if it is already present.

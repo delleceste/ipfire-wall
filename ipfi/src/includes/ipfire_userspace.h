@@ -406,16 +406,8 @@ int log_exiting(const struct tm* tm, const char* user,
 /* put all fields to 0 when listener starts */
 void init_netlink_stats(struct netlink_stats* nls);
 
-/* function that checks if some packets have been lost
- * during receiving on netlink socket. */
-int check_stats(struct netlink_stats* ns, const ipfire_info_t* msg);
-	
-/* prints information about packets lost */
-int print_lostpack_info(const struct netlink_stats* nls);
-
-/* reads nls and prints its fields */
+/* prints statistics regarding both userspace and kernel */
 void print_stats(struct netlink_stats* ns);
-	
 /* sends kernel a request to obtain statistics
  * about packets received, dropped, acceppted...
  */

@@ -1,0 +1,1 @@
+savedcmd_/home/giacomo.strangolino/Downloads/ipfire-wall/kernel/build/modules.order := {   echo /home/giacomo.strangolino/Downloads/ipfire-wall/kernel/build/ipfi.o; :; } > /home/giacomo.strangolino/Downloads/ipfire-wall/kernel/build/modules.order

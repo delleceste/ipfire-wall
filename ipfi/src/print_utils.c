@@ -112,8 +112,7 @@ int log_packet(const ipfire_info_t *pack, int loglevel)
 	{
 		case IPPROTO_TCP:
 		flogpack(TCP);
-		snprintf(c, LOGLINELEN, "|%lu|%s|%d|%s|%d",
-			pack->response.packet_id,
+		snprintf(c, LOGLINELEN, "|%s|%d|%s|%d",
 			src_address, 		
 			ntohs(pack->packet.transport_header.tcphead.th_sport ),
 			dst_address,
@@ -155,8 +154,7 @@ int log_packet(const ipfire_info_t *pack, int loglevel)
 		break;
 		case IPPROTO_UDP:
 		flogpack(UDP);
-		snprintf(c, LOGLINELEN, "|%lu|%s|%d|%s|%d",
-			pack->response.packet_id,
+		snprintf(c, LOGLINELEN, "|%s|%d|%s|%d",
 			src_address, 		
 			ntohs(pack->packet.transport_header.udphead.uh_sport ),
 			dst_address,
@@ -167,8 +165,7 @@ int log_packet(const ipfire_info_t *pack, int loglevel)
 		break;
 		case IPPROTO_ICMP:
 		flogpack(ICMP);
-		snprintf(c, LOGLINELEN, "|%lu|%s|0|%s|0",
-			pack->response.packet_id,
+		snprintf(c, LOGLINELEN, "|%s|%s",
 			src_address, 		
 			dst_address);	
 		flog(c);
@@ -177,8 +174,7 @@ int log_packet(const ipfire_info_t *pack, int loglevel)
 		break;
 		default:
 			flogpack(OTHER_PROTO);
-			snprintf(c, LOGLINELEN, "|%lu", pack->response.packet_id);
-                        flog(c);
+			flog("|0");
 			flog("|0|0|0|0|0|0|0|0|0|0");
 		break;
 	}

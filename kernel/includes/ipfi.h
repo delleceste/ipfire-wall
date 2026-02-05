@@ -7,7 +7,7 @@
  */
 
 //#include <linux/config.h>
-#include "../../common/defs/ipfi_structures.h"
+#include <common/ipfi_structures.h>
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/types.h>
@@ -28,7 +28,11 @@
 
 #include "ipfi_header_check.h"
 
-#define IPFIRE_DEFAULT_POLICY 0 /* denial */
+#define NOLOCK          0
+#define ACQUIRE_LOCK    1
+
+
+#define IPFIRE_DEFAULT_POLICY IPFI_DROP /* denial */
 
 #define NETLINK_IPFI_DATA 		MAX_LINKS - 3
 #define NETLINK_IPFI_CONTROL 		MAX_LINKS - 2
@@ -39,6 +43,11 @@
 
 
 #define MODERATE_LIMIT		32
+#define MAXMODERATE_ARGS 16
+
+/* Compatibility macro for timers */
+#define timer_container_of(ptr, t, member) \
+    container_of(t, typeof(*(ptr)), member)
 
 /* this macro avoids filling kernel log with the same message hundred of times.
  * There are MAXMODERATE_ARGS different messages that can be registered by means
@@ -171,11 +180,9 @@ int ipfi_response(struct sk_buff *skb, ipfi_flow *_flow);
 
 int ipfi_pre_process(struct sk_buff *skb, const ipfi_flow *flow);
 int ipfi_post_process(struct sk_buff *skb, const ipfi_flow *flow);
-int get_cache_inh_in(const ipfire_info_t info);
 
 int recalculate_ip_checksum(struct sk_buff *skb, int direction);
 
-void init_packet(ipfire_info_t * iit);
 
 /* updates sent counter, sends packet to userspace and calls
  * update_kernel_stats()

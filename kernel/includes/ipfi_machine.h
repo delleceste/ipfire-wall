@@ -10,11 +10,14 @@
 #include "ipfi.h"
 #include "ipfi_netl.h"
 #include "ipfi_ftp.h"
-#include "../../common/defs/ipfi_structures.h"
+#include <common/ipfi_structures.h>
 #include <linux/hashtable.h>
 #include <linux/jhash.h>
 
 #define STATE_HASH_BITS 12
+
+#include <linux/jhash.h>
+u32 get_state_hash(__u32 saddr, __u32 daddr, __u16 sport, __u16 dport, __u8 proto);
 
 /* ftp passive support */
 #define FTP_NONE 0         /* not an ftp rule */
@@ -65,7 +68,7 @@ struct state_table
 int init_machine(void);
 void fini_machine(void);
 
-struct response check_state(struct sk_buff* skb, const ipfi_flow *flow);
+struct response check_state(struct sk_buff* skb, const ipfi_flow *flow, __u8 *ftp_state);
 int skb_matches_state_table(const struct sk_buff* skb, const struct state_table* entry,
                 short *reverse, const ipfi_flow *flow);
 
@@ -169,7 +172,7 @@ int fill_net_table_fields(struct state_table *state_t,
                           const struct sk_buff *skb,
                           const ipfi_flow *flow);
 
-int fill_state_info(struct state_info *stinfo, const struct state_table* stt);
+void fill_state_info(struct state_info *stinfo, const struct state_table* stt);
 
 /* This function updates the timer of the entry passed as argument.
  * It is supposed that it has been called in a safe context, i.e.

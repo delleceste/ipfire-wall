@@ -1,0 +1,1 @@
+/home/giacomo.strangolino/Downloads/ipfire-wall/kernel/gcc-check/gcc_version_check.c

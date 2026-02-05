@@ -1592,9 +1592,12 @@ int log_exiting(const struct tm* tm, const char* user,
 		const struct netlink_stats* nls)
 {
   char initlog[LOGLINELEN];
-  snprintf(initlog, LOGLINELEN, "-%d-%d-%d-%d/%d:%d:%d#TOT:%llu#LOST:%llu#%s\n",
+  /* calculate total sum for log */
+  unsigned long long sum_now = nls->in_rcv + nls->out_rcv + nls->fwd_rcv + nls->pre_rcv + nls->post_rcv;
+  
+  snprintf(initlog, LOGLINELEN, "-%d-%d-%d-%d/%d:%d:%d#TOT:%llu#%s\n",
 	   tm->tm_wday, tm->tm_mday, tm->tm_mon, tm->tm_year+1900, 
-	   tm->tm_hour, tm->tm_min, tm->tm_sec, nls->sum_now, nls->total_lost,
+	   tm->tm_hour, tm->tm_min, tm->tm_sec, sum_now,
 	   user);	
   return flog(initlog);
 }

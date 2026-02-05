@@ -23,7 +23,7 @@ struct rcu_head {
 #define u16 	__u16
 #define u32 	__u32
 
-#include <common/defs/ipfi_structures.h>
+#include <common/ipfi_structures.h>
 
 /* max length of file names */
 #define MAXFILENAMELEN 60
@@ -145,7 +145,7 @@ struct userspace_opts
 	short int policy; /* 0 default, drop, > 0 accept */
 };
 
-/* used to detect missing packets */
+/* used to track packets received by userspace */
 struct netlink_stats
 {
 	unsigned long long in_rcv;
@@ -158,16 +158,8 @@ struct netlink_stats
 	unsigned long long last_pre_rcv;
 	unsigned long long last_post_rcv;
 	unsigned long long last_fwd_rcv;
-	unsigned long long sum_now;
-	unsigned long long total_lost;
-	unsigned long long last_rcv;
-	unsigned long long lost;
-	unsigned int not_sent_nor_lost;
-	/* % of packets lost over sum_now */
-	float percentage;
-	short direction_now; /* INPUT, OUTPUT... */
-	long long int difference; 
 };
+
 
 /* a servent structure a bit littler: we are not
  * interested in alias */

@@ -1,72 +1,101 @@
 # IPFIRE-wall Makefile.
 #
-# Since version 0.98.6 a single kernel module is built from the six
-# different c source files.
-# 
+# Modular directory structure layout.
 
 MODULE_NAME = ipfi
-
- 
-JUNK	= *~ *.bak DEADJOE
+BUILD_DIR = build
+SUBDIRS = common filter filter/state netlink nat nat/dnat nat/snat mangle logging helpers proc
 
 # First pass, kernel Makefile reads module objects
 ifneq ($(KERNELRELEASE),)
 
-#ENABLE_RULENAME:=1
 ifndef DISABLE_RULENAME
 ccflags-y += -DENABLE_RULENAME=1 -Wall -O3
 endif
 
-ccflags-y += -I$(PWD)/../include -I..
+# Main Source
+$(MODULE_NAME)-objs += ipfire.o common/globals.o common/stats.o
 
-$(MODULE_NAME)-objs := \
-		ipfi_tcpmss.o \
-		ipfi_mangle.o \
-		ipfire_core.o \
-		ipfi_netl.o \
-		ipfi_machine.o \
-		ipfi_state_machine.o \
-		ipfi_translation.o \
-		ipfi_log.o \
-		ipfi_ftp.o \
-		ipfi_netl_packet_builder.o \
-		ipfi_proc.o \
-		ipfi_header_check.o \
-		ipfi_defrag.o \
-		globals.o
-obj-m += ipfi.o
+# Filter components
+$(MODULE_NAME)-objs += filter/filter_engine.o \
+                       filter/rule_match.o \
+                       filter/defrag.o \
+                       filter/header_check.o
 
-# Second pass, the actual build.
+# State management
+$(MODULE_NAME)-objs += filter/state/state_table.o \
+                       filter/state/state_check.o \
+                       filter/state/state_timeout.o \
+                       filter/state/state_machine.o
+
+# Netlink components
+$(MODULE_NAME)-objs += netlink/netlink.o \
+                       netlink/netlink_control.o \
+                       netlink/netlink_data.o \
+                       netlink/message_builder.o \
+                       netlink/rule_sync.o
+
+# NAT components
+$(MODULE_NAME)-objs += nat/nat_engine.o \
+                       nat/nat_table.o \
+                       nat/dnat/dnat.o \
+                       nat/snat/snat.o \
+                       nat/snat/masquerade.o
+
+# Mangle components
+$(MODULE_NAME)-objs += mangle/mangle.o \
+                       mangle/tcpmss.o
+
+# Logging, Helpers, Proc
+$(MODULE_NAME)-objs += logging/log.o \
+                       helpers/ftp.o \
+                       proc/proc.o
+
+obj-m += $(MODULE_NAME).o
+
+ccflags-y += -I$(src)/includes -I$(src) -I$(src)/../..
+
 else
 KDIR	:= /lib/modules/$(shell uname -r)/build
-# KDIR := /lib/modules/2.6.38-gentoo-r1-18-11-10/build
 PWD	:= $(shell pwd)
+BUILD_DIR_ABS := $(PWD)/$(BUILD_DIR)
 
 all:
-# Prepariamo il file build.h con le informazioni su sistema e la data di compilazione
-	printf "/* Compilation system and compilation date.\n * Written by Makefile */\n#define _BUILD_DATE \"%s\"\n#define _BUILD_SYS \"%s\"\n\n" "`date`" "`uname -sro`" > includes/build.h
-
-
-	$(MAKE) -C $(KDIR) M=$(PWD) modules
+	@mkdir -p $(BUILD_DIR)
+	@for dir in $(SUBDIRS); do mkdir -p $(BUILD_DIR)/$$dir; done
+	@printf "/* Compilation system and compilation date.\n * Written by Makefile */\n#define _BUILD_DATE \"%%s\"\n#define _BUILD_SYS \"%%s\"\n\n" "`date`" "`uname -sro`" > includes/build.h
+	@# Create symlinks for all .c files in build dir to allow out-of-tree build
+	@find . -name "*.c" -not -path "./$(BUILD_DIR)/*" | while read f; do \
+		dest=$(BUILD_DIR)/$${f#./}; \
+		mkdir -p $$(dirname $$dest); \
+		ln -sf $(PWD)/$${f#./} $$dest; \
+	done
+	@# Symlink includes directory
+	@ln -sfn $(PWD)/includes $(BUILD_DIR)/includes
+	@# Create Kbuild redirection
+	@echo "include $(PWD)/Makefile" > $(BUILD_DIR)/Kbuild
+	@$(MAKE) -C $(KDIR) M=$(BUILD_DIR_ABS) modules
 
 clean:
-	echo "" > includes/build.h
-	$(MAKE) -C $(KDIR) M=$(PWD) clean
+	@echo "" > includes/build.h
+	@if [ -d $(BUILD_DIR) ]; then \
+		$(MAKE) -C $(KDIR) M=$(BUILD_DIR_ABS) clean; \
+	fi
+	rm -rf $(BUILD_DIR)
 
 distclean: clean
 	$(RM) $(JUNK) $(OBJS)
 
 help:
 	$(MAKE) -C $(KDIR) M=$(PWD) help
-	
 
-# Indents the kernel source the way linux/Documentation/CodingStyle.txt
-# wants it to be.
-indent:
-	indent -kr -i8 -bl *.c
-
-install:
+# FORCE is a special target that ensures the commands for 'install' 
+# are always executed, even if a file named 'install' already exists.
+# It is the traditional equivalent of the modern .PHONY target.
+install:   FORCE
 	$(MAKE) -C $(KDIR) M=$(PWD) modules_install
 	depmod -a
+
+FORCE:
 
 endif

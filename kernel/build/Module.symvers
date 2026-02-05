@@ -1,0 +1,2 @@
+0x5c4a2b17	packet_suitable_for_mss_change	/home/giacomo.strangolino/Downloads/ipfire-wall/kernel/build/ipfi	EXPORT_SYMBOL	
+0x41ef1f49	tcpmss_mangle_packet	/home/giacomo.strangolino/Downloads/ipfire-wall/kernel/build/ipfi	EXPORT_SYMBOL	

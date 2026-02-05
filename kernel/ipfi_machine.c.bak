@@ -1,0 +1,1637 @@
+/* ip firewall Giacomo S. - IPFI MACHINE - */
+/* Tracking of connections marked as stateful and main filtering activity. 
+*/
+
+/***************************************************************************
+*  Copyright  2005  Giacomo
+*  jacum@libero.it
+****************************************************************************/
+
+/*
+*  This program is free software; you can redistribute it and/or modify
+*  it under the terms of the GNU General Public License as published by
+*  the Free Software Foundation; either version 2 of the License, or
+*  (at your option) any later version.
+*
+*  This program is distributed in the hope that it will be useful,
+*  but WITHOUT ANY WARRANTY; without even the implied warranty of
+*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*  GNU General Public License for more details.
+*/
+/* see ipfi.c for details */
+
+#include <linux/module.h>
+#include <linux/list.h>
+#include <linux/skbuff.h>
+#include "includes/ipfi.h"
+#include "includes/ipfi_netl.h"
+#include "includes/ipfi_machine.h"
+#include "includes/ipfi_netl_packet_builder.h"
+#include "includes/ipfi_mangle.h"
+#include "includes/ipfi_state_machine.h"
+#include "includes/globals.h"
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,24)
+#include <net/net_namespace.h>
+#endif
+
+/* To tell lookup_.._and_update_timer if locking is needed or not */
+#define NOLOCK 			0
+#define ACQUIRE_LOCK		1
+
+#define SECS 	1
+#define MINS	(SECS * 60)
+#define HOURS  	(MINS * 60)
+#define DAYS	(HOURS * 24)
+
+short do_keep_state = 1;
+short found_in_state_table;
+
+/* TCP, UDP and ICMP timeouts. These are the defaults, they 
+* can be changed by means of the configuration files by the root user
+*/
+unsigned int syn_lifetime = 2 * MINS;
+unsigned int synack_lifetime = 60 * SECS;
+unsigned int est_lifetime = 5 * MINS;
+unsigned int close_wait_lifetime = 60 * SECS;
+unsigned int fin_wait_lifetime = 2 * MINS;
+unsigned int last_ack_lifetime =  30 * SECS;
+unsigned int time_wait_lifetime = 2 * MINS;
+unsigned int close_lifetime = 10 * SECS;
+unsigned int udp_new_lifetime = 30 * SECS;
+unsigned int udp_lifetime = 180 * SECS;
+unsigned int icmp_lifetime = 180 * SECS;
+unsigned int igmp_lifetime = 180 * SECS;
+unsigned int l3generic_proto_lifetime = 180 * SECS;
+/* End of timeout definitions */
+
+unsigned int table_id = 0;
+
+static u32 get_state_hash(__u32 saddr, __u32 daddr, __u16 sport, __u16 dport, __u8 proto)
+{
+    __u32 a1 = saddr, a2 = daddr;
+    __u16 p1 = sport, p2 = dport;
+
+    if (a1 > a2 || (a1 == a2 && p1 > p2)) {
+        swap(a1, a2);
+        swap(p1, p2);
+    }
+
+    return jhash_3words(a1, a2, (p1 << 16) | p2, proto);
+}
+
+int direct_state_match(const struct sk_buff *skb,
+
+                       const struct state_table *entry,
+                       const ipfi_flow *flow)
+{
+    const struct iphdr *iph = ip_hdr(skb);
+    if(!iph || entry->protocol != iph->protocol)
+        return -1;
+    if(iph->saddr != entry->saddr || iph->daddr != entry->daddr)
+        return -1;
+    switch (iph->protocol)
+    {
+    case IPPROTO_TCP: {
+        struct tcphdr *th = (struct tcphdr *)((void *)iph + iph->ihl * 4);
+        if(entry->ftp == FTP_DEFINED) { /* ftp support: discard source port */
+            if(th->dest == entry->dport)
+                return 1;
+        }
+        if(th->source != entry->sport || th->dest != entry->dport)
+            return -1;
+        break;
+    }
+    case IPPROTO_UDP: {
+        struct udphdr *uh = (struct udphdr *)((void *)iph + iph->ihl * 4);
+        if(uh->source != entry->sport || uh->dest != entry->dport)
+            return -1;
+    }
+        break;
+    }
+    /* ICMP and IGMP treated in l2l3match() */
+
+    if(flow->in && flow->in->ifindex != entry->in_ifindex)
+        return -1;
+    if(flow->out && flow->out->ifindex != entry->out_ifindex)
+        return -1;
+    return 1;
+}
+
+int reverse_state_match(const struct sk_buff *skb,
+                        const struct state_table *entry,
+                        const ipfi_flow *flow)
+{
+    const struct iphdr *iph = ip_hdr(skb);
+    if(!iph || entry->protocol != iph->protocol)
+        return -1;
+    if(iph->saddr != entry->daddr || iph->daddr != entry->saddr)
+        return -1;
+    switch (iph->protocol)
+    {
+    case IPPROTO_TCP: {
+        struct tcphdr *th = (struct tcphdr *)((void *)iph + iph->ihl * 4);
+        if(th->source != entry->dport || th->dest != entry->sport)
+            return -1;
+        break;
+    }
+    case IPPROTO_UDP: {
+        struct udphdr *uh = (struct udphdr *)((void *)iph + iph->ihl * 4);
+        if(uh->source != entry->dport || uh->dest != entry->sport)
+            return -1;
+    }
+        break;
+    }
+    /* ICMP and IGMP treated in l2l3match() */
+    if(flow->in && flow->in->ifindex != entry->in_ifindex)
+        return -1;
+    if(flow->out && flow->out->ifindex != entry->out_ifindex)
+        return -1;
+    return 1;
+}
+
+/* matches network interface (l2) and ip addresses (l3) only.
+ */
+inline int l2l3match(const struct sk_buff * skb,
+                     const struct state_table *entry,
+                     const ipfi_flow *flow)
+{
+    const struct iphdr *iph = ip_hdr(skb);
+    int inifidx = flow->in ? flow->in->ifindex : -1;
+    int outifidx = flow->out ? flow->out->ifindex : -1;
+
+    /* direct match: packet source == entry source and packet dest == entry dest
+    * and packet input iface == entry input iface
+    */
+    if((iph->saddr == entry->saddr && iph->daddr == entry->daddr &&
+        inifidx == entry->in_ifindex &&
+        outifidx == entry->out_ifindex)
+            || /* reverse match, for the packet coming back */
+            (iph->saddr == entry->daddr && iph->daddr == entry->saddr &&
+             inifidx == entry->out_ifindex &&
+             outifidx == entry->in_ifindex ))
+        return 1;
+    else
+        return -1;
+}
+
+/* @skb socket buffer
+ * @entry a state entry in the list
+ * @reverse will be set to 1 if the comparison is successful in the opposite flow
+ * @flow ususal flow info (direction and net devs)
+ *
+ * compare skb with the table entry
+ */
+int skb_matches_state_table(const struct sk_buff *skb,
+                            const struct state_table *entry,
+                            short *reverse,
+                            const ipfi_flow *flow)
+{
+    short tr_match = 0;
+    const struct iphdr *iph = ip_hdr(skb);
+    *reverse = -1;		/* negative means no match */
+
+    /* First of all: check the protocol */
+    if (iph->protocol != entry->protocol)
+        return -1;
+
+    /* ICMP and IGMP state machine inspects only ip addresses and so treat
+     * these protocols first of all.
+     */
+    if(iph->protocol == IPPROTO_ICMP || iph->protocol == IPPROTO_IGMP ||
+            iph->protocol == IPPROTO_GRE || iph->protocol == IPPROTO_PIM)
+        return l2l3match(skb, entry, flow);
+
+    if ((tr_match = direct_state_match(skb, entry, flow)) > 0)
+        *reverse = 0;
+    else if ((tr_match = reverse_state_match(skb, entry, flow)) > 0)
+        *reverse = 1;
+
+    if (flow->direction == IPFI_FWD)
+        return tr_match; /* +1 or -1, returned by direct/reverse state_match */
+
+    /* input or output directions */
+    /* if the direction of the packet is the same, then direct_state_match must have had success */
+    if (flow->direction == entry->direction && reverse == 0)
+        return tr_match; /* sure it is 1 if *reverse == 0, anyway... */
+
+    /* if the direction of the packet is different, then reverse_state_match must have had success */
+    else if (flow->direction != entry->direction && *reverse == 1)
+        return tr_match;
+    /* direct/reverse_state_match() failed, *reverse remained initialized to -1 */
+    return -1;
+}
+
+/* Callback function for freeing RCU elements. */
+void free_state_entry_rcu_call(struct rcu_head *head)
+{
+    struct state_table* ipst = NULL;
+    if(head == NULL)
+    {
+        IPFI_PRINTK("Callback: head is null.\n");
+        return;
+    }
+    ipst = container_of(head, struct state_table, state_rcuh);
+    if(ipst != NULL)
+    {
+        /* Free the state table entry 
+         * Note: pkmanip cleanup removed - MSS mangling no longer stores data in state tables
+         */
+        kfree(ipst);
+    }
+}
+
+/* This function decides which is the timeout according to the protocol 
+* of the packet and to its state.
+*/
+inline unsigned int get_timeout_by_state(int protocol, int state)
+{
+    unsigned int timeout = close_lifetime;
+
+    /* Since version 0.98.2 the timeout is specific to the connection state */
+    if(protocol == IPPROTO_TCP)
+    {
+        //IPFI_PRINTK("*TCP: ");
+        switch(state)
+        {
+        case ESTABLISHED:
+        case GUESS_ESTABLISHED:
+            timeout = est_lifetime;
+            break;
+        case SYN_RECV:
+        case GUESS_SYN_RECV:
+            timeout = synack_lifetime;
+            break;
+        case SYN_SENT:
+            /* FTP_NEW: before an ftp data connection is set up a control packet tells the client
+             * the port to connect to. Just after this control packet, the new ftp data connection
+             * starts data transfer. It can be assumed that the correct timeout is the same of the
+             * syn sent state.
+             */
+        case FTP_NEW:
+            timeout = syn_lifetime;
+            break;
+        case CLOSE_WAIT:
+            timeout = close_wait_lifetime;
+            break;
+        case IPFI_TIME_WAIT:
+            timeout = time_wait_lifetime;
+            break;
+        case LAST_ACK:
+            timeout = last_ack_lifetime;
+            break;
+        case FIN_WAIT:
+            timeout = fin_wait_lifetime;
+            break;
+        case CLOSED:
+        case GUESS_CLOSING:
+        default:
+            timeout = close_lifetime;
+            break;
+        }
+    }
+    else if(protocol == IPPROTO_UDP)
+    {
+        //IPFI_PRINTK("*UDP: ");
+        switch(state)
+        {
+        case UDP_ESTAB:
+            timeout = udp_lifetime;
+            break;
+
+        case UDP_NEW:
+        default:
+            timeout = udp_new_lifetime;
+            break;
+        }
+    }
+    else if(protocol == IPPROTO_ICMP || protocol == IPPROTO_IGMP ||
+            protocol == IPPROTO_GRE || protocol == IPPROTO_PIM)
+    {
+        timeout = l3generic_proto_lifetime;
+    }
+    else
+    {
+        printk("unsupported protocol: returning 0\n");
+        timeout = 0;
+    }
+    /* A different protocol... return after a close_time interval */
+    //IPFI_PRINTK("  timeout: %u.\n", timeout);
+    return timeout;
+
+}
+
+/* This function updates the timer of the entry passed as argument.
+* It is supposed that it has been called in a safe context, i.e. 
+* with a lock held and with sw interrupts disabled, so that it does
+* not get interrupted by the timeout routine, or have in any way
+* deleted the object it operates on.
+*/ 
+inline void update_timer_of_state_entry(struct state_table *sttable)
+{
+    unsigned int timeout = get_timeout_by_state(sttable->protocol, sttable->state.state);
+
+    /* Only update timer at most once per second to avoid costly mod_timer for each packet */
+    if (time_after(jiffies, sttable->last_timer_update + HZ)) {
+        mod_timer(&sttable->timer_statelist, jiffies + HZ * timeout);
+        sttable->last_timer_update = jiffies;
+    }
+}
+
+struct response check_state(struct sk_buff* skb, const ipfi_flow *flow, __u8 *ftp_state)
+{
+    struct state_table *table_entry=NULL, *new_ftp_entry=NULL;
+    struct response ret = {};
+    unsigned counter = 0;
+    short reverse = 0;
+    struct iphdr *iph = ip_hdr(skb);
+    __u16 sport = 0, dport = 0;
+    u32 key;
+
+    if (!iph) return ret;
+
+    if (iph->protocol == IPPROTO_TCP) {
+        struct tcphdr *th = (struct tcphdr *)((void *)iph + iph->ihl * 4);
+        sport = th->source;
+        dport = th->dest;
+    } else if (iph->protocol == IPPROTO_UDP) {
+        struct udphdr *uh = (struct udphdr *)((void *)iph + iph->ihl * 4);
+        sport = uh->source;
+        dport = uh->dest;
+    }
+
+    key = get_state_hash(iph->saddr, iph->daddr, sport, dport, iph->protocol);
+
+    /* acquire read lock on list */
+    rcu_read_lock_bh();
+
+    hash_for_each_possible_rcu(state_hashtable, table_entry, hnode, key)
+    {
+        if (skb_matches_state_table(skb, table_entry, &reverse, flow) > 0) /* a match was found! */
+        {
+            ret.verdict = IPFI_ACCEPT;
+            // #ifdef ENABLE_RULENAME
+            //             fill_packet_with_table_rulename(packet, table_entry);
+            // #endif
+            ret.notify = table_entry->notify;  /* notify enabled? (v. 0.98.7) */
+            /* reverse flag, for those interested (tcpmss mangler) */
+            ret.st.reverse = reverse;
+            /* set the correct state of the connection */
+            ret.st.state = set_state(skb, table_entry, reverse);
+            ret.state = 1U;
+            /* packet manipulation */
+            // if(reverse && table_entry->pkmanip != NULL)
+            // {
+            //   if(mangle_skb(table_entry->pkmanip, skb, packet) < 0)
+            //     IPFI_PRINTK("IPFIRE: check_state(): failed to mangle socket buffer in reverse state match\n");
+            // }
+            /* ftp protocol support */
+            if( (table_entry->ftp == FTP_LOOK_FOR) && (table_entry->protocol == IPPROTO_TCP) )
+            {
+                /* before an ftp data connection is set up a control packet tells the client
+                 * the port to connect to. Just after this control packet, the new ftp data connection
+                 * starts data transfer. ftp_support() returns not null only if the ftp control packet
+                 * contains ftp data parameters.
+                 */
+                new_ftp_entry = ftp_support(table_entry, skb);
+                if(new_ftp_entry != NULL) {
+                    /* Lock on rcu list is already acquired */
+                    if (lookup_state_table_n_update_timer(new_ftp_entry, NOLOCK)  != NULL) {
+                        kfree(new_ftp_entry);
+                    }
+                    else
+                    {
+                        /* simply add the new rule into the list. Between our hands
+                        * we have the handshake ftp packet, which must be treated
+                        * as any other packet which is to be filtered */
+                        add_ftp_dynamic_rule(new_ftp_entry);
+                        /* the function above initiates timer and state for the new entry,
+                        * and adds it to the list. If a new connection to ftp data will be
+                        * started, it will find the new ftp entry ready! */
+                    }
+                }
+            }
+            else if(table_entry->ftp == FTP_DEFINED)
+            {
+                table_entry->ftp = FTP_ESTABLISHED;
+                /* correct source port after first packet seen */
+                struct tcphdr *th = (struct tcphdr *)((void *)iph + iph->ihl * 4);
+                table_entry->sport = th->source;
+            }
+            //
+            // state table timer update - while holding the lock
+            update_timer_of_state_entry(table_entry);
+            //
+            rcu_read_unlock_bh();
+            /* Since version 0.98.5 we return the originating rule, so it is easier to
+            * compare the result with the rules inserted. With F5 it will be easy to
+            * find out also the position of the state table in the list, if one was interested.
+            */
+            ret.rule_id = table_entry->rule_id;
+            /* Populate FTP state for userspace reporting */
+            if (ftp_state)
+                *ftp_state = table_entry->ftp;
+            return ret;
+        } /* if(ret > 0) */
+    }
+    /* no match in any table entry */
+    rcu_read_unlock_bh();
+    return ret;
+}
+
+inline int direction_filter(int direction, const ipfire_rule * r)
+{
+    if (r->nflags.direction)
+    {
+        if (r->direction != direction)
+            return -1;
+        return 1;
+    }
+    return 0;
+}
+
+/* main filtering function: compares packet with each denial and 
+*permission rule. Returns < 0 if a denial rule is found matching 
+* packet, > 0 if a permission rule matche packet, 0 if no explicit
+* rule is found. If a match is found, copies rulename from rule
+* to rulename field of packet, just to add info for user. 
+*/
+struct response ipfire_filter(const ipfire_rule *dropped,
+                              const ipfire_rule *allowed,
+                              const struct ipfire_options *ipfi_opts,
+                              struct sk_buff* skb,
+                              const ipfi_flow *flow,
+                              struct info_flags *flags)
+{
+    struct response response = {};
+    unsigned i = 0;
+    // 	struct list_head *pos;
+    ipfire_rule *rule;
+    short pass;
+    short res;		/* partial result */
+    short drop = 0;
+    struct state_table* newtable = NULL;
+    struct iphdr *iph = ip_hdr(skb);
+    struct tcphdr tcphead;
+    struct udphdr udphead;
+    struct icmphdr icmphead;
+
+    /* check in connection state table first, if direction is INPUT or POST, for now... */
+    if (flow->direction == IPFI_INPUT || flow->direction == IPFI_OUTPUT || flow->direction == IPFI_FWD)
+    {
+        response = check_state(skb, flow, &flags->ftp); // updates entry tmr if existing
+        pass = response.verdict;
+        if (pass > 0) {
+            /* we have found an already seen flow */
+            response.state = 1U;
+            return response;
+        }
+    }
+
+    /* start with denial rules */
+    rcu_read_lock(); /* read only lock */
+    list_for_each_entry_rcu(rule, &dropped->list, list)
+    {
+        /* get the address of the rule */
+        /* direction match */
+        if ((res = direction_filter(flow->direction, rule)) < 0)
+            goto next_drop_rule;
+        else if (res > 0)
+            drop = 1;
+
+        /* device match */
+        if ((res = device_filter(rule, flow->in, flow->out)) < 0)
+            goto next_drop_rule;
+        else if (res > 0)
+            drop = 1;
+        /* check if the rule contains ip fields. If yes, they must be verified */
+        /* if packet does not match explicitly the fields of the rule, we
+        * can return failure without going on.
+        * Otherwise, if we can't say anything (e.g. because there are no
+        * ip parameters specified in a rule) or if the ip layer parameters
+        * do match, we have to go on looking at the transport layer fields
+                */
+        if ((res = ip_layer_filter(iph, rule, flow->direction, flow->in, flow->out)) < 0)
+            goto next_drop_rule;
+        else if (res > 0)
+            drop = 1;	/* if res = 0 leave pass unchanged */
+        /* divide computation by protocol type */
+        if (iph->protocol == IPPROTO_TCP) {
+            struct tcphdr *th = (struct tcphdr *)((void *)iph + iph->ihl * 4);
+            if ((res = ipfi_tcp_filter(th, rule)) < 0)
+                goto next_drop_rule;
+            else if (res > 0)
+                drop = 1;
+        }
+        else if (iph->protocol == IPPROTO_UDP)
+        {
+            struct udphdr *uh = (struct udphdr *)((void *)iph + iph->ihl * 4);
+            if ((res = udp_filter(uh, rule)) < 0)
+                goto next_drop_rule;
+            else if (res > 0)
+                drop = 1;
+        }
+        else if (iph->protocol == IPPROTO_ICMP)
+        {
+            struct icmphdr *ih = (struct icmphdr *)((void *)iph + iph->ihl * 4);
+            if ((res = icmp_filter(ih, rule)) < 0)
+                goto next_drop_rule;
+            else if (res > 0)
+                drop = 1;
+        }
+        else if (iph->protocol == IPPROTO_IGMP)
+        {
+            /* do not touch res: for proto IGMP we do not evaluate anything
+            * except the ip_layer
+            */
+        }
+        if (drop > 0)
+        {
+            response.state = 0;
+            response.verdict = IPFI_DROP;
+            /* from v. 0.98.7, for the GUI notifier: if a packet is accepted
+            * or dropped (it matches a rule), the user may desire to be
+            * notified.
+            */
+            response.notify = rule->notify;
+            /* v. 0.98.5: packet_id reminds the position of the rule */
+            response.rule_id = rule->rule_id;
+            /* Unlock RCU before returning  */
+            rcu_read_unlock();
+            return response;
+        }
+
+next_drop_rule:
+        i++;
+    }
+    i = 0;
+    /* now check if the packet is explicitly allowed */
+    pass = 0;
+    list_for_each_entry_rcu(rule, &allowed->list, list)
+    {
+        /* get the address of the rule */
+        /* direction match */
+        if ((res = direction_filter(flow->direction, rule)) < 0)
+            goto next_pass_rule;
+        else if (res > 0)
+            pass = 1;
+        /* device */
+        if ((res = device_filter(rule, flow->in, flow->out)) < 0)
+            goto next_pass_rule;
+        else if (res > 0)
+            pass = 1;
+        /* check ip layer fields */
+        if ((res = ip_layer_filter(iph, rule, flow->direction, flow->in, flow->out)) < 0)
+            goto next_pass_rule;
+        else if (res > 0)
+            pass = 1;
+        /* divide computation by protocol type */
+        if (iph->protocol == IPPROTO_TCP) {
+            struct tcphdr *th = (struct tcphdr *)((void *)iph + iph->ihl * 4);
+            if ((res = ipfi_tcp_filter(th, rule)) < 0)
+                goto next_pass_rule;
+            else if (res > 0)
+                pass = 1;
+        }
+        else if (iph->protocol == IPPROTO_UDP)
+        {
+            struct udphdr *uh = (struct udphdr *)((void *)iph + iph->ihl * 4);
+            if ((res = udp_filter(uh, rule)) < 0)
+                goto next_pass_rule;
+            else if (res > 0)
+                pass = 1;
+        }
+        else if (iph->protocol == IPPROTO_ICMP) {
+            struct icmphdr *ih = (struct icmphdr *)((void *)iph + iph->ihl * 4);
+            if ((res = icmp_filter(ih, rule)) < 0)
+                goto next_pass_rule;
+            else if (res > 0)
+                pass = 1;
+        }
+        else if (iph->protocol == IPPROTO_IGMP)
+        {
+            /* no checks are done for IGMP specific protocol */
+        }
+        if(pass > 0)
+        {
+            /* from v. 0.98.7, for the GUI notifier: if a packet is accepted
+            * or dropped (it matches a rule), the user may desire to be
+            * notified.
+            */
+            response.state = 0U;
+            response.verdict = IPFI_ACCEPT;
+            response.notify = rule->notify;
+            response.rule_id = rule->rule_id;
+        }
+        /* to add to connection table, stateful must be enabled in rule
+        * AND in global options.
+        * Moreover, packet must have been accepted by engine.
+        * Flag all_stateful enables stateful tracking also for rules
+        * which do not have flag state specified.
+        */
+        if ((pass > 0) && ((rule->state) || (ipfi_opts->all_stateful)) && (ipfi_opts->state)) {
+            if (flow->direction == IPFI_INPUT || flow->direction == IPFI_OUTPUT || flow->direction == IPFI_FWD)  {
+                // *CHECK* keep_state used to lookup the existing state tables list
+                // *CHECK* Why? check_state above excluded an existing match for the current skb
+                newtable = keep_state(skb, rule, flow);
+                response.state = 1U;
+            }
+        }
+        if (pass > 0) {
+            /* Unlock before adding the entry and returning */
+            rcu_read_unlock();
+            if(newtable != NULL) {
+                /* Add the table to the list, without any lock held */
+                add_state_table_to_list(newtable);
+            }
+            /* TCP MSS (Maximum Segment Size) Manipulation
+             * If this rule has MSS mangling enabled, apply it now.
+             * mangle_skb() checks if packet is suitable (SYN or SYN/ACK) before mangling.
+             * Returns: <0 on error, 0 if not applicable, >0 if mangling applied
+             */
+            if(mangle_skb(&rule->pkmangle, skb, flow, 0) < 0) {
+                IPFI_PRINTK("IPFIRE: ipfire_filter(): MSS mangle failed for rule\n");
+            }
+            /* See the comment in the 'drop' case above */
+            return response;
+        }
+next_pass_rule:
+        i++;
+    }
+    /* Unlock rcu read lock */
+    rcu_read_unlock();
+    /* no explicit rules have been found: return 0 */
+    return response;
+}
+
+int device_filter(const ipfire_rule * r,
+                  const struct net_device *in,
+                  const struct net_device *out)
+{
+    /* don't bother if user fills in output rule within input context
+        * or viceversa */
+    if (r->nflags.indev && in != NULL) {
+        if (in->ifindex == r->devpar.in_ifindex)
+            return 1;
+        else
+            return -1;
+    }
+
+    if (r->nflags.outdev && out != NULL) {
+        if(out->ifindex == r->devpar.out_ifindex)
+            return 1;
+        else
+            return -1;
+    }
+    return 0;
+}
+
+int address_match(const struct iphdr * iph,
+                  const ipfire_rule * r,
+                  int direction,
+                  const struct net_device *in,
+                  const struct net_device *out)
+{
+    int match = 0;
+    int i, addr_in_list;
+    __u32 source_address, p_source_address;
+    __u32 dest_address, p_dest_address;
+
+    /* source address */
+    /* Set correct source and destination address: the one corresponding
+    * to the interface in packet if MYADDR was specified, the dotted
+    * decimal one if ADDR is specified in flags */
+    if (r->nflags.src_addr == MYADDR) {
+        if (get_dev_ifaddr(&p_source_address, direction, in, out) < 0) {
+            return -1;
+        }
+        source_address = p_source_address;
+    }
+    else
+        source_address = r->ip.ipsrc[0];
+
+    /* initialize addr_in list */
+    addr_in_list = 0;
+    /* a single ip is given: it must match exactly */
+    if ((r->nflags.src_addr) && (r->parmean.samean == SINGLE))
+    {
+        if (source_address != iph->saddr)
+            return -1;
+        else
+            match = 1;
+    }
+    /* an interval is given: src address in packet must be contained in it.
+    * Addresses cannot be mine */
+    else if ((r->nflags.src_addr == ONEADDR) && (r->parmean.samean == INTERVAL))
+    {
+        if ((ntohl(r->ip.ipsrc[0]) <= ntohl(iph->saddr)) && (ntohl(r->ip.ipsrc[1]) >= ntohl(iph->saddr))) {
+            match = 1;
+        }
+        else
+            return -1;
+    }
+    /* address in packet must be different from address in rule */
+    else if ((r->nflags.src_addr) && (r->parmean.samean == DIFFERENT_FROM))
+    {
+        if (source_address != iph->saddr)
+            match = 1;
+        else
+            return -1;
+    }
+    /* finally: src address in packet must be not included in rule source ip interval */
+    else if ((r->nflags.src_addr == ONEADDR) && (r->parmean.samean == INTERVAL_DIFFERENT_FROM))
+    {
+        if ((ntohl(r->ip.ipsrc[0]) <= ntohl(iph->saddr)) && (ntohl(r->ip.ipsrc[1]) >= ntohl(iph->saddr)))
+            return -1;
+        else		/* saddr of iphead not contained: ok */
+            match = 1;
+    }
+    else if ((r->nflags.src_addr == ONEADDR) && (r->parmean.samean == MULTI))
+    {
+        for(i = 0; i < MAXMULTILEN && r->ip.ipsrc[i] != 0; i++)
+        {
+            if(r->ip.ipsrc[i] == iph->saddr)
+            {
+                addr_in_list = 1;
+                break; /* no need to go further on */
+            }
+        }
+        if(addr_in_list == 1)
+            match = 1;
+        else
+            return -1;
+    }
+    else if ((r->nflags.src_addr == ONEADDR) && (r->parmean.samean == MULTI_DIFFERENT))
+    {
+        match = 1; /* suppose packet->iphead.saddr is different from any element of the list */
+        for(i = 0; i < MAXMULTILEN && r->ip.ipsrc[i] != 0; i++)
+        {
+            if(r->ip.ipsrc[i] == iph->saddr) /* one element of the list matches */
+                return -1; /* then if one element matches source address, we must leave */
+        }
+    }
+    /* destination address */
+    if (r->nflags.dst_addr == MYADDR)
+    {
+        if (get_dev_ifaddr(&p_dest_address, direction, in, out) < 0)
+        {
+            return -1;
+        }
+        dest_address = p_dest_address;
+    }
+    else
+        dest_address = r->ip.ipdst[0];
+
+    if ((r->nflags.dst_addr > 0) && (r->parmean.damean == SINGLE))
+    {
+        if (dest_address != iph->daddr)
+            return -1;
+        else
+            match = 1;
+    }
+    else if ((r->nflags.dst_addr == ONEADDR) && (r->parmean.damean == INTERVAL))
+    {
+        if ((ntohl(r->ip.ipdst[0]) <= ntohl(iph->daddr)) && (ntohl(r->ip.ipdst[1]) >= ntohl(iph->daddr)))
+            match = 1;
+        else
+            return -1;
+    }
+    else if ((r->nflags.dst_addr > 0) && (r->parmean.damean == DIFFERENT_FROM))
+    {
+        if (dest_address != iph->daddr)
+            match = 1;
+        else
+            return -1;
+    }
+    else if ((r->nflags.dst_addr == ONEADDR) && (r->parmean.damean == INTERVAL_DIFFERENT_FROM))
+    {
+        if ((ntohl(r->ip.ipdst[0]) <= ntohl(iph->daddr)) && (ntohl(r->ip.ipdst[1]) >= ntohl(iph->daddr)))
+            return -1;
+        else
+            match = 1;
+    }
+    /* list of IP addresses */
+    else if ((r->nflags.dst_addr == ONEADDR) && (r->parmean.damean == MULTI))
+    {
+        /* re initialize addr_in list before parsing destination address */
+        addr_in_list = 0;
+        for(i = 0; i < MAXMULTILEN && r->ip.ipdst[i] != 0; i++)
+        {
+            if(r->ip.ipdst[i] == iph->daddr)
+            {
+                addr_in_list = 1;
+                break; /* no need to go further on */
+            }
+        }
+        if(addr_in_list == 1)
+            match = 1;
+        else
+            return -1;
+    }
+    else if ((r->nflags.dst_addr == ONEADDR) && (r->parmean.damean == MULTI_DIFFERENT))
+    {
+        match = 1; /* suppose packet->iphead.daddr is different from any element of the list */
+        for(i = 0; i < MAXMULTILEN && r->ip.ipdst[i] != 0; i++)
+        {
+            if(r->ip.ipdst[i] == iph->daddr) /* one element of the list matches */
+                return -1; /* then if one element matches destination address, we must leave with -1 */
+        }
+    }
+    return match;
+}
+
+int port_match(const struct tcphdr *tcph,
+               const struct udphdr *udph,
+               const ipfire_rule * r,
+               short protocol)
+{
+    int match = 0, sport_found = 0, dport_found = 0;
+    int i;
+    u16 sport;
+    u16 dport;
+    switch (protocol)
+    {
+    case IPPROTO_TCP:
+        sport = tcph->source;
+        dport = tcph->dest;
+        break;
+    case IPPROTO_UDP:
+        sport = udph->source;
+        dport = udph->dest;
+        break;
+    default:
+        IPFI_PRINTK("IPFIRE: port_match(): invalid protocol %d!\n",
+                    protocol);
+        return -1;
+        break;
+    }
+    /* source port */
+    /* a single port is given: it must match exactly */
+    if ((r->nflags.src_port) && (r->parmean.spmean == SINGLE))
+    {
+        if (r->tp.sport[0] != sport)
+            return -1;
+        else
+            match = 1;
+    }
+    /* an interval is given: src port in packet must be contained in it */
+    else if ((r->nflags.src_port) && (r->parmean.spmean == INTERVAL))
+    {
+        if ((ntohs(r->tp.sport[0]) <= ntohs(sport)) &&
+                (ntohs(r->tp.sport[1]) >= ntohs(sport)))
+            match = 1;
+        else
+            return -1;
+    }
+    /* port in packet must be different from port in rule */
+    else if ((r->nflags.src_port) && (r->parmean.spmean == DIFFERENT_FROM))
+    {
+        if (r->tp.sport[0] != sport)
+            match = 1;
+        else
+            return -1;
+    }
+    /* port must not be inside rule interval */
+    else if ((r->nflags.src_port) && (r->parmean.spmean == INTERVAL_DIFFERENT_FROM))
+    {
+        if ((ntohs(r->tp.sport[0]) <= ntohs(sport))
+                && (ntohs(r->tp.sport[1]) >= ntohs(sport)))
+            return -1;
+        else
+            match = 1;
+    }
+    /* a list of ports to check */
+    else if ((r->nflags.src_port) && (r->parmean.spmean == MULTI))
+    {
+        for(i = 0; i < MAXMULTILEN; i++)
+        {
+            /* if one element is zero, leave */
+            if(r->tp.sport[i] == 0)
+                break;
+            if(ntohs(r->tp.sport[i]) == ntohs(sport)) /* one element matches */
+            {
+                sport_found = 1;
+                break;
+            }
+        }
+        if(sport_found == 1) /* found a matching port */
+            match = 1;
+        else
+            return -1;
+    }
+    else if ((r->nflags.src_port) && (r->parmean.spmean == MULTI_DIFFERENT))
+    {
+        for(i = 0; i < MAXMULTILEN; i++)
+        {
+            /* if one element is zero, leave */
+            if(r->tp.sport[i] == 0)
+                break;
+            if(ntohs(r->tp.sport[i]) == ntohs(sport)) /* one element matches, the check fails */
+                return -1;
+        }
+        /* We have left the cycle without returning, so the match is positive */
+        match = 1;
+    }
+    /* destination port */
+    if ((r->nflags.dst_port) && (r->parmean.dpmean == SINGLE))
+    {
+        if (r->tp.dport[0] != dport)
+            return -1;
+        else
+            match = 1;
+    }
+    else if ((r->nflags.dst_port) && (r->parmean.dpmean == INTERVAL))
+    {
+        if ((ntohs(r->tp.dport[0]) <= ntohs(dport)) &&
+                (ntohs(r->tp.dport[1]) >= ntohs(dport)))
+            match = 1;
+        else
+            return -1;
+    }
+    else if ((r->nflags.dst_port) && (r->parmean.dpmean == DIFFERENT_FROM))
+    {
+        if (r->tp.dport[0] != dport)
+            match = 1;
+        else
+            return -1;
+    }
+    else if ((r->nflags.dst_port) && (r->parmean.dpmean == INTERVAL_DIFFERENT_FROM))
+    {
+        if ((ntohs(r->tp.dport[0]) <= ntohs(dport))
+                && (ntohs(r->tp.dport[1]) >= ntohs(dport)))
+            return -1;
+        else
+            match = 1;
+    }
+    /* a list of (destination) ports to check */
+    else if ((r->nflags.dst_port) && (r->parmean.dpmean == MULTI))
+    {
+        for(i = 0; i < MAXMULTILEN; i++)
+        {
+            /* if one element is zero, leave */
+            if(r->tp.dport[i] == 0)
+                break;
+            if(ntohs(r->tp.dport[i]) == ntohs(dport)) /* one element matches */
+            {
+                dport_found = 1;
+                break;
+            }
+        }
+        if(dport_found == 1) /* found a matching port */
+            match = 1;
+        else
+            return -1;
+    }
+    else if ((r->nflags.dst_port) && (r->parmean.dpmean == MULTI_DIFFERENT))
+    {
+        for(i = 0; i < MAXMULTILEN; i++)
+        {
+            /* if one element is zero, leave */
+            if(r->tp.dport[i] == 0)
+                break;
+            if(ntohs(r->tp.dport[i]) == ntohs(dport)) /* one element matches, the check fails */
+                return -1;
+        }
+        /* We have left the cycle without returning, so the match is positive */
+        match = 1;
+    }
+
+    return match;
+}
+
+
+int ip_layer_filter(const struct iphdr *iph, const ipfire_rule* r, int direction,
+                    const struct net_device *in, const struct net_device *out)
+{
+    int match = 0;
+    if ((match = address_match(iph, r, direction, in, out)) < 0) {
+        return -1;
+    }
+    if (iph && r->nflags.proto) { // filter by proto
+        if (r->ip.protocol != iph->protocol)
+            return -1;
+        else
+            match = 1;
+    }
+    if (r->nflags.tot_len)
+    {
+        if (r->ip.total_length != iph->tot_len)
+            return -1;
+        else
+            match = 1;
+    }
+    if (r->nflags.tos)
+    {
+        if (r->ip.tos != iph->tos)
+            return -1;
+        else
+            match = 1;
+    }
+    return match;
+}
+
+int ipfi_tcp_filter(const struct tcphdr *tcph, const ipfire_rule * r)
+{
+    int match = 0;
+    /* check tcp specific fields */
+    if ((match = port_match(tcph, NULL, r, IPPROTO_TCP)) < 0)
+    {
+        //              IPFI_PRINTK("FAILED PORT MATCH!\n");
+        return -1;
+    }
+    //      IPFI_PRINTK("AFTER PORT: match = %d\n", match);
+    if (r->nflags.fin)
+    {
+        if (r->tp.fin != tcph->fin)
+            return -1;
+        else
+            match = 1;
+    }
+    if (r->nflags.syn)
+    {
+        if (r->tp.syn != tcph->syn)
+            return -1;
+        else
+            match = 1;
+    }
+    if (r->nflags.rst)
+    {
+        if (r->tp.rst != tcph->rst)
+            return -1;
+        else
+            match = 1;
+    }
+    if (r->nflags.psh)
+    {
+        if (r->tp.psh != tcph->psh)
+            return -1;
+        else
+            match = 1;
+    }
+    if (r->nflags.ack)
+    {
+        if (r->tp.ack != tcph->ack)
+            return -1;
+        else
+            match = 1;
+    }
+    if (r->nflags.urg)
+    {
+        if (r->tp.urg != tcph->urg)
+            return -1;
+        else
+            match = 1;
+    }
+    return match;
+}
+
+int udp_filter(const struct udphdr *udph, const ipfire_rule * r)
+{
+    int match = 0;
+    /* check tcp specific fields */
+    if ((match = port_match(NULL, udph, r, IPPROTO_UDP)) < 0)
+        return -1;
+    return match;
+}
+
+int icmp_filter(const struct icmphdr * icmph, const ipfire_rule * r)
+{
+    int match = 0;
+    /* icmp specific fields */
+    if (r->nflags.icmp_type)
+    {
+        if (r->icmp_p.type != icmph->type)
+            return -1;
+        else
+            match = 1;
+    }
+    if (r->nflags.icmp_code)
+    {
+        if (r->icmp_p.code != icmph->code)
+            return -1;
+        else
+            match = 1;
+    }
+    if (r->nflags.icmp_echo_id)
+    {
+        if (r->icmp_p.echo_id != icmph->un.echo.id)
+            return -1;
+        else
+            match = 1;
+    }
+    if (r->nflags.icmp_echo_seq)
+    {
+        if (r->icmp_p.echo_seq != icmph->un.echo.sequence)
+            return -1;
+        else
+            match = 1;
+    }
+    /* disabled icmp_frag_mtu. */
+    return match;
+}
+
+/* fills in state table with network informations */
+int fill_net_table_fields(struct state_table *state_t,
+                          const struct sk_buff * skb,
+                          const ipfi_flow *flow)
+{
+    struct iphdr *iph = ip_hdr(skb);
+    if(iph) {
+        state_t->protocol = iph->protocol;
+        state_t->saddr = iph->saddr;
+        state_t->daddr = iph->daddr;
+        /* take the correct values by protocol */
+        switch (iph->protocol)
+        {
+        case IPPROTO_TCP: {
+            struct tcphdr *th = (struct tcphdr *)((void *)iph + iph->ihl * 4);
+            state_t->sport = th->source;
+            state_t->dport = th->dest;
+            break;
+        }
+        case IPPROTO_UDP: {
+            struct udphdr *uh = (struct udphdr *)((void *)iph + iph->ihl * 4);
+            state_t->sport = uh->source;
+            state_t->dport = uh->dest;
+            break;
+        }
+        case IPPROTO_ICMP:
+        case IPPROTO_IGMP: /* treated as ICMP */
+        case IPPROTO_GRE:
+        case IPPROTO_PIM:
+            state_t->sport = 0;
+            state_t->dport = 0;
+            break;
+        default:
+            printk ("IPFIRE: fill_net_table_fields (stateful connection): invalid protocol %d!\n", iph->protocol);
+            return -1;
+            break;
+        }
+        state_t->direction = flow->direction;
+        state_t->protocol = iph->protocol;
+        if(flow->in) {
+            state_t->in_ifindex = flow->in->ifindex;
+            strncpy(state_t->in_devname, flow->in->name, IFNAMSIZ);
+        }
+        if(flow->out) {
+            state_t->out_ifindex = flow->out->ifindex;
+            strncpy(state_t->out_devname, flow->out->name, IFNAMSIZ);
+        }
+        return 0;
+    }
+    return -1;
+}
+
+/* compares two state table entries */
+int compare_state_entries(const struct state_table *s1,
+               const struct state_table *s2)
+{
+       return (s1->saddr == s2->saddr) &&
+               (s1->daddr == s2->daddr) &&
+               (s1->sport == s2->sport) &&
+               (s1->dport == s2->dport) &&
+               (s1->direction == s2->direction) &&
+               (s1->protocol == s2->protocol) &&
+               (s1->in_ifindex == s2->in_ifindex) &&
+               (s1->out_ifindex == s2->out_ifindex);
+}
+
+
+void fill_timer_table_fields(struct state_table *state_t)
+{
+    long int expi;
+    expi = get_timeout_by_state(state_t->protocol, state_t->state.state);
+
+    timer_setup(&state_t->timer_statelist, handle_keep_state_timeout, 0);
+    state_t->timer_statelist.expires = jiffies + expi * HZ;
+    state_t->last_timer_update = jiffies;
+}
+
+/* scans root list looking for already present entries.
+* Returns NULL if none is found, the pointer to the entry
+* if a match is found. If a match is found, befre returning,
+* the matching table will have its timer updated. The choice
+* to update timers here avoids putting another lock when
+* calling timer updating routine elsewhere.
+*/
+struct state_table *lookup_state_table_n_update_timer(const struct state_table *stt, int lock) {
+    int counter = 0;
+    struct state_table *statet;
+    u32 key = get_state_hash(stt->saddr, stt->daddr, stt->sport, stt->dport, stt->protocol);
+
+    if(lock == ACQUIRE_LOCK)
+        rcu_read_lock_bh();
+
+    hash_for_each_possible_rcu(state_hashtable, statet, hnode, key) {
+        counter++;
+        if (compare_state_entries(statet, stt) == 1)
+        {
+            /* call update_timer with read lock held.
+            * Eventual concurrent update_timer on the
+            * same structure should not be a problem.
+            * The care taken concerns avoiding item
+            * deletion on timeout, with this lock.
+            */
+            update_timer_of_state_entry(statet);
+            if(lock == ACQUIRE_LOCK)
+                rcu_read_unlock_bh();
+            return statet;
+        }
+    }
+    if(lock == ACQUIRE_LOCK)
+        rcu_read_unlock_bh();
+    return NULL;
+}
+
+/* *CHECK*
+ * *CHECK* If a packet carries fields pertaining to a table already present
+* *CHECK* in the state table list, then NULL is returned, to indicate to the
+* *CHECK* caller that the entry derived from `packet' does not have to be
+* *CHECK* added.
+* *CHECK*  If `packet' is a packet not seen, a new entry of the
+* *CHECK* "state_table" kind is returned.
+* *CHECK* WHY?? if keep_state is called ONLY after check_state, that excludes
+* *CHECK* that a table already exists for the current skb??
+*
+*  nflags is used
+* just for passive ftp support for now. 
+* keep_state is called by ipfire_filter with the rcu_read_lock
+* held for static rules.
+* - include/linux/rcupdate.h says:
+* `RCU read-side critical sections may be nested.  Any deferred actions
+*   will be deferred until the outermost RCU read-side critical section
+*   completes.'
+*/
+struct state_table* keep_state(const struct sk_buff *skb,
+                               const ipfire_rule* p_rule,
+                               const ipfi_flow *flow)
+{
+    ipfire_info_t *ipfi_info_warn;
+    if(p_rule == NULL)
+        return NULL;
+    // struct state_table *existing_stentry;
+    // *CHECK* removed
+    // if ((existing_stentry = lookup_state_table_n_update_timer(skb, ACQUIRE_LOCK, flow)) != NULL) {
+    //     return NULL;
+    // }
+    /* Check if list is full */
+    if (state_tables_counter == max_state_entries)
+    {
+        /* Allocate here ipfi_info_warn, if needed */
+        ipfi_info_warn = (ipfire_info_t *) kmalloc(sizeof(ipfire_info_t), GFP_ATOMIC);
+        if(ipfi_info_warn != NULL) /* good */
+        {
+            memset(ipfi_info_warn, 0, sizeof(ipfire_info_t));
+            ipfi_info_warn->flags.state_max_entries = 1;
+            ipfi_info_warn->response.packet_id = state_tables_counter;
+            struct sk_buff *skbi = build_info_t_packet(ipfi_info_warn);
+            if(skbi != NULL && skb_send_to_user(skbi, LISTENER_DATA) < 0)
+                IPFI_PRINTK("IPFIRE: error notifying maximum number of state entries to user\n");
+            else if(skbi == NULL)
+                IPFI_PRINTK("IPFIRE: failed to allocate socket buffer space in keep_state()\n");
+            /* FREE */
+            kfree(ipfi_info_warn); /* no more needed */
+        }
+        else /* ipfire_info_t allocation failed */
+            IPFI_PRINTK("IPFIRE: memory allocation error in keep_state, ipfi_machine.c\n");
+
+        IPFI_PRINTK("IPFIRE: reached maximum count for STATE entries: %u\n",state_tables_counter);
+        return NULL;
+    }
+    /* Continue to prepare the new entry: set the correct state. */
+    struct state_table *state_t = (struct state_table *) kmalloc(sizeof(struct state_table), GFP_ATOMIC);
+    /* initialize state table with zeros */
+    memset(state_t, 0, sizeof(struct state_table));
+    /* prepare the new state table: network fields */
+    if (fill_net_table_fields(state_t, skb, flow) < 0) {
+        IPFI_PRINTK("IPFIRE: fill_net_table_fields failed, ipfi_machine.c\n");
+        kfree(state_t);
+        return NULL;
+    }
+    else if (set_state(skb, state_t, 0) < 0)
+    {
+        IPFI_PRINTK("IPFIRE: invalid state when adding new state entry!\n");
+        kfree(state_t);
+        return NULL;
+    }
+    /* ftp? */
+    if(p_rule->nflags.ftp) {
+        /* state table is marked as needing ftp support. From now on,
+        * next packets will match that state table. */
+        state_t->ftp = FTP_LOOK_FOR;
+    }
+    /*
+    * Since version 0.98.5 we store the information of the originating rule
+    * for each new state table. So it will be easy to look for the rule that
+    * the state entry was taken from.
+    */
+    state_t->rule_id = p_rule->rule_id;
+    /* notify to userspace? */
+    state_t->notify = p_rule->notify;
+    /* does the originating rule belong to root or not? */
+    state_t->admin = !p_rule->owner;
+
+    /* NOTE: MSS mangling no longer requires state table storage.
+     * MSS is applied directly when SYN/SYN-ACK packets match rules.
+     * No need to store mangle info in state tables anymore.
+     */
+    /* Return the new table with all fields filled. It is ready
+    * to be added to the list by calling add_state_table_to_list().
+    */
+    return state_t;
+}
+
+/* Adds the new state table to the list. Takes a pointer to a memory allocated
+* structure. This is called when rcu read locks have been released.
+*/
+int add_state_table_to_list(struct state_table* newtable)
+{
+    u32 key = get_state_hash(newtable->saddr, newtable->daddr, newtable->sport, newtable->dport, newtable->protocol);
+
+    /* acquire lock */
+    spin_lock_bh(&state_list_lock);
+
+    fill_timer_table_fields(newtable);
+    /* add timer */
+    add_timer(&newtable->timer_statelist);
+    /* add table to list */
+    INIT_LIST_HEAD(&newtable->list);
+    /* Add element to linear list (legacy/iteration support) */
+    list_add_rcu(&newtable->list, &root_state_table.list);
+    /* Add element to hash table */
+    hash_add_rcu(state_hashtable, &newtable->hnode, key);
+
+    /* Update table counter */
+    state_tables_counter++;
+    table_id++;
+    /* release lock */
+    spin_unlock_bh(&state_list_lock);
+    return 0;
+}
+
+/* This routine acquires the write lock before deleting an item
+* on the list of the state connections.
+*/
+void handle_keep_state_timeout(struct timer_list *t)
+{
+    struct state_table *st_to_free = timer_container_of(st_to_free, t, timer_statelist);
+
+    spin_lock_bh(&state_list_lock);
+
+    if(we_are_exiting != 0)
+    {
+        IPFI_PRINTK("data in handle_keep_state_timeout() we are exiting!\n");
+        spin_unlock_bh(&state_list_lock);
+        return;
+    }
+
+    if(st_to_free == NULL)
+    {
+        IPFI_PRINTK("handle_timeout: null data\n");
+        spin_unlock_bh(&state_list_lock);
+        return;
+    }
+    /* Once the timer has decayed, the kernel automatically removes the
+    * element from the list. Anyway, removing the timer within the timer
+    * function is considered a good practise. First acquire lock.
+    */
+
+
+    timer_delete(&st_to_free->timer_statelist);
+    list_del_rcu(&st_to_free->list);
+    hash_del_rcu(&st_to_free->hnode);
+
+    /* do not decrease table_id, but decrement state_tables_counter. */
+    state_tables_counter--;
+    /* call_rcu will free memory */
+    call_rcu(&st_to_free->state_rcuh, free_state_entry_rcu_call);
+    spin_unlock_bh(&state_list_lock);
+}
+
+/* returns in *addr the internet address corresponding to 
+* ouput or input interface, depending on field "direction" of info 
+* info packet. This is good for in and out directions, where 
+* the context is clear when one says "my address". 
+*/
+int get_dev_ifaddr(__u32 * addr, int direction,
+                   const struct net_device *in,
+                   const struct net_device *out)
+{
+    switch (direction)
+    {
+    case IPFI_INPUT:
+        /* if packet enters, look for input interface as our interface */
+        if (in && get_ifaddr_by_name(in->name, addr) < 0) {
+            IPFI_PRINTK("IPFIRE: direction: input no interface matching name %s!\n",
+                        in->name);
+            return -1;
+        }
+        break;
+    case IPFI_OUTPUT:
+        /* if packet goes out, look for out interface as our interface */
+        if (out && get_ifaddr_by_name(out->name, addr) < 0) {
+            printk ("IPFIRE: direction: output: no interface matching name %s!\n",
+                    out->name);
+            return -1;
+        }
+        break;
+    default:
+        printk("IPFIRE: cannot get my address for direction %d!\n", direction);
+        return -1;
+    }
+    return 0;
+}
+
+/* returns in *addr the internet address having the name ifname */
+int get_ifaddr_by_name(const char *ifname, __u32 * addr)
+{
+    struct net_device *pnet_device;
+    struct in_device *pin_device;
+    struct in_ifaddr* inet_ifaddr;
+
+    rcu_read_lock();
+    for_each_netdev_rcu(&init_net, pnet_device)
+    {
+        if ((netif_running(pnet_device))
+                && (pnet_device->ip_ptr != NULL)
+                && (strcmp(pnet_device->name, ifname) == 0))
+        {
+            pin_device =
+                    (struct in_device *) pnet_device->ip_ptr;
+            inet_ifaddr = pin_device->ifa_list;
+            if(inet_ifaddr == NULL)
+            {
+                IPFI_PRINTK("ifa_list is null!\n");
+                break;
+            }
+            /* ifa_local: ifa_address is the remote point in ppp */
+            *addr = (inet_ifaddr->ifa_local);
+            rcu_read_unlock();
+            return 1;
+        }
+
+    }
+
+    rcu_read_unlock();
+    return -1;		/* address not found! */
+}
+
+int free_state_tables(void)
+{
+    struct state_table *tl;
+    int counter = 0, i = 0;
+    /* free all entries in tables */
+    spin_lock_bh(&state_list_lock);
+    list_for_each_entry(tl, &root_state_table.list, list)
+    {
+        i++;
+        if(timer_delete_sync(&tl->timer_statelist) > 0 )
+        {
+            list_del_rcu(&tl->list);
+            hash_del_rcu(&tl->hnode);
+            call_rcu(&tl->state_rcuh, free_state_entry_rcu_call);
+            counter++;
+            state_tables_counter--;
+        }
+        else
+            IPFI_PRINTK("IPFIRE: free_state_tables(): timer already expired for the entry %d.\n", i);
+    }
+    spin_unlock_bh(&state_list_lock);
+    return counter;
+}
+
+/*  1. set the correct state of the new entry (IPFI_NEW, packet not already seen,
+    just the rule is ready for future connection);
+    2. initialize timers;
+    3. add the rule to the tail of the list just as any other rule
+    4. :)
+    */
+int add_ftp_dynamic_rule(struct state_table* ftpt)
+{
+    if (state_tables_counter == max_state_entries)
+    {
+        IPFI_PRINTK("IPFIRE: reached maximum count for STATE entries "
+                    "(adding FTP rule): %u\n", state_tables_counter);
+        kfree(ftpt);
+        return -1;
+    }
+    /* set the correct state. We haven't already seen any ftp data packet for now */
+    ftpt->state.state = FTP_NEW;
+
+    if(ftpt->ftp != FTP_DEFINED)
+    {
+        IPFI_PRINTK("IPFIRE: ftp support: you shouldn't be here without FTP_DEFINED set!\n");
+        return -1;
+    }
+    /* Since version 0.98.5, the ftp table id is the same of the state table
+    * that generated it. So, we do not set the ftp table id here, but
+    * inside get_params_and_alloc_newentry() in ipfi_ftp.c
+    */
+    /* ftpt->id = table_id + 1; */
+
+    add_state_table_to_list(ftpt);
+    return 0;
+}
+
+
+
+void update_ifindex_in_state_tables(const char *name, int new_index)
+{
+    struct state_table *entry;
+    spin_lock_bh(&state_list_lock);
+    list_for_each_entry(entry, &root_state_table.list, list) {
+        if (entry->in_devname[0] && strcmp(entry->in_devname, name) == 0)
+            entry->in_ifindex = new_index;
+        if (entry->out_devname[0] && strcmp(entry->out_devname, name) == 0)
+            entry->out_ifindex = new_index;
+    }
+    spin_unlock_bh(&state_list_lock);
+}
+
+static int ipfire_netdev_event(struct notifier_block *this, unsigned long event, void *ptr)
+{
+    struct net_device *dev = netdev_notifier_info_to_dev(ptr);
+
+    if (event == NETDEV_UP || event == NETDEV_CHANGENAME || event == NETDEV_REGISTER) {
+        update_ifindex_in_rules(dev->name, dev->ifindex);
+        update_ifindex_in_state_tables(dev->name, dev->ifindex);
+    } else if (event == NETDEV_UNREGISTER) {
+        update_ifindex_in_rules(dev->name, -1);
+        update_ifindex_in_state_tables(dev->name, -1);
+    }
+    return NOTIFY_DONE;
+}
+
+static struct notifier_block ipfire_netdev_notifier = {
+    .notifier_call = ipfire_netdev_event,
+};
+
+void register_ipfire_netdev_notifier(void)
+{
+    register_netdevice_notifier(&ipfire_netdev_notifier);
+}
+
+void unregister_ipfire_netdev_notifier(void)
+{
+    unregister_netdevice_notifier(&ipfire_netdev_notifier);
+}
+
+//static int  init(void)
+int init_machine(void)
+{
+    INIT_LIST_HEAD(&root_state_table.list);
+    hash_init(state_hashtable);
+    register_ipfire_netdev_notifier();
+    return 0;
+}
+
+//static void __exit fini(void)
+void fini_machine(void)
+{
+    unregister_ipfire_netdev_notifier();
+    int ret;
+    ret = free_state_tables();
+    IPFI_PRINTK("IPFIRE: state tables freed: %d.\n", ret);
+    /* might_sleep(): see linux kernel sources/include/linux.h:
+    * this is a macro which will print a stack trace if it is executed in an atomic
+    * context (spinlock, irq-handler, ...).
+    *
+    * This is a useful debugging help to be able to catch problems early and not
+    * be biten later when the calling function happens to sleep when it is not
+    * supposed to.
+    */
+    might_sleep();
+    /* free_state_tables() calls the timeout handler which
+    * schedules the rcu callback. We must wait until all
+    * the callbacks which free the state tables end.
+    */
+    /**
+    * rcu_barrier - Wait until all the in-flight RCUs are complete.
+    * see linux kernel sources/kernel/rcupdate.c
+    */
+    rcu_barrier();
+    /**
+    * See also kernel sources/kernel/rcupdate.c:
+    * synchronize_rcu - wait until a grace period has elapsed.
+    *
+    * Control will return to the caller some time after a full grace
+    * period has elapsed, in other words -> after all currently executing RCU
+    * read-side critical sections have completed <-.  RCU read-side critical
+    * sections are delimited by rcu_read_lock() and rcu_read_unlock(),
+    * and may be nested.
+    *
+    * If your read-side code is not protected by rcu_read_lock(), do -not-
+    * use synchronize_rcu().
+    */
+    /* rcu_barrier(), differently from synchroinze_rcu(), waits the completion
+    * of the rcu callbacks, while the second waits just a grace time.
+    * So I use rcu_barrier() instead.
+    */
+}
+
+MODULE_DESCRIPTION("IPFIREwall filtering functions and state machine.");
+MODULE_AUTHOR("Giacomo S. <delleceste@gmail.com>");
+MODULE_LICENSE("GPL");
+
+
+

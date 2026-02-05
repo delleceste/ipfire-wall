@@ -2772,6 +2772,37 @@ int print_my_rules(void)
   return 0;
 }
 
+/* listener prints statistics regarding netlink communication */
+void print_stats(struct netlink_stats* ns)
+{
+  struct kernel_stats firestats;
+  unsigned long long total_us = ns->in_rcv + ns->out_rcv + ns->fwd_rcv + ns->pre_rcv + ns->post_rcv;
+
+  PNL;
+  printf(GRAY "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -" NL);
+  PTAB, PRED, printf(TR("STATISTICS FROM "));
+  PUND; printf(TR("USERSPACE FIREWALL")); PCL; PRED; 
+	 printf(TR(" POINT OF VIEW")); PCL; PNL; PNL;
+	
+  PGRN, printf(TR("SUMMARY ON PACKETS RECEIVED BY THIS PROCESS:")), PNL;
+  printf("- INPUT: \t%llu\n"
+	 "- OUTPUT: \t%llu\n"
+	 "- FORWARD: \t%llu\n"
+	 "- PRE ROUTING: \t%llu\n"
+	 "- POST ROUTING: %llu\n",
+	 ns->in_rcv, ns->out_rcv, ns->fwd_rcv, ns->pre_rcv, ns->post_rcv);
+  printf("- TOTAL RECEIVED: %llu\n", total_us);
+  
+  printf(GRAY "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -" NL);
+  
+  /* Now fetch and print kernel stats for a complete report */
+  if (request_kstats() < 0 || receive_kstats(&firestats) < 0) {
+      PRED, printf(TR("Failed to fetch kernel statistics for full report.")), PNL;
+  } else {
+      print_kstats(&firestats);
+  }
+}
+
 /* parent prints kernel statistics after a stats 
  * request. */
 void print_kstats(const struct kernel_stats* ks)
@@ -2974,46 +3005,6 @@ void print_kstats(const struct kernel_stats* ks)
 }
 
 /* listener prints statistics regarding netlink communication */
-void print_stats(struct netlink_stats* ns)
-{
-  /* update percentage */
-  if( ns->sum_now != 0)
-    ns->percentage = (float) 
-      ( ( ( (float) ns->total_lost / (float) ns->sum_now) ) * 100);
-  else
-    ns->percentage = 0;
-	
-  printf(GRAY "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -" NL);
-  PTAB, PRED, printf(TR("STATISTICS FROM "));
-  PUND; printf(TR("USERSPACE FIREWALL")); PCL; PRED; 
-	 printf(TR(" POINT OF VIEW")); PCL; PNL; PNL;
-	
-  PGRN, printf(TR("SUMMARY ON PACKETS ")), PUND; printf(TR("PROCESSED"));
-  PCL, PGRN, printf(TR(" BY ")); printf(UNDERL "KERNEL" CLR GREEN ":" NL);
-  printf("- INPUT: \t%llu\n"
-	 "- OUTPUT: \t%llu\n"
-	 "- FORWARD: \t%llu\n"
-	 "- PRE ROUTING: \t%llu\n"
-	 "- POST ROUTING: %llu\n",
-	 ns->in_rcv, ns->out_rcv, ns->fwd_rcv, ns->pre_rcv, ns->post_rcv);
-	
-  PNL, PUND, PTAB, PTAB, printf(TR("IN THIS SESSION:")), PNL;
-  PNL, printf(TR("- Packets ")), PUND, PGRN, printf(TR("received")); PCL;
-  printf(TR(" from kernel firewall: %lu."), ns->last_pre_rcv+
-	 ns->last_in_rcv + ns->last_out_rcv + ns->last_fwd_rcv+
-	 ns->last_post_rcv), PNL;
-  printf(TR("- Packets ")), PUND, PVIO, printf(TR("not sent"));
-  PCL, printf(TR(" by kernel firewall due to loglevel: %d."), 
-	 ns->not_sent_nor_lost), PNL;
-  printf(TR("- Packets ")); PUND; PRED, printf(TR("lost")), PCL,
-  printf(TR(" in kernel/user communication: %lu"), ns->total_lost); 
-  PGRAY, printf(TR(" (not lost by firewall ;)"));
-  PNL, printf(TR("- Packets ")); PUND, PRED, printf(TR("lost")), PCL,
-  printf(TR(" over total packets received: %lu/%lu [%.2f %%]"),
-	 ns->total_lost, ns->sum_now, ns->percentage), PNL;
-	
-  printf(GRAY "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -" NL);
-}
 
 /* asks user to press a key, then sends to listener
  * a command to enable printing */
