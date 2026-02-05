@@ -44,8 +44,20 @@ pdf: $(REPORT)
 		fi; \
 		if [ -n "$$ENGINE" ]; then \
 			echo "Using PDF engine: $$ENGINE"; \
+			FILTER_ARG=""; \
+			if command -v mmdc >/dev/null 2>&1; then \
+				echo "Mermaid CLI found - diagrams will be rendered"; \
+				FILTER_ARG="--filter mermaid-filter"; \
+			elif command -v mermaid-filter >/dev/null 2>&1; then \
+				echo "Mermaid filter found - diagrams will be rendered"; \
+				FILTER_ARG="--filter mermaid-filter"; \
+			else \
+				echo "WARNING: mermaid-filter not found - diagrams will show as code"; \
+				echo "To render diagrams, install: npm install -g @mermaid-js/mermaid-cli mermaid-filter"; \
+			fi; \
 			pandoc $(REPORT) -o $(PDF) \
 				--pdf-engine=$$ENGINE \
+				$$FILTER_ARG \
 				--toc \
 				--toc-depth=3 \
 				-V geometry:margin=1in \

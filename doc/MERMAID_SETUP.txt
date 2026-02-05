@@ -1,0 +1,43 @@
+Installing Mermaid Support for PDF Generation
+==============================================
+
+The documentation contains Mermaid diagrams that need special handling for PDF export.
+
+Option 1: Install Mermaid CLI + Filter (Recommended)
+----------------------------------------------------
+This renders diagrams as high-quality images in the PDF:
+
+1. Install Node.js (if not already installed):
+   sudo apt install nodejs npm
+
+2. Install Mermaid CLI and filter globally:
+   sudo npm install -g @mermaid-js/mermaid-cli mermaid-filter
+
+3. Run make pdf as normal:
+   make pdf
+
+The diagrams will be automatically rendered.
+
+Option 2: Use HTML-based PDF (Simpler)
+---------------------------------------
+This method doesn't require Node.js:
+
+1. Install wkhtmltopdf:
+   sudo apt install wkhtmltopdf
+
+2. Generate PDF:
+   make pdf-html
+
+Note: This method won't render Mermaid diagrams either unless you pre-process
+the markdown with a tool that converts Mermaid to images.
+
+Option 3: View in Browser/VS Code
+----------------------------------
+The easiest way to see the diagrams:
+
+1. Install VS Code Mermaid extension:
+   code --install-extension bierner.markdown-mermaid
+
+2. Open any .md file and press Ctrl+Shift+V to preview with rendered diagrams
+
+3. Or push to GitHub - it renders Mermaid automatically
