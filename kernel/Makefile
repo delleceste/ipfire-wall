@@ -93,9 +93,31 @@ help:
 # are always executed, even if a file named 'install' already exists.
 # It is the traditional equivalent of the modern .PHONY target.
 install:   FORCE
-	$(MAKE) -C $(KDIR) M=$(PWD) modules_install
+	$(MAKE) -C $(KDIR) M=$(BUILD_DIR_ABS) modules_install
 	depmod -a
 
+load: FORCE
+	@if [ ! -f $(BUILD_DIR)/$(MODULE_NAME).ko ]; then \
+		echo "Module not found. Run 'make' first."; \
+		exit 1; \
+	fi
+	@if lsmod | grep -q "^$(MODULE_NAME) "; then \
+		echo "Module $(MODULE_NAME) is already loaded."; \
+	else \
+		insmod $(BUILD_DIR)/$(MODULE_NAME).ko; \
+		echo "Module $(MODULE_NAME) loaded."; \
+	fi
+
+unload: FORCE
+	@if lsmod | grep -q "^$(MODULE_NAME) "; then \
+		rmmod $(MODULE_NAME); \
+		echo "Module $(MODULE_NAME) removed."; \
+	else \
+		echo "Module $(MODULE_NAME) is not loaded."; \
+	fi
+
 FORCE:
+
+.PHONY: all clean distclean help install load unload
 
 endif
