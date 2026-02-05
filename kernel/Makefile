@@ -93,7 +93,7 @@ help:
 # are always executed, even if a file named 'install' already exists.
 # It is the traditional equivalent of the modern .PHONY target.
 install:   FORCE
-	$(MAKE) -C $(KDIR) M=$(BUILD_DIR_ABS) modules_install
+	$(MAKE) -C $(KDIR) M=$(BUILD_DIR_ABS) modules_install CONFIG_MODULE_SIG=n
 	depmod -a
 
 load: FORCE
