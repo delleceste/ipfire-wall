@@ -1,543 +1,158 @@
-# IPFire Packet Flow Walkthrough
+# IPFire Packet Flow Walkthrough (Technical Master Edition)
 
-This document provides comprehensive walkthroughs of packet flows through the IPFire kernel firewall module for three representative rules from `allowed.base`. Each walkthrough demonstrates different firewall concepts and provides detailed diagrams showing packet traversal through Netfilter hooks and the IPFire filtering engine.
-
----
-
-## Rule Selection
-
-We analyze three conceptually different rules that showcase the firewall's capabilities:
-
-1. **HTTP Connection (Stateful)** - Basic stateful connection tracking
-2. **FTP Control Connection (Passive FTP)** - Dynamic state creation for data channels
-3. **SSH Bidirectional Access** - Both INPUT and OUTPUT paths with state tracking
+This document provides exhaustive technical walkthroughs of packet flows through the IPFire kernel module. It goes beyond high-level logic to explore the internal function call stacks, specific source code segments, and low-level state transitions.
 
 ---
 
-## Rule 1: HTTP Connection (Stateful)
+## 1. The Filtering Lifecycle: Hook to Verdict
 
-### Rule Definition
-```
-RULE
-NAME=me -> www
-DIRECTION=OUTPUT
-MYSRCADDR
-PROTOCOL=6
-DSTPORT=80
-KEEP_STATE=YES
-```
+Every packet handled by IPFire follows a predictable lifecycle within the kernel.
 
-### Scenario
-A user on the firewall machine initiates an HTTP connection to a web server at `203.0.113.50:80`.
+### The Standard Call Stack
+When a packet is intercepted by a Netfilter hook, the following internal chain is executed:
 
-### Outgoing SYN Packet Flow
-
-```mermaid
-flowchart TD
-    subgraph Userspace
-        App([Application]) -->|sendto/write| Socket[Socket Layer]
-    end
-
-    subgraph Kernel_Network_Stack [Linux Kernel Network Stack]
-        Socket --> TCP[TCP Stack: Create SYN]
-        TCP --> Hook_LOCAL_OUT{NF_IP_LOCAL_OUT}
-    end
-
-    subgraph IPFire_Engine [IPFire Filtering Engine]
-        Hook_LOCAL_OUT -- Packet --> Process[ipfire.c: process]
-        Process --> Response[ipfi_response]
-        
-        subgraph Logic [Filtering Logic]
-            Response --> CheckState{check_state}
-            CheckState -- Miss --> Filter[ipfire_filter]
-            Filter -- Match: 'me -> www' --> KeepState[keep_state]
-        end
-        
-        KeepState --> NewEntry[Create state_table entry]
-        NewEntry --> Hash[Add to state_hashtable]
-    end
-
-    subgraph State_Transitions [State Machine]
-        NewEntry --> SYN_SENT[[State: SYN_SENT]]
-        SYN_SENT --> Timer[Start Timeout Timer]
-    end
-
-    KeepState --> Verdict[Verdict: IPFI_ACCEPT]
-    Verdict --> Accept[NF_ACCEPT]
-    Accept --> Hook_POST_ROUTING{NF_IP_POST_ROUTING}
-    Hook_POST_ROUTING --> Net((Network))
-
-    %% Styling
-    classDef hook fill:#f9f,stroke:#333,stroke-width:2px;
-    classDef engine fill:#bbf,stroke:#333,stroke-width:2px;
-    classDef state fill:#dfd,stroke:#333,stroke-width:2px;
-    classDef match fill:#9f9,stroke:#333,stroke-width:2px;
-
-    class Hook_LOCAL_OUT,Hook_POST_ROUTING hook;
-    class Process,Response,Logic,KeepState engine;
-    class SYN_SENT state;
-    class Verdict match;
-```
-
-#### Key Operations
-
-1. **Hook Entry**: `NF_IP_LOCAL_OUT` invokes `ipfi_response()` with `flow.direction = IPFI_OUTPUT`
-2. **State Check**: `check_state()` searches hash table - no match (new connection)
-3. **Rule Matching**: `ipfire_filter()` iterates through permission rules
-4. **Rule Match**: Matches `me -> www` (protocol=6, dport=80, MYSRCADDR, OUTPUT)
-5. **State Creation**: `keep_state()` allocates new `state_table`:
-   ```c
-   state_table {
-       saddr: 192.0.2.100        // Local firewall IP
-       daddr: 203.0.113.50       // Web server IP
-       sport: 54321              // Ephemeral port
-       dport: 80                 // HTTP
-       protocol: IPPROTO_TCP
-       state: SYN_SENT
-       direction: IPFI_OUTPUT
-       rule_id: <hash of rule>
-   }
-   ```
-6. **Hash Table**: Entry added to `state_hashtable` using `jhash_3words(saddr, daddr, ports)`
-7. **Timer**: Setup timer expires in ~120 seconds (setup/shutdown timeout)
-8. **Verdict**: Returns `NF_ACCEPT`
-
-### Returning SYN-ACK Packet Flow
-
-```mermaid
-flowchart TD
-    Net((Network)) --> Hook_PRE{NF_IP_PRE_ROUTING}
-    
-    subgraph IPFire_Pre [IPFire Pre-Processing]
-        Hook_PRE --> PreProcess[ipfi_pre_process]
-        PreProcess --> DNAT{Check DNAT}
-        DNAT -- No Match --> Route[Routing Decision]
-    end
-
-    Route -- Local Delivery --> Hook_LOCAL_IN{NF_IP_LOCAL_IN}
-
-    subgraph IPFire_Core [IPFire Core Engine]
-        Hook_LOCAL_IN --> ProcessIn[ipfire.c: process]
-        ProcessIn --> ResponseIn[ipfi_response]
-        
-        subgraph LogicIn [Stateful Lookup]
-            ResponseIn --> CheckStateIn{check_state}
-            CheckStateIn -- "Hit (Reverse)" --> Entry[Existing state_table]
-        end
-    end
-
-    subgraph Machine [State Machine]
-        Entry --> Transition[state_machine: SYN_SENT -> SYN_RECV]
-        Transition --> UpdateTimer[Refresh Timer]
-    end
-
-    Entry --> VerdictIn[Verdict: IPFI_ACCEPT]
-    VerdictIn --> AcceptIn[NF_ACCEPT]
-    AcceptIn --> App([Application])
-
-    %% Styling
-    classDef hook fill:#f9f,stroke:#333,stroke-width:2px;
-    classDef engine fill:#bbf,stroke:#333,stroke-width:2px;
-    classDef state fill:#dfd,stroke:#333,stroke-width:2px;
-    classDef match fill:#9f9,stroke:#333,stroke-width:2px;
-
-    class Hook_PRE,Hook_LOCAL_IN hook;
-    class PreProcess,ResponseIn,LogicIn engine;
-    class Transition,UpdateTimer state;
-    class VerdictIn match;
-```
-
-#### Key Operations
-
-1. **Reverse Match**: `check_state()` finds entry with **reverse** matching:
-   ```c
-   // Packet has: src=203.0.113.50:80, dst=192.0.2.100:54321
-   // State table: saddr=192.0.2.100:54321, daddr=203.0.113.50:80
-   reverse_state_match() -> returns 1
-   ```
-2. **State Machine**: `state_machine()` transitions `SYN_SENT + (SYN|ACK)` → `SYN_RECV`
-3. **Timer Update**: `update_timer_of_state_entry()` extends timeout to established connection timeout (~3600 seconds)
-4. **No Rule Check**: Since state matched, `ipfire_filter()` is **not called**
-5. **Verdict**: Returns `NF_ACCEPT` based on state match
-
-### Established Connection Data Flow
-
-```mermaid
-flowchart TD
-    subgraph Traffic [Bidirectional Traffic]
-        Pkt[Subsequent Packet] --> Lookup{check_state}
-    end
-
-    subgraph Fast_Path [Stateful Fast Path]
-        Lookup -- "Match (Direct/Reverse)" --> State[State: ESTABLISHED]
-        State --> Refresh[Update Timer]
-        Refresh --> Accept[Verdict: IPFI_ACCEPT]
-    end
-
-    Accept --> Bypass[[Bypass Rule Evaluation]]
-    Bypass --> NF_Accept[NF_ACCEPT]
-
-    %% Styling
-    classDef engine fill:#bbf,stroke:#333,stroke-width:2px;
-    classDef fast fill:#9f9,stroke:#333,stroke-width:2px;
-    
-    class Lookup engine;
-    class State,Refresh,Accept,Bypass fast;
-```
-
-#### Performance Note
-Once state is `ESTABLISHED`, all subsequent packets bypass rule evaluation entirely, providing high-performance stateful filtering via hash table lookup.
+1.  **`ipfire.c:process()`**: The primary dispatcher for all hooks.
+2.  **`ipfi_response()`**: Orchestrates the filtering decision.
+3.  **`check_state()`**: Performs the O(1) hash lookup for established flows.
+4.  **`ipfire_filter()`**: (If state miss) Performs the O(n) rule comparison.
+5.  **`keep_state()`**: (If match) Initializes a new state tracking entry.
 
 ---
 
-## Rule 2: FTP Control Connection (Passive FTP)
+## 2. Scenario 1: Stateful HTTP Connection (OUTPUT)
 
-### Rule Definition
-```
-RULE
-NAME=me -> ftp control
-DIRECTION=OUTPUT
-MYSRCADDR
-PROTOCOL=6
-DSTPORT=21
-KEEP_STATE=YES
-FTP_SUPPORT=YES
-```
+### 2.1. Initial SYN (The "Slow Path")
 
-### Scenario
-User initiates FTP connection to `203.0.113.100:21` and enters passive mode (PASV).
+When an application initiates a connection, the first packet triggers the "Slow Path" logic.
 
-### Control Connection Establishment
-
-The initial FTP control connection follows the same flow as HTTP (Rule 1), with state tracking for `<local>:ephemeral <-> <server>:21`.
-
-### PASV 227 Response Flow
-
-When the server sends a PASV 227 reply like:
-```
-227 Entering Passive Mode (203,0,113,100,195,210)
-```
-
-This encodes data channel endpoint: `203.0.113.100:50130` (195*256 + 210)
-
-```mermaid
-flowchart TD
-    subgraph Control_Connection [Control Channel - state: FTP_LOOK_FOR]
-        PacketIn[Packet with '227' code] --> CheckState{check_state}
-        CheckState -- Reverse Hit --> StateTable[State table entry]
-    end
-
-    subgraph FTP_Helper [FTP Helper: helpers/ftp.c]
-        StateTable --> Helper[ftp_support]
-        Helper --> Parse[packet_contains_ftp_params]
-        Parse --> Extract[Extract IP/Port from Payload]
-    end
-
-    subgraph Dynamic_State_Creation [State Management]
-        Extract --> NewEntry[Create Dynamic state_table]
-        NewEntry --> Flags[Set flag: FTP_DEFINED]
-        Flags --> AddList[add_ftp_dynamic_rule]
-    end
-
-    AddList --> Accept[NF_ACCEPT]
-
-    %% Styling
-    classDef engine fill:#bbf,stroke:#333,stroke-width:2px;
-    classDef helper fill:#fba,stroke:#333,stroke-width:2px;
-    classDef dynamic fill:#dfd,stroke:#333,stroke-width:2px;
-
-    class CheckState,StateTable engine;
-    class Helper,Parse,Extract helper;
-    class NewEntry,Flags,AddList dynamic;
-```
-
-#### Key Operations
-
-1. **FTP Flag Check**: Control connection state has `ftp = FTP_LOOK_FOR`
-2. **Payload Inspection**: `ftp_support()` in `helpers/ftp.c` scans TCP payload
-3. **227 Detection**: `data_start_with_227()` confirms "227" at start of data
-4. **Parameter Extraction**: 
-   ```c
-   // Parses: (203,0,113,100,195,210)
-   ftp_info {
-       ftp_addr: 203.0.113.100 (in network order)
-       ftp_port: 50130 (195*256 + 210, in network order)
-       valid: 1
-   }
-   ```
-5. **Dynamic State Creation**:
-   ```c
-   struct state_table *newt = kmalloc(...)
-   newt->saddr = <local_ip>
-   newt->sport = 0              // ANY source port
-   newt->daddr = 203.0.113.100  // From FTP response
-   newt->dport = 50130          // From FTP response
-   newt->ftp = FTP_DEFINED      // Special FTP state
-   newt->state = IPFI_NOSTATE
-   ```
-6. **Special Matching**: When matching FTP_DEFINED states, source port is **ignored** in first packet
-
-### Data Connection Flow
-
-```mermaid
-flowchart TD
-    DataPkt[Data Packet: SYN to 50130] --> Hook_OUT{NF_IP_LOCAL_OUT}
-    
-    subgraph State_Match [State Stateful Match]
-        Hook_OUT --> Lookup{check_state}
-        Lookup -- Match ignoring sport --> Match[FTP_DEFINED Entry]
-    end
-
-    subgraph State_Upgrade [State Evolution]
-        Match --> Upgrade[Update entry with actual sport]
-        Upgrade --> Established[Set flag: FTP_ESTABLISHED]
-    end
-
-    Established --> Machine[state_machine: NEW -> SYN_SENT]
-    Machine --> Accept[NF_ACCEPT]
-
-    %% Styling
-    classDef hook fill:#f9f,stroke:#333,stroke-width:2px;
-    classDef engine fill:#bbf,stroke:#333,stroke-width:2px;
-    classDef evolution fill:#dfd,stroke:#333,stroke-width:2px;
-
-    class Hook_OUT hook;
-    class Lookup,Match engine;
-    class Upgrade,Established,Machine evolution;
-```
-
-#### FTP State Transitions
-```
-Control: ESTABLISHED (ftp=FTP_LOOK_FOR)
-         ↓ (227 response detected)
-Dynamic: Created (ftp=FTP_DEFINED, sport=0)
-         ↓ (First outgoing packet)
-Data:    ESTABLISHED (ftp=FTP_ESTABLISHED, sport=<actual>)
-```
-
----
-
-## Rule 3: SSH Bidirectional Access
-
-### Rule Definitions
-```
-RULE
-NAME=me -> secure shell
-DIRECTION=OUTPUT
-MYSRCADDR
-PROTOCOL=6
-DSTPORT=22
-KEEP_STATE=YES
-
-RULE
-NAME=secure shell -> me
-DIRECTION=INPUT
-MYDSTADDR
-PROTOCOL=6
-DSTPORT=22
-KEEP_STATE=YES
-```
-
-### Scenario A: Outgoing SSH Connection
-
-This follows the same stateful flow as Rule 1 (HTTP), but to `dport=22`.
-
-### Scenario B: Incoming SSH Connection
-
-User connects FROM `203.0.113.200` TO the firewall's SSH server at `192.0.2.100:22`.
-
-```mermaid
-flowchart TD
-    Client((External Client)) --> Hook_PRE{NF_IP_PRE_ROUTING}
-    
-    subgraph Core [IPFire Filtering Core]
-        Hook_PRE --> Routing[Routing: Local]
-        Routing --> Hook_IN{NF_IP_LOCAL_IN}
-        Hook_IN --> Response[ipfi_response]
-        
-        subgraph Logic [Rule Check]
-            Response --> CheckState{check_state}
-            CheckState -- Miss --> Filter[ipfire_filter]
-            Filter -- "Match: 'ssh -> me'" --> Match[Match Found]
-        end
-        
-        Match --> KeepState[keep_state]
-    end
-
-    subgraph State [State Creation]
-        KeepState --> NewEntry[New state_table entry]
-         NewEntry --> SYN_RECV[[State: SYN_RECV]]
-    end
-
-    NewEntry --> Accept[NF_ACCEPT] --> SSHD([SSH Daemon])
-
-    %% Styling
-    classDef hook fill:#f9f,stroke:#333,stroke-width:2px;
-    classDef engine fill:#bbf,stroke:#333,stroke-width:2px;
-    classDef state fill:#dfd,stroke:#333,stroke-width:2px;
-
-    class Hook_PRE,Hook_IN hook;
-    class Response,Logic,Filter engine;
-    class NewEntry,SYN_RECV state;
-```
-
-### Return Traffic (SYN-ACK from SSH daemon)
-
-```mermaid
-flowchart TD
-    SSHD([SSH Daemon]) --> Hook_OUT{NF_IP_LOCAL_OUT}
-    
-    subgraph Stateful_Engine [IPFire Stateful Engine]
-        Hook_OUT --> Lookup{check_state}
-        Lookup -- "Hit (Reverse)" --> Entry[Existing State]
-    end
-
-    subgraph Transitions [State Machine]
-        Entry --> Machine[state_machine: SYN_RECV -> ESTABLISHED]
-    end
-
-    Machine --> Accept[NF_ACCEPT] --> Client((External Client))
-
-    %% Styling
-    classDef hook fill:#f9f,stroke:#333,stroke-width:2px;
-    classDef engine fill:#bbf,stroke:#333,stroke-width:2px;
-    classDef state fill:#dfd,stroke:#333,stroke-width:2px;
-
-    class Hook_OUT hook;
-    class Lookup,Entry engine;
-    class Machine state;
-```
-
-### Bidirectional Flow Diagram
-
-```mermaid
-sequenceDiagram
-    participant Client as External Client<br/>203.0.113.200
-    participant FW_IN as Firewall<br/>INPUT Hook
-    participant FW_OUT as Firewall<br/>OUTPUT Hook
-    participant Daemon as SSH Daemon<br/>192.0.2.100:22
-    
-    Client->>FW_IN: SYN (dport=22)
-    Note over FW_IN: Rule: "secure shell -> me"<br/>Creates state (direction=INPUT)
-    FW_IN->>Daemon: SYN (ACCEPT)
-    
-    Daemon->>FW_OUT: SYN-ACK
-    Note over FW_OUT: State: REVERSE match<br/>No rule check needed
-    FW_OUT->>Client: SYN-ACK (ACCEPT)
-    
-    Client->>FW_IN: ACK + Data
-    Note over FW_IN: State: Direct match<br/>(ESTABLISHED)
-    FW_IN->>Daemon: Data packets
-    
-    Daemon->>FW_OUT: Data
-    Note over FW_OUT: State: Reverse match<br/>(ESTABLISHED)
-    FW_OUT->>Client: Data packets
-```
-
----
-
-## State Matching Logic
-
-### Direct vs. Reverse Matching
-
-The firewall uses sophisticated matching to handle bidirectional traffic:
-
-#### Direct Match
-```c
-// State table: saddr=A, daddr=B, sport=X, dport=Y, direction=OUTPUT
-// Packet:      src=A,   dst=B,   sport=X, dport=Y, hook=LOCAL_OUT
-// Result: MATCH (same direction, same addresses/ports)
-```
-
-#### Reverse Match
-```c
-// State table: saddr=A, daddr=B, sport=X, dport=Y, direction=OUTPUT
-// Packet:      src=B,   dst=A,   sport=Y, dport=X, hook=LOCAL_IN
-// Result: MATCH (opposite direction, swapped addresses/ports)
-```
-
-### Hash Table Optimization
-
-State lookups use bidirectional hash normalization:
+#### Analysis of Rule Matching Logic
+In `ipfire_filter()`, the engine iterates through the `allowed` list. For an HTTP rule, the matching sequence looks like this:
 
 ```c
-u32 get_state_hash(__u32 saddr, __u32 daddr, __u16 sport, __u16 dport, __u8 proto)
-{
-    // Normalize: smaller address/port first
-    if (saddr > daddr || (saddr == daddr && sport > dport)) {
-        swap(saddr, daddr);
-        swap(sport, dport);
-    }
-    return jhash_3words(saddr, daddr, (sport << 16) | dport, proto);
-}
-```
-
-This ensures both directions of a connection hash to the same bucket.
-
----
-
-## Timer Management
-
-### State Timeouts
-
-| State | Timeout | Description |
-|-------|---------|-------------|
-| SYN_SENT | 120s | Setup phase |
-| SYN_RECV | 120s | Setup phase |
-| ESTABLISHED | 3600s | Active connection |
-| FIN_WAIT | 120s | Shutdown phase |
-| TIME_WAIT | 120s | Connection closing |
-
-### Timer Optimization
-
-Timers are only updated if >1 second has passed since last update:
-
-```c
-void update_timer_of_state_entry(struct state_table *sttable)
-{
-    unsigned long now = jiffies;
-    if (time_after(now, sttable->last_timer_update + HZ)) {
-        mod_timer(&sttable->timer_statelist, 
-                  jiffies + get_timeout_by_state(sttable->protocol, sttable->state) * HZ);
-        sttable->last_timer_update = now;
+// Internal Matching Core (conceptual simplified C)
+if (rule->direction == flow->direction && 
+    (rule->protocol == 0 || rule->protocol == ip_hdr(skb)->protocol)) {
+    
+    // Transport layer check
+    if (transport_protos_match(skb, rule)) {
+        // Source/Dest IP check
+        if (ip_match(skb, rule)) {
+            return MATCH_FOUND;
+        }
     }
 }
 ```
 
-This reduces `mod_timer` overhead for high-throughput connections.
+#### Detailed Outgoing SYN Workflow
+
+```mermaid
+flowchart TD
+    subgraph Hook_Entry [NF_IP_LOCAL_OUT]
+        Process[ipfire.c: process] --> Response[ipfi_response]
+    end
+
+    subgraph State_Check [State Engine Lookup]
+        Response --> CheckState[check_state]
+        CheckState -- "MISS (New Flow)" --> Filter[ipfire_filter]
+    end
+
+    subgraph Rule_Evaluation [Permission Check]
+        Filter --> Loop[Iterate allowed_rules list]
+        Loop -- "Match rule ID: 0x8A2C" --> KeepState[keep_state]
+    end
+
+    subgraph State_Initialization [State Creation]
+        KeepState --> Alloc[kmalloc: state_table]
+        Alloc --> Fill[Fill: saddr, daddr, sport, dport, proto]
+        Fill --> Timer[Initialize Timer: 120s]
+    end
+
+    State_Initialization --> Verdict[Verdict: IPFI_ACCEPT]
+```
+
+### 2.2. Returning SYN-ACK (The Transition)
+
+The reply packet is the first "Reverse" match. This packet is critical because it transitions the state from `SYN_SENT` to `SYN_RECV`.
+
+#### Internal Call: `check_state()`
+The lookup in `check_state()` uses a normalized hash to find the entry regardless of direction:
+
+```c
+// Hash computation normalization
+u32 hash = get_state_hash(saddr, daddr, sport, dport, proto);
+// The saddr/daddr are swapped in the call to get_state_hash for reverse packets
+```
+
+### 2.3. The Fast Path (Established Data)
+
+Once the 3-way handshake is complete, every subsequent packet avoids the rule list entirely.
+
+#### Performance Metrics
+- **Slow Path (First Packet)**: O(N) where N is number of rules in the list.
+- **Fast Path (Subsequent)**: O(1) Hash Table lookup + State machine update.
 
 ---
 
-## Performance Characteristics
+## 3. Scenario 2: Passive FTP (Dynamic NAT)
 
-### Rule Evaluation Bypass
+FTP is complex because it uses a control channel to negotiate a dynamic data channel.
 
-Once a state is established:
-- **State lookup**: O(1) hash table lookup
-- **Rule evaluation**: Skipped entirely
-- **Throughput impact**: Minimal (only hash computation + state machine update)
+### 3.1. The Payload Inspection
+When `FTP_SUPPORT=YES` is enabled, the state engine invokes the FTP helper during the control connection's lifetime.
 
-### Comparison
+#### The Hook: `helpers/ftp.c`
+When a packet is identified as part of an FTP control stream, the engine calls `ftp_support()`:
 
-| Packet Type | State Lookup | Rule Evaluation | Verdict Source |
-|-------------|--------------|-----------------|----------------|
-| New connection SYN | Miss | Full scan | Rule match |
-| Return SYN-ACK | Hit (reverse) | Skipped | State |
-| Established data | Hit (direct/reverse) | Skipped | State |
-| Unrelated packet | Miss | Full scan | Default policy |
+```c
+// Scanning for PASV response
+if (data_start_with_227(payload)) {
+    extract_ftp_info(payload, &finfo);
+    if (finfo.valid) {
+        add_ftp_dynamic_rule(sttable, finfo.ip, finfo.port);
+    }
+}
+```
+
+### 3.2. Data Channel "Prediction"
+The `add_ftp_dynamic_rule` creates a "zombie" state entry that has no active ports yet but is pre-authorized by the control channel's policy.
 
 ---
 
-## Summary
+## 4. Scenario 3: DNAT Interaction with FORWARD Hook
 
-These three rules demonstrate:
+This is one of the most technical flows in the module because it spans across different kernel subsystem triggers.
 
-1. **Stateful HTTP**: Basic hash-based connection tracking eliminates rule re-evaluation
-2. **FTP with Passive Mode**: Dynamic state creation allows data channels through firewall
-3. **Bidirectional SSH**: Separate INPUT/OUTPUT rules with unified state tracking
+### 4.1. Destination Translation (PRE_ROUTING)
+The packet enters `PRE_ROUTING` and is transformed.
 
-The IPFire architecture achieves high performance through:
-- Hash table-based state lookups
-- Bidirectional connection normalization  
-- Timer optimization for high-throughput connections
-- Bypass of rule evaluation for established states
+| Feature | Logic |
+|---------|-------|
+| **Transformation** | `ip_hdr(skb)->daddr` is changed to the internal server IP. |
+| **Checkums** | `ip_send_check(iph)` is called to recompute the L3 CRC. |
+| **Routing Trigger** | The destination cache (`skb_dst(skb)`) is released to force a re-route. |
+
+```c
+// Forcing Re-routing in ipfi_pre_process
+if (daddr_changed) {
+    dst_release(skb_dst(skb));
+    skb_dst_set(skb, NULL); // Kernel will re-route before next hook
+}
+```
+
+### 4.2. State Tracking in the FORWARD Hook
+Because the destination was changed to a non-local address, the kernel routes the packet to the `FORWARD` chain instead of `LOCAL_IN`.
+
+1.  **State Lookup**: `check_state` misses because the *modified* addresses are hashed.
+2.  **Rule Match**: The `FORWARD` rule list is scanned.
+3.  **State Creation**: A state is created based on the **post-NAT** addresses. This is critical for matching return traffic correctly.
+
+---
+
+## 5. Summary Table: Flow Characteristics
+
+| Phase | Hook | Path | Algorithm | Complexity |
+|-------|------|------|-----------|------------|
+| Initialization | Any | Slow | Rule List Scan | O(Rules) |
+| Established | Any | Fast | JHash Table | O(1) |
+| NAT (Pre) | PRE_ROUTING | Logic | Rules + Table | O(NAT_Rules) |
+| NAT (Post) | POST_ROUTING| Logic | Dynamic Table | O(1) |

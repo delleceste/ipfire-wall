@@ -28,6 +28,9 @@ Welcome to the comprehensive technical documentation for the IPFire-Wall kernel 
 8. **[NAT Flow Analysis](08_NAT_Flow_Analysis.md)**  
    *Detailed SNAT, Masquerade, and DNAT flows with checksum verification.*
 
+9. **[Developer API Guide](09_Developer_API_Guide.md)**  
+   *Internal kernel interfaces, shared structures, and Netlink protocols.*
+
 ---
 
 ## How to use this documentation

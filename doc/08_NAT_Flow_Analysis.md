@@ -1,122 +1,89 @@
-# NAT and Stateful Flow Analysis
+# NAT and Stateful Flow Analysis (Technical Master Edition)
 
-This report details the packet flow and code logic for Source NAT (SNAT), Masquerade, and Destination NAT (DNAT) within the `ipfire-wall` kernel module, specifically focusing on their interaction with the stateful filtering engine.
-
-## 1. Source NAT (SNAT) Flow
-
-SNAT is typically applied to outgoing packets to replace the internal source address with a public one.
-
-### Path: Internal Client $\rightarrow$ External Server
-
-```mermaid
-sequenceDiagram
-    participant C as Internal Client (192.168.1.10)
-    participant K as Kernel Hook: POST_ROUTING
-    participant SN as SNAT Logic (snat.c)
-    participant S as External Server (8.8.8.8)
-
-    C->>K: Packet (Src: 192.168.1.10, Dst: 8.8.8.8)
-    K->>SN: ipfi_post_process() -> snat_translation()
-    SN->>SN: Match translation_post rule
-    SN->>SN: add_snatted_entry() (Store Mapping)
-    SN->>SN: do_source_nat() -> manip_skb()
-    SN->>K: Packet Modified (Src: 1.2.3.4, Dst: 8.8.8.8)
-    K->>S: Transmit over WAN
-```
-
-### Path: External Server $\rightarrow$ Internal Client (Return Path)
-
-```mermaid
-sequenceDiagram
-    participant S as External Server (8.8.8.8)
-    participant K as Kernel Hook: PRE_ROUTING
-    participant SN as De-SNAT Logic (snat.c)
-    participant C as Internal Client (192.168.1.10)
-
-    S->>K: Packet (Src: 8.8.8.8, Dst: 1.2.3.4)
-    K->>SN: ipfi_pre_process() -> pre_de_snat()
-    SN->>SN: lookup_snatted_table() (Find Mapping)
-    SN->>SN: de_snat() -> manip_skb()
-    SN->>K: Packet Restored (Src: 8.8.8.8, Dst: 192.168.1.10)
-    K->>C: Route to Internal Client
-```
-
-### Key Functions
-- `snat_translation()`: Dispatcher in `POST_ROUTING`.
-- `add_snatted_entry()`: Creates the dynamic mapping for the connection.
-- `manip_skb()`: Performs the actual IP/Port replacement and checksum updates (`csum_replace4`, `inet_proto_csum_replace4`).
-- `pre_de_snat()`: Discovers and reverses the SNAT in the `PRE_ROUTING` hook for incoming responses.
+This report details the packet flow and code logic for Source NAT (SNAT), Masquerade, and Destination NAT (DNAT) within the IPFire kernel module, specifically focusing on the low-level manipulation of the `sk_buff` structure and transport headers.
 
 ---
 
-## 2. Masquerade Flow
+## 1. The Core Engine: `manip_skb`
 
-Masquerade is a specialized form of SNAT that dynamically fetches the IP of the outgoing interface.
+All NAT operations in IPFire eventually funnel into the `manip_skb()` function. This function is responsible for the delicate task of modifying packet headers while maintaining protocol integrity (checksums).
 
-### Logical Differences from SNAT
-1. **Dynamic IP**: Unlike `SNAT` which has a fixed `newaddr`, `Masquerade` calls `get_ifaddr(skb)`.
-2. **Retrieval**: `get_ifaddr` utilizes `inet_select_addr(dev, dst, RT_SCOPE_UNIVERSE)` to find the most appropriate public IP for the current route.
+### 1.1. Step-by-Step Logic
+1.  **L3 Address Swap**: The IP header's source or destination address is replaced.
+2.  **L3 Checksum Update**: Since the IP header Changed, the CRC must be updated. IPFire uses incremental updates for performance.
+3.  **L4 Port Swap**: For TCP/UDP, the source/destination ports are replaced.
+4.  **L4 Checksum Update**: Transport layer checksums (TCP/UDP) include a "pseudo-header" that contains the IP addresses. Therefore, changing an IP address REQUIRES recomputing the L4 checksum.
 
-### Key Functions
-- `masquerade_translation()`: Main handler in `masquerade.c`.
-- `get_ifaddr()`: Correctly extracts the interface IP using `inet_select_addr`.
-- `do_masquerade()`: Triggers `manip_skb` with the dynamic IP.
+### 1.2. Incremental Checksum Logic
+Instead of recalculating the entire packet checksum from scratch (which is expensive), IPFire uses the `csum_replace4` utility from the kernel:
+
+```c
+// Example: Updating IP Header Checksum after address change
+csum_replace4(&iph->check, oldaddr, newaddr);
+
+// Example: Updating TCP Checksum for Pseudo-Header change
+inet_proto_csum_replace4(&tcph->check, skb, oldaddr, newaddr, true);
+```
 
 ---
 
-## 3. DNAT to FORWARD with Stateful Filtering
+## 2. Source NAT (SNAT) and Masquerade
 
-This scenario demonstrates how a packet's destination is changed, causing it to cross into the `FORWARD` chain where it activates stateful tracking.
+### 2.1. SNAT Lifecycle
+In `POST_ROUTING`, the engine identifies packets requiring SNAT.
 
-### The Flow: External Client $\rightarrow$ Internal Server
+1.  **Rule Match**: `snat_translation()` finds a match in `translation_post`.
+2.  **Accounting**: `add_snatted_entry()` records the `(original_src -> new_src)` mapping. This is vital for "De-SNATting" the return traffic.
+3.  **Transformation**: `do_source_nat()` executes the `manip_skb` logic on the source fields.
 
-```mermaid
-graph TD
-    A[Packet In: C -> P] --> B{Hook: PRE_ROUTING}
-    B --> C[ipfi_pre_process]
-    C --> D[dnat_translation]
-    D --> E[Change Dst: C -> S1]
-    E --> F{Re-Route Decision}
-    F -->|Dst is not local| G{Hook: FORWARD}
-    G --> H[ipfi_response]
-    H --> I[ipfire_filter]
-    I --> J{State Lookup: check_state}
-    J -->|First Packet: No Match| K[Scan Allowed Rules]
-    K --> L{Rule Match: Stateful?}
-    L -->|Yes| M[keep_state]
-    M --> N[Create State Entry]
-    N --> O[Verdict: ACCEPT]
-    O --> P[Packet Out: C -> S1]
+### 2.2. Masquerade: The Dynamic SNAT
+Masquerade is identical to SNAT except it doesn't have a fixed IP. It calls `get_ifaddr()` which uses `inet_select_addr()` to find the primary IP of the outgoing network interface.
+
+---
+
+## 3. Destination NAT (DNAT): The Routing Challenge
+
+DNAT is the most complex because it happens in `PRE_ROUTING`, *before* the kernel makes its final routing decision.
+
+### 3.1. Re-Routing Logic
+If IPFire changes the destination IP of a packet, the kernel's original routing plan (based on the old IP) is now invalid. To fix this, IPFire must manually clear the kernel's destination cache.
+
+```c
+// Force re-routing in ipfi_pre_process
+if (daddr != iph->daddr) {
+    dst_release(skb_dst(skb)); // Free old route
+    skb_dst_set(skb, NULL);    // Tell kernel to re-route
+}
 ```
 
-### Code Walkthrough Verification
+### 3.2. Interaction with FORWARD Hook
+When a packet's destination is changed to an internal server (e.g., Load Balancing), it no longer looks like a "Local In" packet.
 
-1. **Rule Matching**: In `dnat_translation`, the packet is matched against the `translation_pre` list. 
-2. **NAT Accounting**: `add_dnatted_entry` is called BEFORE the translation, ensuring the original `old_saddr` and `old_daddr` are captured for later reversal.
-3. **Re-routing**: In `ipfire.c:process`, we detected a `daddr` change and cleared the destination cache:
-   ```c
-   if (daddr != ip_hdr(skb)->daddr) {
-       dst_release(skb_dst(skb));
-       skb_dst_set(skb, NULL);
-   }
-   ```
-   This is **CRITICAL**; without it, the kernel would try to deliver the packet locally to the non-existent `P` address instead of forwarding it to `S1`.
-4. **Stateful Interaction**:
-   - In the `FORWARD` chain, `ipfire_filter` calls `check_state`. 
-   - For the first packet, `check_state` misses. 
-   - The packet matches a rule in the `FORWARD` list.
-   - If that rule has `.state = 1`, `keep_state()` is invoked.
-   - `keep_state()` records the flow: `Src: C, Dst: S1, Proto: TCP, Ports: cport, sport`.
-5. **Return Path Correctness**:
-   - Return packet `S1 -> C` hits `POST_ROUTING`.
-   - `de_dnat_translation()` matches `new_daddr` (Server) and restores `old_daddr` (Public IP) as the source.
-   - The result `P -> C` is delivered to the client, which correctly recognizes the stream.
+1.  **Kernel Decision**: After `PRE_ROUTING` and the `skb_dst_set(NULL)` call, the kernel re-runs the routing table.
+2.  **Path Change**: The packet is now destined for an internal network, so it enters the `FORWARD` hook.
+3.  **State Logic**: In the `FORWARD` hook, `check_state` misses (because it was just created/NATted), and the packet hits the FORWARDing permission rules.
 
-### Checksum Integrity
-The `manip_skb` function correctly updates:
-- **IP Header Checksum**: via `csum_replace4`.
-- **L4 Checksum (TCP/UDP)**: via `inet_proto_csum_replace4` (address change) and `inet_proto_csum_replace2` (port change).
-- UDP `0` checksum is handled: `if (!pudphead->check) pudphead->check = CSUM_MANGLED_0;` (RFC 768 requirement).
+---
 
-> [!NOTE]
-> All NAT operations are verified to be performed in a single shot per connection (static rules) through the dynamic lookup system, ensuring high-performance packet transformation.
+## 4. Checksum Corner Cases
+
+### 4.1. UDP Zero Checksum
+RFC 768 allows UDP checksums to be `0` (disabled). However, when we NAT a packet, most kernels require that if you change the address, you MUST provide a valid checksum or a specific "mangled zero" value if the original was zero.
+
+```c
+// Handle UDP zero checksum
+if (!pudphead->check) {
+    pudphead->check = CSUM_MANGLED_0;
+}
+```
+
+---
+
+## 5. Summary: NAT Hook Matrix
+
+| NAT Type | Direction | Hook | Primary Objective |
+|----------|-----------|------|-------------------|
+| **SNAT** | Outgoing | `POST_ROUTING` | Hide internal IP |
+| **Masq** | Outgoing | `POST_ROUTING` | Dynamic SNAT for WAN |
+| **DNAT** | Incoming | `PRE_ROUTING` | Port Forwarding / LB |
+| **Re-NAT**| Incoming | `PRE_ROUTING` | Restoring original IP |
