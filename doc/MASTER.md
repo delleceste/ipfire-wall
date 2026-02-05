@@ -19,6 +19,15 @@ Welcome to the comprehensive technical documentation for the IPFire-Wall kernel 
 5. **[Packet Flow Walkthroughs](05_Packet_Flow_Walkthroughs.md)**  
    *Step-by-step analysis of NAT, State matching, and Forwarding.*
 
+6. **[Detailed Packet Flows](06_Detailed_Packet_Flows.md)**  
+   *Comprehensive walkthroughs with Mermaid diagrams for HTTP, FTP, and SSH.*
+
+7. **[State Machine Deep Dive](07_State_Machine_Deep_Dive.md)**  
+   *In-depth analysis of TCP/UDP state transitions and GUESS states.*
+
+8. **[NAT Flow Analysis](08_NAT_Flow_Analysis.md)**  
+   *Detailed SNAT, Masquerade, and DNAT flows with checksum verification.*
+
 ---
 
 ## How to use this documentation
