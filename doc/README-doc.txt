@@ -24,8 +24,8 @@ Usage:
 
     make pdf
 
-    This requires Pandoc and LaTeX. Install with:
-    sudo apt install pandoc texlive-latex-extra
+    This requires Pandoc and LaTeX with Unicode support. Install with:
+    sudo apt install pandoc texlive-latex-extra texlive-xetex
 
     Alternative (simpler, no LaTeX required):
     make pdf-html

@@ -33,12 +33,14 @@ pdf: $(REPORT)
 	@echo "Converting to PDF using Pandoc + LaTeX..."
 	@if command -v pandoc >/dev/null 2>&1; then \
 		ENGINE=""; \
-		if command -v pdflatex >/dev/null 2>&1; then \
-			ENGINE="pdflatex"; \
-		elif command -v xelatex >/dev/null 2>&1; then \
+		if command -v xelatex >/dev/null 2>&1; then \
 			ENGINE="xelatex"; \
 		elif command -v lualatex >/dev/null 2>&1; then \
 			ENGINE="lualatex"; \
+		elif command -v pdflatex >/dev/null 2>&1; then \
+			ENGINE="pdflatex"; \
+			echo "Warning: pdflatex doesn't support Unicode characters well."; \
+			echo "Consider installing xelatex: sudo apt install texlive-xetex"; \
 		fi; \
 		if [ -n "$$ENGINE" ]; then \
 			echo "Using PDF engine: $$ENGINE"; \
@@ -53,12 +55,12 @@ pdf: $(REPORT)
 				echo "PDF generated successfully: $(PDF)"; \
 			else \
 				echo "Error: LaTeX packages missing."; \
-				echo "Install with: sudo apt install texlive-latex-extra"; \
+				echo "Install with: sudo apt install texlive-latex-extra texlive-xetex"; \
 				echo "Or use 'make pdf-html' for HTML-based conversion (no LaTeX required)"; \
 				exit 1; \
 			fi; \
 		else \
-			echo "No LaTeX engine found. Install with: sudo apt install texlive-latex-base"; \
+			echo "No LaTeX engine found. Install with: sudo apt install texlive-latex-base texlive-xetex"; \
 			exit 1; \
 		fi; \
 	else \
