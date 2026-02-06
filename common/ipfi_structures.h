@@ -47,12 +47,15 @@ struct net_device;
 //#include <linux/in.h>
 
 /* return values from function processing received data */
-/* Align IPFIRE verdicts with Linux kernel netfilter verdicts 
- * (NF_DROP = 0, NF_ACCEPT = 1)
- */
-#define IPFI_IMPLICIT   (-1)
-#define IPFI_DROP       0
-#define IPFI_ACCEPT     1
+enum ipfire_response
+{
+    /* no matching rule was found in the list: the default policy will be applied */
+    IPFI_IMPLICIT = 0,
+    /* IPFI_DROP: do not continue to process the packet and deallocate it */
+    IPFI_DROP = 1,
+    /* IPFI_ACCEPT: the packet is allowed to continue */
+    IPFI_ACCEPT = 2,
+};
 
 enum flow_direction
 {
@@ -330,6 +333,9 @@ typedef struct {		/* see linux/skbuff.h */
     net_dev netdevs;
     // struct manip_info manipinfo;
     struct response response;
+    // Initialization of struct members must be done at instantiation, not in definition.
+    // memset(&response, 0, sizeof(response));
+    // response.verdict = IPFI_IMPLICIT;
 } ipfire_info_t;
 
 /* messages from son to kernel */
@@ -465,16 +471,15 @@ typedef struct {
 
     /* natural and has_id not used by the kernel */
     __u8 notify:1, natural:1, other:6;
+    uint32_t rule_id;   /* 32-bit hash or unique ID */
 
 #ifdef ENABLE_RULENAME
     char rulename[RULENAMELEN];
 #endif
     struct list_head list;
+    struct rcu_head rule_rcuh;
     uid_t owner;
     unsigned int position;	/* position of the rule in list. Starts from 0 */
-
-    uint32_t rule_id;   /* 32-bit hash or unique ID */
-    struct rcu_head rule_rcuh;
 } ipfire_rule;
 
 /* command from userspace */

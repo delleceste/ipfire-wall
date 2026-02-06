@@ -107,8 +107,7 @@ struct response iph_in_get_response(struct sk_buff* skb,
                                     ipfi_flow *flow,
                                     struct info_flags *flags)
 {
-    struct response response;
-    response.verdict = IPFI_DROP;
+    struct response response = {};
 
     /* invoke engine function passing the appropriate rule lists */
     if (flow->direction == IPFI_INPUT)
@@ -138,6 +137,10 @@ int welcome(void) {
     /* set loading time into kernel stats struct */
     ktime_get_real_ts64(&tv_load_time);
     module_load_time = tv_load_time.tv_sec;
+    IPFI_PRINTK("sizeof(command) = %zu, sizeof(ipfire_rule) = %zu, sizeof(ipfire_info_t) = %zu\n",
+                sizeof(command), sizeof(ipfire_rule), sizeof(ipfire_info_t));
+    IPFI_PRINTK("sizeof(struct rcu_head) = %zu, sizeof(struct list_head) = %zu\n",
+                sizeof(struct rcu_head), sizeof(struct list_head));
     
     /* Allocate per-CPU counters */
     ipfi_counters = alloc_percpu(struct ipfi_counters);
@@ -435,9 +438,9 @@ int ipfi_pre_process(struct sk_buff *skb, const ipfi_flow *flow) {
          * checksum error in incoming packets or (unprobable) memory allocation errors
          */
     verdict = NF_ACCEPT;
-    /* nat and masquerade options disabled: return IPFI_ACCEPT in pre process */
+    /* nat and masquerade options disabled: return NF_ACCEPT in pre process */
     if ((fwopts.masquerade == 0) && (fwopts.nat == 0)) {
-        return IPFI_ACCEPT;
+        return NF_ACCEPT;
     }
 
     /* MASQUERADE or NAT are enabled: go on! */
@@ -482,7 +485,7 @@ int ipfi_pre_process(struct sk_buff *skb, const ipfi_flow *flow) {
     {
         if (we_are_exiting) {
             IPFI_STAT_INC(not_sent);
-            return IPFI_DROP;
+            return NF_DROP;
         }
 
         IPFI_STAT_INC(bad_checksum_in);
@@ -490,7 +493,7 @@ int ipfi_pre_process(struct sk_buff *skb, const ipfi_flow *flow) {
                     this_cpu_read(ipfi_counters->bad_checksum_in), this_cpu_read(ipfi_counters->pre_rcv));
         /* send a packet signaling an error */
         send_packet_to_userspace_and_update_counters(skb, flow, &resp, &flags);
-        verdict = IPFI_DROP;
+        verdict = NF_DROP;
     }
     /* No more kfree(packet) needed */
     return verdict;
@@ -511,7 +514,7 @@ int ipfi_post_process(struct sk_buff *skb, const ipfi_flow * flow)
     kstats.post_rcv++;
     /* masquerade and NAT disabled: nothing to do. We accept here */
     if ((fwopts.masquerade == 0) && (fwopts.nat == 0))
-        return IPFI_ACCEPT;
+        return NF_ACCEPT;
 
     /* No more kmalloc for ipfire_info_t. */
 
@@ -565,7 +568,7 @@ send_touser:
          * See netfilter ip_conntrack_proto_tcp.c comment */
 
     /* checksumming... */
-    return IPFI_ACCEPT;
+    return NF_ACCEPT;
 }
 
 /* The following three functions extract from the socket buffer
@@ -705,17 +708,20 @@ int ipfi_response(struct sk_buff *skb, ipfi_flow *flow) {
     /* update statistics */
     update_kernel_stats(flow->direction, res.verdict);
 
-    /* return the response */
-    /* return the response mapped to NF_ verdicts */
+    /* Map internal IPFI verdicts to netfilter verdicts:
+     * IPFI_ACCEPT (2) -> NF_ACCEPT (1)
+     * IPFI_DROP (1) -> NF_DROP (0)
+     * IPFI_IMPLICIT (0) -> apply default_policy
+     */
     if (res.verdict == IPFI_ACCEPT)
-        return IPFI_ACCEPT;
+        return NF_ACCEPT;
     else if (res.verdict == IPFI_DROP)
-        return IPFI_DROP;
+        return NF_DROP;
     else {
         /* IPFI_IMPLICIT: apply default policy */
         if (default_policy == IPFI_ACCEPT)
-            return IPFI_ACCEPT;
-        return IPFI_DROP;
+            return NF_ACCEPT;
+        return NF_DROP;
     }
 }
 
