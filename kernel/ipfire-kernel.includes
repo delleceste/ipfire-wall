@@ -5,6 +5,7 @@
 includes/
 gcc-check
 ../common
+..
 /usr/src/linux/include/generated/
 /usr/src/linux-lts/include/generated/
 /usr/src/linux/include/generated/
