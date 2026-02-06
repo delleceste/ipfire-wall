@@ -176,6 +176,21 @@ static void nl_receive_data(struct sk_buff *skb)
     process_data_received(skb);
 }
 
+void init_ruleset_heads(void)
+{
+    /* initialize lists */
+    INIT_LIST_HEAD(&in_drop.list);
+    INIT_LIST_HEAD(&out_drop.list);
+    INIT_LIST_HEAD(&fwd_drop.list);
+    INIT_LIST_HEAD(&in_acc.list);
+    INIT_LIST_HEAD(&out_acc.list);
+    INIT_LIST_HEAD(&fwd_acc.list);
+    INIT_LIST_HEAD(&translation_pre.list);
+    INIT_LIST_HEAD(&translation_out.list);
+    INIT_LIST_HEAD(&translation_post.list);
+    INIT_LIST_HEAD(&masquerade_post.list);
+}
+
 int init_netl(void)
 {
     int ctrl_so, data_so, gui_so;
@@ -187,18 +202,6 @@ int init_netl(void)
     memset(moderate_print, 0, sizeof(unsigned int) * MAXMODERATE_ARGS);
     memset(moderate_print_limit, 0, sizeof(unsigned int) * MAXMODERATE_ARGS);
     moderate_print_limit[PRINT_PROTO_UNSUPPORTED] = 10000;
-
-    /* initialize list */
-    INIT_LIST_HEAD(&in_drop.list);
-    INIT_LIST_HEAD(&out_drop.list);
-    INIT_LIST_HEAD(&fwd_drop.list);
-    INIT_LIST_HEAD(&in_acc.list);
-    INIT_LIST_HEAD(&out_acc.list);
-    INIT_LIST_HEAD(&fwd_acc.list);
-    INIT_LIST_HEAD(&translation_pre.list);
-    INIT_LIST_HEAD(&translation_out.list);
-    INIT_LIST_HEAD(&translation_post.list);
-    INIT_LIST_HEAD(&masquerade_post.list);
 
     memset(&kslight, 0, sizeof(kslight));
     if (ctrl_so == 0 && data_so == 0 && gui_so == 0)

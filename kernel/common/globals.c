@@ -129,12 +129,18 @@ unsigned int max_state_entries = 0;
 unsigned int moderate_print[MAXMODERATE_ARGS];
 unsigned int moderate_print_limit[MAXMODERATE_ARGS];
 
-/* Locks */
-spinlock_t rulelist_lock;
-spinlock_t state_list_lock;
-spinlock_t loginfo_list_lock;
-spinlock_t snat_list_lock;
-spinlock_t dnat_list_lock;
+// Locks. With the following macros 
+// The lock is statically initialized
+// It is valid before initcall()
+// It works correctly on SMP, PREEMPT, DEBUG_SPINLOCK, etc
+// Lockdep gets the right metadata (name, class key)
+// This is the blessed way to define a global or file-scope spinlock.
+//
+DEFINE_SPINLOCK(rulelist_lock);
+DEFINE_SPINLOCK(state_list_lock);
+DEFINE_SPINLOCK(loginfo_list_lock);
+DEFINE_SPINLOCK(snat_list_lock);
+DEFINE_SPINLOCK(dnat_list_lock);
 
 int we_are_exiting = 0;
 

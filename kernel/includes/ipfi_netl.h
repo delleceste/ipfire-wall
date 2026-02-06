@@ -134,6 +134,7 @@ int print_command(const command* cmd);
 int add_rule_to_list_by_command(command *cmd);
 
 void update_ifindex_in_rules(const char *name, int new_index);
+void init_ruleset_heads(void);
 
 void print_loginfo_memory_usage(unsigned long lifetime);
 

@@ -157,10 +157,14 @@ int welcome(void) {
     set_procentry_values();
     userspace_control_pid = 0;
     userspace_data_pid = 0;
-    init_machine(); /* just calls INIT_LIST_HEAD(&root_state_table.list); */
+
+    /* Initialize ruleset lists before any potential notifier event */
+    init_ruleset_heads();
+
     init_translation();
     init_log();
     if(init_netl() == 0) {
+        init_machine(); /* registers netdevice notifier */
         register_hooks();
     }
     return 0;
