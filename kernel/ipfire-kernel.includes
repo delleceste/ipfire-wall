@@ -12,3 +12,9 @@ gcc-check
 
 /usr/src/linux/include/generated/asm
 /usr/src/linux-lts/include/generated/
+
+/usr/src/linux-headers-6.12.57+deb13-amd64/include
+
+/usr/src/linux-headers-6.12.57+deb13-amd64/include/generated
+/usr/src/linux-headers-6.12.57+deb13-common/include/
+

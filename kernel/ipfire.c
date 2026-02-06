@@ -161,6 +161,16 @@ int welcome(void) {
     /* Initialize ruleset lists before any potential notifier event */
     init_ruleset_heads();
 
+    IPFI_PRINTK("DEBUG: sizeof(command)=%lu\n", sizeof(command));
+    IPFI_PRINTK("DEBUG: sizeof(ipfire_rule)=%lu\n", sizeof(ipfire_rule));
+    IPFI_PRINTK("DEBUG: sizeof(struct firesizes)=%lu\n", sizeof(struct firesizes));
+    IPFI_PRINTK("DEBUG: sizeof(struct rcu_head)=%lu\n", sizeof(struct rcu_head));
+    IPFI_PRINTK("DEBUG: sizeof(struct list_head)=%lu\n", sizeof(struct list_head));
+    IPFI_PRINTK("DEBUG: offsetof(command, content)=%lu\n", offsetof(command, content));
+    IPFI_PRINTK("DEBUG: offsetof(command, anumber)=%lu\n", offsetof(command, anumber));
+    IPFI_PRINTK("DEBUG: offsetof(ipfire_rule, list)=%lu\n", offsetof(ipfire_rule, list));
+    IPFI_PRINTK("DEBUG: offsetof(ipfire_rule, rule_rcuh)=%lu\n", offsetof(ipfire_rule, rule_rcuh));
+
     init_translation();
     init_log();
     if(init_netl() == 0) {

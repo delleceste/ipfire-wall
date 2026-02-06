@@ -471,12 +471,14 @@ typedef struct {
     __u8 notify:1, natural:1, other:6;
 
     char rulename[RULENAMELEN];
-    struct list_head list;
     uid_t owner;
     uint32_t rule_id;   /* 32-bit hash or unique ID */
     unsigned int position;	/* position of the rule in list. Starts from 0 */
 
+#ifdef __KERNEL__
+    struct list_head list;
     struct rcu_head rule_rcuh;
+#endif
 } ipfire_rule;
 
 /* command from userspace */
