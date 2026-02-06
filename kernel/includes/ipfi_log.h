@@ -26,6 +26,12 @@ void fini_log(void);
  * it has seen this packet in list */
 inline void update_loginfo_timer(struct ipfire_loginfo* iplo);
 
+
+int build_ipfire_info_from_skb(const struct sk_buff *skb,
+                               const ipfi_flow *flow, const struct response *res,
+                               const struct info_flags *flags,
+                               ipfire_info_t * dest);
+
 inline void fill_timer_loginfo_entry(struct ipfire_loginfo* ipfilog);
 
 int packet_matches_log_entry(const struct sk_buff *skb,

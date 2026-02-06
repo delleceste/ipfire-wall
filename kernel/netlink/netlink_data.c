@@ -41,6 +41,7 @@ int is_to_send(const struct sk_buff * skb,
                const struct response* res,
                const ipfi_flow* flow,
                const struct info_flags *flags) {
+    printk("smartlog_func: %p\n", smartlog_func);
     if(smartlog_func != NULL)
         return smartlog_func(skb, res, flow, flags);
     else {

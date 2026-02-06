@@ -69,7 +69,11 @@ struct sk_buff *build_info_t_nlmsg(const struct sk_buff *skb,
         }
         msg = nlmsg_data(nlh);
         memset(msg, 0, sizeof(*msg));
-        if (iph) memcpy(&msg->packet.iphead, iph, sizeof(struct iphdr));
+        if (iph) {
+            msg->packet.ip.protocol = iph->protocol;
+            msg->packet.ip.saddr = iph->saddr;
+            msg->packet.ip.daddr = iph->daddr;
+        }
         
         switch (iph ? iph->protocol : 0) {
         case IPPROTO_TCP:

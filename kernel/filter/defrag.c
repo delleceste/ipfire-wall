@@ -46,9 +46,9 @@ unsigned int ipfi_defrag(void *priv,
         if (ipfi_gather_frags(skb, 
 		  hooknum == NF_INET_PRE_ROUTING ? IP_DEFRAG_CONNTRACK_IN : IP_DEFRAG_CONNTRACK_OUT))
 		{
-            return NF_STOLEN; /* ! not NF_DROP (IPFI_DROP) */
+            return NF_STOLEN;
 		}
     }
-    return IPFI_ACCEPT; /* equal to NF_ACCEPT */
+    return NF_ACCEPT;
 }
 

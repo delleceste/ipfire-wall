@@ -55,10 +55,12 @@ int direct_state_match(const struct sk_buff *skb,
     }
     /* ICMP and IGMP treated in l2l3match() */
 
-    if(flow->in && flow->in->ifindex != entry->in_ifindex)
+    if(flow->in && flow->in->ifindex != entry->in_ifindex) {
         return -1;
-    if(flow->out && flow->out->ifindex != entry->out_ifindex)
+    }
+    if(flow->out && flow->out->ifindex != entry->out_ifindex) {
         return -1;
+    }
     return 1;
 }
 
@@ -87,10 +89,12 @@ int reverse_state_match(const struct sk_buff *skb,
         break;
     }
     /* ICMP and IGMP treated in l2l3match() */
-    if(flow->in && flow->in->ifindex != entry->in_ifindex)
+    if(flow->in && flow->in->ifindex != entry->out_ifindex) {
         return -1;
-    if(flow->out && flow->out->ifindex != entry->out_ifindex)
+    }
+    if(flow->out && flow->out->ifindex != entry->in_ifindex) {
         return -1;
+    }
     return 1;
 }
 
@@ -127,8 +131,10 @@ int skb_matches_state_table(const struct sk_buff *skb,
         return -1;
 
     if(iph->protocol == IPPROTO_ICMP || iph->protocol == IPPROTO_IGMP ||
-            iph->protocol == IPPROTO_GRE || iph->protocol == IPPROTO_PIM)
+            iph->protocol == IPPROTO_GRE || iph->protocol == IPPROTO_PIM) {
+        printk("  failed l2l3match\n");
         return l2l3match(skb, entry, flow);
+    }
 
     if ((tr_match = direct_state_match(skb, entry, flow)) > 0)
         *reverse = 0;
@@ -138,6 +144,8 @@ int skb_matches_state_table(const struct sk_buff *skb,
     if (flow->direction == IPFI_FWD)
         return tr_match;
 
+    printk("tr_match is %d reverse is %d direction match %s\n",
+           tr_match, *reverse, flow->direction == entry->direction ? "DIRECT" : " INVERSE");
     if (flow->direction == entry->direction && *reverse == 0)
         return tr_match;
     else if (flow->direction != entry->direction && *reverse == 1)

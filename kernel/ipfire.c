@@ -362,6 +362,7 @@ unsigned int process(void *priv,
     if(check_headers(skb) < 0)
         return NF_DROP;
 
+    printk("HOOKNUM %d\n", hooknum);
     switch (hooknum)
     {
     case NF_IP_PRE_ROUTING:
@@ -374,15 +375,21 @@ unsigned int process(void *priv,
             dst_release(skb_dst(skb));
             skb_dst_set(skb, NULL);
         }
+        printk("PRE ROUTING returning ret %d\n", ret);
         return ret;
     case NF_IP_LOCAL_IN:
         IPFI_STAT_INC(in_rcv);
         flow.direction = IPFI_INPUT;
-        return ipfi_response(skb, &flow);
+
+        int retvalin = ipfi_response(skb, &flow);
+        printk("LOCAL_IN: ipfi_response returned %d: NF_DROP IS %d NF ACCEPT IS %d \n", retvalin, NF_DROP, NF_ACCEPT);
+        return retvalin;
     case NF_IP_LOCAL_OUT:
         IPFI_STAT_INC(out_rcv);
         flow.direction = IPFI_OUTPUT;
-        return ipfi_response(skb,  &flow);
+        int retval = ipfi_response(skb,  &flow);
+        printk("LOCAL_OUT: ipfi_response returned %d: NF_DROP IS %d NF ACCEPT IS %d \n", retval, NF_DROP, NF_ACCEPT);
+        return retval;
     case NF_IP_FORWARD:
         IPFI_STAT_INC(fwd_rcv);
         flow.direction = IPFI_FWD;
@@ -392,9 +399,9 @@ unsigned int process(void *priv,
         flow.direction = IPFI_OUTPUT_POST;
         return ipfi_post_process(skb,  &flow);
     default:
-        return IPFI_DROP;
+        return NF_DROP;
     }
-    return IPFI_DROP;
+    return NF_DROP;
 }
 
 
@@ -417,6 +424,7 @@ inline int send_packet_to_userspace_and_update_counters(const struct sk_buff *sk
     {
         IPFI_STAT_INC(sent_tou);
         if(skb_send_to_user(skb_to_user, LISTENER_DATA) < 0) {
+            printk("send_packet_to_userspace_and_update_counters skb_send failed\n");
             update_kernel_stats(IPFI_FAILED_NETLINK_USPACE, resp->verdict);
             return -1;
         }
@@ -431,7 +439,7 @@ inline int send_packet_to_userspace_and_update_counters(const struct sk_buff *sk
 int ipfi_pre_process(struct sk_buff *skb, const ipfi_flow *flow) {
     int ret = -1;
     int verdict;
-    struct response resp = { .verdict = IPFI_ACCEPT };
+    struct response resp = { };
     struct info_flags flags = { };
     /* in pre routing we do not do any filtering. In normal cases we will return IPFI_ACCEPT as verdict in this hook.
          * In case of errors instead, we'll return IPFI_DROP, to interrupt packet processing. This happens in case of
@@ -601,9 +609,10 @@ inline int copy_headers(const struct sk_buff *skb, ipfire_info_t * fireinfo) {
     struct iphdr *iph;
     iph = ip_hdr(skb);
     /* protocol information */
-    fireinfo->packet.iphead.protocol = iph->protocol;
+    fireinfo->packet.ip.protocol = iph->protocol;
+    fireinfo->packet.ip.saddr = iph->saddr;
+    fireinfo->packet.ip.daddr = iph->daddr;
     /* internet header */
-    memcpy(&fireinfo->packet.iphead, iph, sizeof(struct iphdr));
     /* tcp, udp icmp headers? */
     if (iph->protocol == IPPROTO_TCP)
         build_tcph_usermess((struct tcphdr *)((void *)iph + iph->ihl * 4), fireinfo);
@@ -615,21 +624,6 @@ inline int copy_headers(const struct sk_buff *skb, ipfire_info_t * fireinfo) {
         build_igmph_usermess((struct igmphdr *)((void *)iph + iph->ihl * 4), fireinfo); /* since 0.98.7 */
     else
         return -1;
-    return 0;
-}
-
-int build_ipfire_info_from_skb(const struct sk_buff *skb,
-                               const ipfi_flow *flow,
-                               const struct response *res,
-                               const struct info_flags *flags,
-                               ipfire_info_t * dest) {
-    dest->flags.direction = flow->direction;
-    if (copy_headers(skb, dest) < 0)
-        return -1;
-
-    dest->netdevs.in_idx = flow->in != NULL ? flow->in->ifindex : -1;
-    dest->netdevs.out_idx = flow->out != NULL ? flow->out->ifindex : -1;
-    dest->response = *res;
     return 0;
 }
 
@@ -653,6 +647,9 @@ int ipfi_response(struct sk_buff *skb, ipfi_flow *flow) {
                 IPFI_PRINTK("IPFIRE: failed to allocate memory for socket buffer in iph_in_get_response()\n");
             else if(skb_send_to_user(skb_touser, LISTENER_DATA) < 0)
                 update_kernel_stats(IPFI_FAILED_NETLINK_USPACE, res.verdict);
+        }
+        else {
+            printk("is to send returned not\n");
         }
 
         /* if gui_notifier_enabled we send the info if there is no match (popup

@@ -70,12 +70,30 @@ inline void fill_timer_loginfo_entry(struct ipfire_loginfo *ipfilog)
     ipfilog->timer_loginfo.expires = jiffies + HZ * loginfo_lifetime;
 }
 
+int build_ipfire_info_from_skb(const struct sk_buff *skb,
+                               const ipfi_flow *flow,
+                               const struct response *res,
+                               const struct info_flags *flags,
+                               ipfire_info_t * dest) {
+    if (copy_headers(skb, dest) < 0)
+        return -1;
+
+    dest->flags = *flags;
+    dest->flags.direction = flow->direction;
+
+    dest->netdevs.in_idx = flow->in != NULL ? flow->in->ifindex : -1;
+    dest->netdevs.out_idx = flow->out != NULL ? flow->out->ifindex : -1;
+    dest->response = *res;
+    return 0;
+}
+
 struct ipfire_loginfo *loginfo_new(const struct sk_buff* skb,
                                    const struct response *res,
                                    const ipfi_flow *flow,
                                    const struct info_flags *flags) {
     struct ipfire_loginfo *ipli = (struct ipfire_loginfo *) kmalloc(sizeof(struct ipfire_loginfo), GFP_ATOMIC);
     if(ipli) {
+        memset(ipli, 0, sizeof(*ipli));
         ipfire_info_t *iit = &ipli->info;
         if(build_ipfire_info_from_skb(skb, flow, res, flags, iit) < 0) {
             kfree(iit);
@@ -111,8 +129,8 @@ inline int add_packet_to_infolist(const struct sk_buff* skb,
 
 inline int iph_compare(const struct iphdr * skb_iphdr, const ipfire_info_t * p2)
 {
-    const struct iphdr iph2 = p2->packet.iphead;
-    return (skb_iphdr->saddr == iph2.saddr) && (skb_iphdr->daddr == iph2.daddr);
+    const struct ip_id* ip = &p2->packet.ip;
+    return (skb_iphdr->saddr == ip->saddr) && (skb_iphdr->daddr == ip->daddr);
 }
 
 inline int tcph_compare(const struct tcphdr * tcph1, const ipfire_info_t * p2) {
@@ -165,28 +183,43 @@ int packet_matches_log_entry(const struct sk_buff *skb,
     int ret;
     struct iphdr *iph = ip_hdr(skb);
 
-    if (iph->protocol != p2->packet.iphead.protocol)
+    if (iph->protocol != p2->packet.ip.protocol) {
+        printk("packet_matches_log_entry: proto fails: %d / %d\n", iph->protocol, p2->packet.ip.protocol);
         return -1;
-    if (res->st.state != p2->flags.state)
+    }
+    if (res->st.state != p2->response.st.state) {
+        printk("packet_matches_log_entry: state fail %d / %d\n", res->st.state ,  p2->response.st.state);
         return -1;
-    if ((flags->direction != p2->flags.direction)
-            || (flags->nat != p2->flags.nat)
-            || (flags->snat != p2->flags.snat)
-            || (flags->state != p2->flags.state) )
+    }
+    if (flags->direction != p2->flags.direction
+            || flags->nat != p2->flags.nat
+            || flags->snat != p2->flags.snat) {
+        printk("packet_matches_log_entry: some flags failed\n");
+
         return -1;
+    }
 
     /* Compare responses */
-    if (res->verdict != p2->response.verdict)
+    if (res->verdict != p2->response.verdict) {
+        printk("packet_matches_log_entry: verdict fail %d / %d\n", res->verdict , p2->response.verdict);
+
         return -1;
+    }
     /* else if the product result is positive, they are both positive or negative responses */
     const u16 in_ifidx = flow->in ? flow->in->ifindex : -1;
     const u16 out_ifidx = flow->out ? flow->out->ifindex : -1;
-    if(in_ifidx != p2->netdevs.in_idx || out_ifidx != p2->netdevs.out_idx)
+    if(in_ifidx != p2->netdevs.in_idx || out_ifidx != p2->netdevs.out_idx) {
+        printk("packet_matches_log_entry: net devs fail in: %d/%d out: %d/%d\n",
+               in_ifidx, p2->netdevs.in_idx,out_ifidx, p2->netdevs.out_idx);
+
         return -1;
+    }
 
     /* ip header fields */
-    if (!iph_compare(iph, p2))
+    if (!iph_compare(iph, p2)) {
+        printk("packet_matches_log_entry: iph fail\n");
         return -1;
+    }
     switch (iph->protocol)
     {
     case IPPROTO_TCP: {
@@ -261,11 +294,13 @@ inline int packet_not_seen(const struct sk_buff* skb,
         if (compare_loginfo_packets(skb, res, flow, flags, &loginfo->info))  {
             if(!chk_state || (chk_state && (res->st.state == loginfo->info.response.st.state))) {
                 rcu_read_unlock_bh();
+                printk("packet seen\n");
                 return 0;	/* packet in list: already seen */
             }
         }
     }
     rcu_read_unlock_bh();
+    printk("packet not seen\n");
     return 1;
 }
 

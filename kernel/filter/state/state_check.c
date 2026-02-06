@@ -37,6 +37,7 @@ struct response check_state(struct sk_buff* skb, const ipfi_flow *flow, __u8 *ft
 
     hash_for_each_possible_rcu(state_hashtable, table_entry, hnode, key)
     {
+        printk("check_state sport %d dport %d -> key %d\n", ntohs(sport), ntohs(dport), key);
         if (skb_matches_state_table(skb, table_entry, &reverse, flow) > 0)
         {
             ret.verdict = IPFI_ACCEPT;
@@ -71,6 +72,8 @@ struct response check_state(struct sk_buff* skb, const ipfi_flow *flow, __u8 *ft
                 *ftp_state = table_entry->ftp;
             return ret;
         }
+        else
+            printk("no match in tables\n");
     }
     rcu_read_unlock_bh();
     return ret;

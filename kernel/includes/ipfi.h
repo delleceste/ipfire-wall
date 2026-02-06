@@ -158,11 +158,6 @@ inline void build_udph_usermess(const struct udphdr *p_udphead,  ipfire_info_t *
 inline void build_icmph_usermess(const struct icmphdr *icmph, ipfire_info_t * ipfi_info);
 inline void build_igmph_usermess(const struct igmphdr *igmph, ipfire_info_t * ipfi_info);
 
-int build_ipfire_info_from_skb(const struct sk_buff *skb,
-                               const ipfi_flow *flow, const struct response *res,
-                               const struct info_flags *flags,
-                               ipfire_info_t * dest);
-
 struct response iph_in_get_response(struct sk_buff* skb,
                                     ipfi_flow *flow,
                                     struct info_flags *flags);

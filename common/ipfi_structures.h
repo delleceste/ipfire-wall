@@ -50,11 +50,11 @@ struct net_device;
 enum ipfire_response
 {
     /* no matching rule was found in the list: the default policy will be applied */
-    IPFI_IMPLICIT = 0,
+    IPFI_IMPLICIT = -1,
     /* IPFI_DROP: do not continue to process the packet and deallocate it */
-    IPFI_DROP = 1,
+    IPFI_DROP = 0,
     /* IPFI_ACCEPT: the packet is allowed to continue */
-    IPFI_ACCEPT = 2,
+    IPFI_ACCEPT = 1,
 };
 
 enum flow_direction
@@ -298,7 +298,6 @@ struct response {
 
 struct info_flags {
     __u16 direction:3,		/* in, out or forward */
-        state:1,		/* if true, a match in state tables happened */
         nat:1,			/* firewall has natted the connection */
         snat:1,
         badsum:1,	/* bad checksum */
@@ -308,11 +307,17 @@ struct info_flags {
         nat_max_entries:1, /* maximum number of entries reached in the kernel tables */
         snat_max_entries:1, /* in these cases packet_id contains the number representing */
         state_max_entries:1, /* the limit reached */
-        _free:2; /* in conjunction with `state' flag above, indicates a packet reverse-matched in a stateful connection */
+        _free:3; /* in conjunction with `state' flag above, indicates a packet reverse-matched in a stateful connection */
+};
+
+struct ip_id {
+    __be32 saddr;
+    __be32 daddr;
+    __u8   protocol;
 };
 
 struct packet_headers {
-    struct iphdr iphead;	/* ip header */
+    struct ip_id ip;	/* ip header */
     union {
         struct tcphdr tcphead;	/* tcp header */
         struct udphdr udphead;

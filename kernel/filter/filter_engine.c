@@ -42,6 +42,7 @@ struct response ipfire_filter(const ipfire_rule *dropped,
             flags->ftp = ftp_tmp;
         }
         pass = response.verdict;
+        printk("after check state: response.verdict is %d\n", pass);
         if (pass > 0) {
             response.state = 1U;
             return response;
@@ -161,6 +162,7 @@ next_drop_rule:;
         if (pass > 0) {
             rcu_read_unlock();
             if(newtable != NULL) {
+                printk("new table added\n");
                 add_state_table_to_list(newtable);
             }
             if(mangle_skb(&rule->pkmangle, skb, flow, 0) < 0) {
