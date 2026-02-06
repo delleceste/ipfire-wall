@@ -1,1 +1,0 @@
-savedcmd_/home/giacomo.strangolino/Downloads/ipfire-wall/kernel/build/Module.symvers :=  scripts/mod/modpost -M -m       -o /home/giacomo.strangolino/Downloads/ipfire-wall/kernel/build/Module.symvers -n -T /home/giacomo.strangolino/Downloads/ipfire-wall/kernel/build/modules.order -i Module.symvers -e 

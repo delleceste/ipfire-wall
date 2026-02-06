@@ -1,1 +1,0 @@
-/home/giacomo.strangolino/Downloads/ipfire-wall/kernel/netlink/rule_sync.c
