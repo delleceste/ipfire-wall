@@ -161,16 +161,6 @@ int welcome(void) {
     /* Initialize ruleset lists before any potential notifier event */
     init_ruleset_heads();
 
-    IPFI_PRINTK("DEBUG: sizeof(command)=%lu\n", sizeof(command));
-    IPFI_PRINTK("DEBUG: sizeof(ipfire_rule)=%lu\n", sizeof(ipfire_rule));
-    IPFI_PRINTK("DEBUG: sizeof(struct firesizes)=%lu\n", sizeof(struct firesizes));
-    IPFI_PRINTK("DEBUG: sizeof(struct rcu_head)=%lu\n", sizeof(struct rcu_head));
-    IPFI_PRINTK("DEBUG: sizeof(struct list_head)=%lu\n", sizeof(struct list_head));
-    IPFI_PRINTK("DEBUG: offsetof(command, content)=%lu\n", offsetof(command, content));
-    IPFI_PRINTK("DEBUG: offsetof(command, anumber)=%lu\n", offsetof(command, anumber));
-    IPFI_PRINTK("DEBUG: offsetof(ipfire_rule, list)=%lu\n", offsetof(ipfire_rule, list));
-    IPFI_PRINTK("DEBUG: offsetof(ipfire_rule, rule_rcuh)=%lu\n", offsetof(ipfire_rule, rule_rcuh));
-
     init_translation();
     init_log();
     if(init_netl() == 0) {
@@ -367,7 +357,7 @@ unsigned int process(void *priv,
     ipfi_flow flow = {in, out, NODIRECTION };
     // malformed packet or unsupported protocol
     if(check_headers(skb) < 0)
-        return IPFI_DROP;
+        return NF_DROP;
 
     switch (hooknum)
     {
@@ -444,7 +434,7 @@ int ipfi_pre_process(struct sk_buff *skb, const ipfi_flow *flow) {
          * In case of errors instead, we'll return IPFI_DROP, to interrupt packet processing. This happens in case of
          * checksum error in incoming packets or (unprobable) memory allocation errors
          */
-    verdict = IPFI_ACCEPT;
+    verdict = NF_ACCEPT;
     /* nat and masquerade options disabled: return IPFI_ACCEPT in pre process */
     if ((fwopts.masquerade == 0) && (fwopts.nat == 0)) {
         return IPFI_ACCEPT;
@@ -718,14 +708,14 @@ int ipfi_response(struct sk_buff *skb, ipfi_flow *flow) {
     /* return the response */
     /* return the response mapped to NF_ verdicts */
     if (res.verdict == IPFI_ACCEPT)
-        return NF_ACCEPT;
+        return IPFI_ACCEPT;
     else if (res.verdict == IPFI_DROP)
-        return NF_DROP;
+        return IPFI_DROP;
     else {
         /* IPFI_IMPLICIT: apply default policy */
         if (default_policy == IPFI_ACCEPT)
-            return NF_ACCEPT;
-        return NF_DROP;
+            return IPFI_ACCEPT;
+        return IPFI_DROP;
     }
 }
 

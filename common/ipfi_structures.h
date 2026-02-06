@@ -47,16 +47,12 @@ struct net_device;
 //#include <linux/in.h>
 
 /* return values from function processing received data */
-enum ipfire_response
-{
-    /* no matching rule was found in the list: the default policy will be applied */
-    IPFI_IMPLICIT = 0,
-    /* IPFI_DROP, equivalent to NF_DROP: do not continue to process the packet and deallocate it */
-    IPFI_DROP = 1,
-    /* IPFI_ACCEPT, equivalent to NF_ACCEPT: the packet is allowed to continue */
-    IPFI_ACCEPT = 2,
-    /* from IPFI_ACCEPT on, use include/linux/netfilter.h  `responses from hook functions' definitions */
-};
+/* Align IPFIRE verdicts with Linux kernel netfilter verdicts 
+ * (NF_DROP = 0, NF_ACCEPT = 1)
+ */
+#define IPFI_IMPLICIT   (-1)
+#define IPFI_DROP       0
+#define IPFI_ACCEPT     1
 
 enum flow_direction
 {
@@ -470,15 +466,15 @@ typedef struct {
     /* natural and has_id not used by the kernel */
     __u8 notify:1, natural:1, other:6;
 
+#ifdef ENABLE_RULENAME
     char rulename[RULENAMELEN];
+#endif
+    struct list_head list;
     uid_t owner;
-    uint32_t rule_id;   /* 32-bit hash or unique ID */
     unsigned int position;	/* position of the rule in list. Starts from 0 */
 
-#ifdef __KERNEL__
-    struct list_head list;
+    uint32_t rule_id;   /* 32-bit hash or unique ID */
     struct rcu_head rule_rcuh;
-#endif
 } ipfire_rule;
 
 /* command from userspace */

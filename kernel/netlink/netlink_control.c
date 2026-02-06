@@ -83,13 +83,10 @@ int process_control_received(struct sk_buff *skb)
     short command_id;
     int ret;
 
-    /* We allow messages smaller than sizeof(command) if they contain the shared part.
-     * The internal kernel-only fields (list_head and rcu_head) are now at the end.
-     */
-    if (nlmsg_len(nlmsg_hdr(skb)) < sizeof(command) - sizeof(struct rcu_head) - sizeof(struct list_head))
+    if (nlmsg_len(nlmsg_hdr(skb)) < sizeof(command))
     {
         IPFI_PRINTK("IPFIRE: process_control_received(): netlink message too small for command (%d < %lu)\n", 
-                    nlmsg_len(nlmsg_hdr(skb)), sizeof(command) - sizeof(struct rcu_head) - sizeof(struct list_head));
+                    nlmsg_len(nlmsg_hdr(skb)), sizeof(command));
         return -EINVAL;
     }
 
