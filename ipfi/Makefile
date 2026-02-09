@@ -77,7 +77,8 @@ LIBOBJECTS    = obj/common.o \
  		obj/utils.o \
 		obj/filter.o \
  		obj/init_confdir.o \
- 		obj/proc.o
+ 		obj/proc.o \
+ 		obj/rule_cache.o
 
 DESTDIR       = 
 TARGET        = ipfire
@@ -262,9 +263,23 @@ obj/proc.o:	src/proc.c \
 		
 	$(CC) -c $(LIBCFLAGS) $(INCPATH) -o obj/proc.o src/proc.c
 
+obj/rule_cache.o: src/rule_cache.c \
+		src/includes/rule_cache.h \
+		src/includes/ipfire_structs.h \
+		src/includes/libnetl.h
+		
+	$(CC) -c $(LIBCFLAGS) $(INCPATH) -o obj/rule_cache.o src/rule_cache.c
+
 ####### Install
 
 install:   FORCE
+	@echo "Installing ipfire to /usr/bin..."
+	$(INSTALL_PROGRAM) $(TARGET) /usr/bin/$(TARGET)
+	@echo "Installing libipfire_common.so to /usr/lib..."
+	$(INSTALL_FILE) $(LIBTARGET) /usr/lib/$(LIBTARGET)
+	@echo "Installing rc.ipfire to /usr/sbin..."
+	$(INSTALL_PROGRAM) rc.ipfire /usr/sbin/rc.ipfire
+	@echo "Installation complete!"
 
 uninstall:   FORCE
 

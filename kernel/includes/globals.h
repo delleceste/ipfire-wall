@@ -1,13 +1,13 @@
 #ifndef IPFI_GLOBALS_H
 #define IPFI_GLOBALS_H
 
-#include <linux/types.h>
-#include <linux/spinlock.h>
-#include <linux/percpu.h>
 #include "ipfi.h"
 #include "ipfi_log.h"
 #include "ipfi_machine.h"
 #include "ipfi_translation.h"
+#include <linux/percpu.h>
+#include <linux/spinlock.h>
+#include <linux/types.h>
 
 /* Netlink related PIDs and sockets */
 extern pid_t userspace_control_pid;
@@ -55,7 +55,7 @@ extern DECLARE_HASHTABLE(dnat_hashtable, DNAT_HASH_BITS);
 extern DECLARE_HASHTABLE(snat_hashtable, SNAT_HASH_BITS);
 
 /* Log info */
-extern struct ipfire_loginfo packlist;
+extern DECLARE_HASHTABLE(loginfo_hashtable, LOGINFO_HASH_BITS);
 
 /* Counters */
 extern unsigned int table_id;
@@ -69,7 +69,9 @@ extern unsigned int state_lifetime;
 extern unsigned int setup_shutd_state_lifetime;
 extern unsigned int loginfo_lifetime;
 extern int max_loginfo_entries;
-extern int (*smartlog_func)(const struct sk_buff *skb, const struct response *res, const ipfi_flow *flow, const struct info_flags *flags);
+extern int (*smartlog_func)(const struct sk_buff *skb,
+                            const struct response *res, const ipfi_flow *flow,
+                            const struct info_flags *flags);
 extern unsigned int max_state_entries;
 
 /* Print limiting */
