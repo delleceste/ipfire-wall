@@ -252,17 +252,27 @@ void fill_state_info(struct state_info *stinfo, const struct state_table *stt) {
 int get_dev_ifaddr(__u32 *addr, int direction, const struct net_device *in,
                    const struct net_device *out) {
   switch (direction) {
+  case IPFI_INPUT_PRE:
   case IPFI_INPUT:
-    if (in && get_ifaddr_by_name(in->name, addr) < 0) {
-      IPFI_PRINTK("IPFIRE: direction: input no interface matching name %s!\n",
-                  in->name);
+    if (in) {
+      if (get_ifaddr_by_name(in->name, addr) < 0) {
+        IPFI_PRINTK("IPFIRE: direction: input no interface matching name %s!\n",
+                    in->name);
+        return -1;
+      }
+    } else {
       return -1;
     }
     break;
+  case IPFI_OUTPUT_POST:
   case IPFI_OUTPUT:
-    if (out && get_ifaddr_by_name(out->name, addr) < 0) {
-      printk("IPFIRE: direction: output: no interface matching name %s!\n",
-             out->name);
+    if (out) {
+      if (get_ifaddr_by_name(out->name, addr) < 0) {
+        printk("IPFIRE: direction: output: no interface matching name %s!\n",
+               out->name);
+        return -1;
+      }
+    } else {
       return -1;
     }
     break;
@@ -317,18 +327,4 @@ int add_ftp_dynamic_rule(struct state_table *ftpt) {
   return 0;
 }
 
-int init_machine(void) {
-  INIT_LIST_HEAD(&root_state_table.list);
-  hash_init(state_hashtable);
-  register_ipfire_netdev_notifier();
-  return 0;
-}
 
-void fini_machine(void) {
-  unregister_ipfire_netdev_notifier();
-  int ret;
-  ret = free_state_tables();
-  IPFI_PRINTK("IPFIRE: state tables freed: %d.\n", ret);
-  might_sleep();
-  rcu_barrier();
-}

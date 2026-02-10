@@ -95,8 +95,10 @@ struct snatted_table *lookup_snatted_table_n_update_timer(
     const struct snatted_table *sne, const struct sk_buff *skb,
     const ipfi_flow *flow, struct response *resp, struct info_flags *flags) {
   struct snatted_table *sntmp;
+  u32 hash = get_snat_hash(sne->new_saddr, sne->new_sport, sne->old_daddr,
+                           sne->old_dport, sne->protocol);
   rcu_read_lock_bh();
-  list_for_each_entry_rcu(sntmp, &root_snatted_table.list, list) {
+  hash_for_each_possible_rcu(snat_hashtable, sntmp, hnode, hash) {
     if (compare_snat_entries(sntmp, sne) == 1) {
       sntmp->state = state_machine(skb, sntmp->state, 0);
       update_snat_timer(sntmp);
@@ -132,8 +134,9 @@ struct dnatted_table *lookup_dnat_forward(const struct sk_buff *skb,
                                           struct response *resp,
                                           struct info_flags *flags) {
   struct dnatted_table *dntmp;
+  int bkt;
   rcu_read_lock_bh();
-  list_for_each_entry_rcu(dntmp, &root_dnatted_table.list, list) {
+  hash_for_each_rcu(dnat_hashtable, bkt, dntmp, hnode) {
     if (forward_dnat_match(dntmp, skb) > 0) {
       dntmp->state = state_machine(skb, dntmp->state, 0);
       update_dnat_timer(dntmp);
@@ -169,8 +172,9 @@ struct snatted_table *lookup_snat_forward(const struct sk_buff *skb,
                                           struct response *resp,
                                           struct info_flags *flags) {
   struct snatted_table *sntmp;
+  int bkt;
   rcu_read_lock_bh();
-  list_for_each_entry_rcu(sntmp, &root_snatted_table.list, list) {
+  hash_for_each_rcu(snat_hashtable, bkt, sntmp, hnode) {
     if (forward_snat_match(sntmp, skb) > 0) {
       sntmp->state = state_machine(skb, sntmp->state, 0);
       update_snat_timer(sntmp);
@@ -257,31 +261,61 @@ void update_snat_timer(struct snatted_table *snt) {
   }
 }
 
+void free_dnat_work(struct work_struct *work) {
+  struct dnatted_table *dnt =
+      container_of(work, struct dnatted_table, cleanup_work);
+
+  /* Safe to sync because we are in process context (workqueue worker) */
+  timer_delete_sync(&dnt->timer_dnattedlist);
+
+  /* Readers are finished, timer is synced, now we can free after RCU grace. */
+  call_rcu(&dnt->dnat_rcuh, free_dnat_entry_rcu_call);
+}
+
+void free_snat_work(struct work_struct *work) {
+  struct snatted_table *snt =
+      container_of(work, struct snatted_table, cleanup_work);
+
+  timer_delete_sync(&snt->timer_snattedlist);
+
+  call_rcu(&snt->snat_rcuh, free_snat_entry_rcu_call);
+}
+
 void handle_dnatted_entry_timeout(struct timer_list *t) {
-  struct dnatted_table *dnt_to_free =
-      timer_container_of(dnt_to_free, t, timer_dnattedlist);
+  struct dnatted_table *dnt = timer_container_of(dnt, t, timer_dnattedlist);
+
   spin_lock_bh(&dnat_list_lock);
-  timer_delete_sync(&dnt_to_free->timer_dnattedlist);
-  hash_del_rcu(&dnt_to_free->hnode);
-  list_del_rcu(&dnt_to_free->list);
-  call_rcu(&dnt_to_free->dnat_rcuh, free_dnat_entry_rcu_call);
+  if (hlist_unhashed(&dnt->hnode)) {
+    spin_unlock_bh(&dnat_list_lock);
+    return;
+  }
+  hash_del_rcu(&dnt->hnode);
   dnatted_entry_counter--;
   spin_unlock_bh(&dnat_list_lock);
+
+  if (ipfire_wq)
+    queue_work(ipfire_wq, &dnt->cleanup_work);
 }
 
 void handle_snatted_entry_timeout(struct timer_list *t) {
-  struct snatted_table *snt_to_free =
-      timer_container_of(snt_to_free, t, timer_snattedlist);
+  struct snatted_table *snt = timer_container_of(snt, t, timer_snattedlist);
+
   spin_lock_bh(&snat_list_lock);
-  timer_delete_sync(&snt_to_free->timer_snattedlist);
-  list_del_rcu(&snt_to_free->list);
-  call_rcu(&snt_to_free->snat_rcuh, free_snat_entry_rcu_call);
+  if (hlist_unhashed(&snt->hnode)) {
+    spin_unlock_bh(&snat_list_lock);
+    return;
+  }
+  hash_del_rcu(&snt->hnode);
   snatted_entry_counter--;
   spin_unlock_bh(&snat_list_lock);
+
+  if (ipfire_wq)
+    queue_work(ipfire_wq, &snt->cleanup_work);
 }
 
 void fill_timer_dnat_entry(struct dnatted_table *dnt) {
   unsigned timeo = get_timeout_by_state(dnt->protocol, dnt->state);
+  INIT_WORK(&dnt->cleanup_work, free_dnat_work);
   timer_setup(&dnt->timer_dnattedlist, handle_dnatted_entry_timeout, 0);
   dnt->timer_dnattedlist.expires = jiffies + HZ * timeo;
   dnt->last_timer_update = jiffies;
@@ -289,6 +323,7 @@ void fill_timer_dnat_entry(struct dnatted_table *dnt) {
 
 void fill_timer_snat_entry(struct snatted_table *snt) {
   unsigned timeo = get_timeout_by_state(snt->protocol, snt->state);
+  INIT_WORK(&snt->cleanup_work, free_snat_work);
   timer_setup(&snt->timer_snattedlist, handle_snatted_entry_timeout, 0);
   snt->timer_snattedlist.expires = jiffies + HZ * timeo;
   snt->last_timer_update = jiffies;
@@ -307,33 +342,39 @@ void free_snat_entry_rcu_call(struct rcu_head *head) {
 }
 
 int free_dnatted_table(void) {
-  struct dnatted_table *dtl, *next;
+  struct dnatted_table *dtl;
+  struct hlist_node *tmp;
+  int bkt;
   int counter = 0;
   spin_lock_bh(&dnat_list_lock);
-  list_for_each_entry_safe(dtl, next, &root_dnatted_table.list, list) {
-    if (timer_delete_sync(&dtl->timer_dnattedlist)) {
-      list_del_rcu(&dtl->list);
-      call_rcu(&dtl->dnat_rcuh, free_dnat_entry_rcu_call);
-      counter++;
-      dnatted_entry_counter--;
-    }
+  hash_for_each_safe(dnat_hashtable, bkt, tmp, dtl, hnode) {
+    /* Removal under lock - this ensures we win against the timer handler. */
+    hash_del_rcu(&dtl->hnode);
+    dnatted_entry_counter--;
+    /* Now queue work to safely timer_delete_sync(dtl->timer_dnattedlist)
+     * and call_rcu outside of the spinlock block.
+     */
+    if (ipfire_wq)
+      queue_work(ipfire_wq, &dtl->cleanup_work);
+    counter++;
   }
   spin_unlock_bh(&dnat_list_lock);
   return counter;
 }
 
 int free_snatted_table(void) {
-  struct snatted_table *stl, *next;
+  struct snatted_table *stl;
+  struct hlist_node *tmp;
+  int bkt;
   int counter = 0;
   synchronize_net();
   spin_lock_bh(&snat_list_lock);
-  list_for_each_entry_safe(stl, next, &root_snatted_table.list, list) {
-    if (timer_delete_sync(&stl->timer_snattedlist)) {
-      list_del_rcu(&stl->list);
-      call_rcu(&stl->snat_rcuh, free_snat_entry_rcu_call);
-      counter++;
-      snatted_entry_counter--;
-    }
+  hash_for_each_safe(snat_hashtable, bkt, tmp, stl, hnode) {
+    hash_del_rcu(&stl->hnode);
+    snatted_entry_counter--;
+    if (ipfire_wq)
+      queue_work(ipfire_wq, &stl->cleanup_work);
+    counter++;
   }
   spin_unlock_bh(&snat_list_lock);
   return counter;

@@ -49,8 +49,8 @@ int address_match(const struct iphdr * iph,
 {
     int match = 0;
     int i, addr_in_list;
-    __u32 source_address, p_source_address;
-    __u32 dest_address, p_dest_address;
+    __u32 source_address, p_source_address = 0;
+    __u32 dest_address, p_dest_address = 0;
 
     /* source address */
     /* Set correct source and destination address: the one corresponding

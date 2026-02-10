@@ -51,16 +51,32 @@ u32 get_loginfo_hash(const struct sk_buff *skb, const struct response *res,
                       ((u32)proto << 16) | flow->direction, 0);
 }
 
+void free_loginfo_work(struct work_struct *work) {
+  struct ipfire_loginfo *ipfilog =
+      container_of(work, struct ipfire_loginfo, cleanup_work);
+
+  /* Safe to sync because we are in process context (workqueue worker) */
+  timer_delete_sync(&ipfilog->timer_loginfo);
+
+  /* Readers are finished, timer is synced, now we can free after RCU grace. */
+  call_rcu(&ipfilog->rcuh, free_entry_rcu_call);
+}
+
 void handle_loginfo_entry_timeout(struct timer_list *t) {
   struct ipfire_loginfo *ipfilog =
       timer_container_of(ipfilog, t, timer_loginfo);
-  /* lock list before deleting an entry */
+
   spin_lock_bh(&loginfo_list_lock);
-  timer_delete(&ipfilog->timer_loginfo);
+  if (hlist_unhashed(&ipfilog->hnode)) {
+    spin_unlock_bh(&loginfo_list_lock);
+    return;
+  }
   hash_del_rcu(&ipfilog->hnode);
-  call_rcu(&ipfilog->rcuh, free_entry_rcu_call);
   loginfo_entry_counter--;
-  spin_unlock_bh(&loginfo_list_lock); /* unlock */
+  spin_unlock_bh(&loginfo_list_lock);
+
+  if (ipfire_wq)
+    queue_work(ipfire_wq, &ipfilog->cleanup_work);
 }
 
 /* updates timer of a loginfo entry, when a packet is already
@@ -81,6 +97,7 @@ inline void update_loginfo_timer(struct ipfire_loginfo *iplo) {
 }
 
 inline void fill_timer_loginfo_entry(struct ipfire_loginfo *ipfilog) {
+  INIT_WORK(&ipfilog->cleanup_work, free_loginfo_work);
   timer_setup(&ipfilog->timer_loginfo, handle_loginfo_entry_timeout, 0);
   ipfilog->timer_loginfo.expires = jiffies + HZ * loginfo_lifetime;
 }
@@ -330,16 +347,16 @@ int free_loginfo_entries(void) {
   int bkt;
   spin_lock_bh(&loginfo_list_lock);
   hash_for_each_safe(loginfo_hashtable, bkt, tmp, ilo, hnode) {
-    if (timer_delete_sync(&ilo->timer_loginfo)) {
-      /* Invoke the call_rcu() to free the log table.
-       * So we must remember to call rcu_barrier() before
-       * leaving the exit function (see fini() ).
-       */
-      hash_del_rcu(&ilo->hnode);
-      call_rcu(&ilo->rcuh, free_entry_rcu_call);
-      counter++;
-      loginfo_entry_counter--;
-    }
+    /* Removal under lock - this ensures we win against the timer handler. */
+    hash_del_rcu(&ilo->hnode);
+    loginfo_entry_counter--;
+
+    /* Now queue work to safely timer_delete_sync and call_rcu
+     * outside of the spinlock block.
+     */
+    if (ipfire_wq)
+      queue_work(ipfire_wq, &ilo->cleanup_work);
+    counter++;
   }
   spin_unlock_bh(&loginfo_list_lock);
   return counter;

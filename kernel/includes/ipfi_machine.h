@@ -52,8 +52,8 @@ struct state_table {
    * no need to store in state tables */
 
   struct timer_list timer_statelist;
+  struct work_struct cleanup_work;
   unsigned long last_timer_update;
-  struct list_head list;
   struct state_t state;
 
   /* RCU */

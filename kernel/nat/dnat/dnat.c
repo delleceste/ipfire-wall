@@ -118,8 +118,9 @@ int de_dnat_table_match(const struct dnatted_table *dnt,
 int pre_de_dnat(struct sk_buff *skb, const ipfi_flow *flow,
                 struct response *resp, struct info_flags *flags) {
   struct dnatted_table *dntmp;
+  int bkt;
   rcu_read_lock_bh();
-  list_for_each_entry_rcu(dntmp, &root_dnatted_table.list, list) {
+  hash_for_each_rcu(dnat_hashtable, bkt, dntmp, hnode) {
     if (pre_denat_table_match(dntmp, skb) > 0) {
       dntmp->state = state_machine(skb, dntmp->state, 1);
       update_dnat_timer(dntmp);
@@ -230,8 +231,6 @@ struct dnatted_table *add_dnatted_entry(const struct sk_buff *skb,
   fill_timer_dnat_entry(newtable);
   newtable->rule_id = entry_id++;
   add_timer(&newtable->timer_dnattedlist);
-  INIT_LIST_HEAD(&newtable->list);
-  list_add_rcu(&newtable->list, &root_dnatted_table.list);
   hash_add_rcu(dnat_hashtable, &newtable->hnode, hash);
   dnatted_entry_counter++;
   spin_unlock_bh(&dnat_list_lock);

@@ -23,6 +23,7 @@
 #include <linux/types.h>
 #include <linux/version.h>
 #include <net/protocol.h>
+
 #include <net/sock.h>
 #include <net/tcp.h> /* for checksumming */
 
@@ -171,7 +172,8 @@ inline void copy_rulename(ipfire_info_t *iit_dest,
 /* if *cnt reaches ULONG MAX, it must be reset to 0 */
 inline void check_packet_num(unsigned long long *cnt);
 
-int ipfi_response(struct sk_buff *skb, ipfi_flow *_flow);
+int ipfi_response(const struct nf_hook_state *state, struct sk_buff *skb,
+                  ipfi_flow *_flow);
 
 int ipfi_pre_process(struct sk_buff *skb, const ipfi_flow *flow);
 int ipfi_post_process(struct sk_buff *skb, const ipfi_flow *flow);

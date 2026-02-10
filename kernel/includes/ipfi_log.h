@@ -14,6 +14,7 @@
 struct ipfire_loginfo {
   ipfire_info_t info;
   struct timer_list timer_loginfo;
+  struct work_struct cleanup_work;
   struct rcu_head rcuh;
   struct hlist_node hnode;
 };

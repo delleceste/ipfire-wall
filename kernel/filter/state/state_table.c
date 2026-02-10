@@ -247,15 +247,6 @@ int compare_state_entries(const struct state_table *s1,
          (s1->out_ifindex == s2->out_ifindex);
 }
 
-void fill_timer_table_fields(struct state_table *state_t) {
-  long int expi;
-  expi = get_timeout_by_state(state_t->protocol, state_t->state.state);
-
-  timer_setup(&state_t->timer_statelist, handle_keep_state_timeout, 0);
-  state_t->timer_statelist.expires = jiffies + expi * HZ;
-  state_t->last_timer_update = jiffies;
-}
-
 struct state_table *
 lookup_state_table_n_update_timer(const struct state_table *stt, int lock) {
   int counter = 0;
@@ -288,8 +279,6 @@ int add_state_table_to_list(struct state_table *newtable) {
 
   fill_timer_table_fields(newtable);
   add_timer(&newtable->timer_statelist);
-  INIT_LIST_HEAD(&newtable->list);
-  list_add_rcu(&newtable->list, &root_state_table.list);
   hash_add_rcu(state_hashtable, &newtable->hnode, key);
 
   state_tables_counter++;
@@ -298,37 +287,48 @@ int add_state_table_to_list(struct state_table *newtable) {
   return 0;
 }
 
+void free_state_work(struct work_struct *work) {
+  struct state_table *st = container_of(work, struct state_table, cleanup_work);
+
+  /* Safe to sync because we are in process context (workqueue worker) */
+  timer_delete_sync(&st->timer_statelist);
+
+  /* Readers are finished, timer is synced, now we can free after RCU grace. */
+  call_rcu(&st->state_rcuh, free_state_entry_rcu_call);
+}
+
 void handle_keep_state_timeout(struct timer_list *t) {
-  struct state_table *st_to_free =
-      timer_container_of(st_to_free, t, timer_statelist);
+  struct state_table *st = timer_container_of(st, t, timer_statelist);
 
   spin_lock_bh(&state_list_lock);
-
-  if (we_are_exiting != 0) {
-    IPFI_PRINTK("data in handle_keep_state_timeout() we are exiting!\n");
+  if (hlist_unhashed(&st->hnode)) {
     spin_unlock_bh(&state_list_lock);
     return;
   }
-
-  if (st_to_free == NULL) {
-    IPFI_PRINTK("handle_timeout: null data\n");
-    spin_unlock_bh(&state_list_lock);
-    return;
-  }
-
-  timer_delete(&st_to_free->timer_statelist);
-  list_del_rcu(&st_to_free->list);
-  hash_del_rcu(&st_to_free->hnode);
-
+  hash_del_rcu(&st->hnode);
   state_tables_counter--;
-  call_rcu(&st_to_free->state_rcuh, free_state_entry_rcu_call);
   spin_unlock_bh(&state_list_lock);
+
+  if (ipfire_wq)
+    queue_work(ipfire_wq, &st->cleanup_work);
+}
+
+void fill_timer_table_fields(struct state_table *state_t) {
+  long int expi;
+  expi = get_timeout_by_state(state_t->protocol, state_t->state.state);
+
+  INIT_WORK(&state_t->cleanup_work, free_state_work);
+  timer_setup(&state_t->timer_statelist, handle_keep_state_timeout, 0);
+  state_t->timer_statelist.expires = jiffies + expi * HZ;
+  state_t->last_timer_update = jiffies;
 }
 
 void update_ifindex_in_state_tables(const char *name, int new_index) {
   struct state_table *entry;
+  int bkt;
+
   spin_lock_bh(&state_list_lock);
-  list_for_each_entry(entry, &root_state_table.list, list) {
+  hash_for_each(state_hashtable, bkt, entry, hnode) {
     if (entry->in_devname[0] && strcmp(entry->in_devname, name) == 0)
       entry->in_ifindex = new_index;
     if (entry->out_devname[0] && strcmp(entry->out_devname, name) == 0)
@@ -366,21 +366,38 @@ void unregister_ipfire_netdev_notifier(void) {
 
 int free_state_tables(void) {
   struct state_table *tl;
-  int counter = 0, i = 0;
+  struct hlist_node *tmp;
+  int counter = 0;
+  int bkt;
+
   spin_lock_bh(&state_list_lock);
-  list_for_each_entry(tl, &root_state_table.list, list) {
-    i++;
-    if (timer_delete_sync(&tl->timer_statelist) > 0) {
-      list_del_rcu(&tl->list);
-      hash_del_rcu(&tl->hnode);
-      call_rcu(&tl->state_rcuh, free_state_entry_rcu_call);
-      counter++;
-      state_tables_counter--;
-    } else
-      IPFI_PRINTK("IPFIRE: free_state_tables(): timer already expired for the "
-                  "entry %d.\n",
-                  i);
+  hash_for_each_safe(state_hashtable, bkt, tmp, tl, hnode) {
+    /* Removal under lock - this ensures we win against the timer handler. */
+    hash_del_rcu(&tl->hnode);
+    state_tables_counter--;
+
+    /* Now queue work to safely timer_delete_sync and call_rcu
+     * outside of the spinlock block.
+     */
+    if (ipfire_wq)
+      queue_work(ipfire_wq, &tl->cleanup_work);
+    counter++;
   }
   spin_unlock_bh(&state_list_lock);
   return counter;
+}
+
+int init_machine(void) {
+  hash_init(state_hashtable);
+  register_ipfire_netdev_notifier();
+  return 0;
+}
+
+void fini_machine(void) {
+  unregister_ipfire_netdev_notifier();
+  int ret;
+  ret = free_state_tables();
+  IPFI_PRINTK("IPFIRE: state tables freed: %d.\n", ret);
+  might_sleep();
+  rcu_barrier();
 }

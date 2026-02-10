@@ -506,8 +506,9 @@ int send_tables(void) {
   struct state_info *st_info;
   struct sk_buff *buf_touser = NULL, *buf_touser_endmess = NULL;
 
+  int bkt;
   rcu_read_lock_bh();
-  list_for_each_entry_rcu(st, &root_state_table.list, list) {
+  hash_for_each_rcu(state_hashtable, bkt, st, hnode) {
     st_info =
         (struct state_info *)kmalloc(sizeof(struct state_info), GFP_ATOMIC);
     if (st_info != NULL) {
@@ -538,8 +539,9 @@ int send_dnat_tables(void) {
   struct dnat_info *dn_info;
   struct sk_buff *skb_to_user = NULL;
 
+  int bkt;
   rcu_read_lock();
-  list_for_each_entry_rcu(dt, &root_dnatted_table.list, list) {
+  hash_for_each_rcu(dnat_hashtable, bkt, dt, hnode) {
     dn_info = (struct dnat_info *)kmalloc(sizeof(struct dnat_info), GFP_ATOMIC);
     if (dn_info) {
       fill_dnat_info(dn_info, dt);
@@ -569,8 +571,9 @@ int send_snat_tables(void) {
   struct snat_info *sn_info;
   struct sk_buff *skb_to_user = NULL;
 
+  int bkt;
   rcu_read_lock();
-  list_for_each_entry_rcu(st, &root_snatted_table.list, list) {
+  hash_for_each_rcu(snat_hashtable, bkt, st, hnode) {
     sn_info = (struct snat_info *)kmalloc(sizeof(struct snat_info), GFP_ATOMIC);
     if (sn_info != NULL) {
       fill_snat_info(sn_info, st);

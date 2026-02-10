@@ -98,9 +98,7 @@ ipfire_rule translation_out;
 ipfire_rule masquerade_post;
 
 /* State and NAT tables */
-struct state_table root_state_table;
-struct dnatted_table root_dnatted_table;
-struct snatted_table root_snatted_table;
+
 DEFINE_HASHTABLE(state_hashtable, STATE_HASH_BITS);
 DEFINE_HASHTABLE(dnat_hashtable, DNAT_HASH_BITS);
 DEFINE_HASHTABLE(snat_hashtable, SNAT_HASH_BITS);
@@ -141,6 +139,7 @@ DEFINE_SPINLOCK(state_list_lock);
 DEFINE_SPINLOCK(loginfo_list_lock);
 DEFINE_SPINLOCK(snat_list_lock);
 DEFINE_SPINLOCK(dnat_list_lock);
+struct workqueue_struct *ipfire_wq = NULL;
 
 int we_are_exiting = 0;
 

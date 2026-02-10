@@ -9,6 +9,10 @@
 #include <linux/spinlock.h>
 #include <linux/types.h>
 
+#ifndef timer_container_of
+#define timer_container_of(ptr, timer, member) from_timer(ptr, timer, member)
+#endif
+
 /* Netlink related PIDs and sockets */
 extern pid_t userspace_control_pid;
 extern pid_t userspace_data_pid;
@@ -47,9 +51,7 @@ extern ipfire_rule translation_out;
 extern ipfire_rule masquerade_post;
 
 /* State and NAT tables */
-extern struct state_table root_state_table;
-extern struct dnatted_table root_dnatted_table;
-extern struct snatted_table root_snatted_table;
+
 extern DECLARE_HASHTABLE(state_hashtable, STATE_HASH_BITS);
 extern DECLARE_HASHTABLE(dnat_hashtable, DNAT_HASH_BITS);
 extern DECLARE_HASHTABLE(snat_hashtable, SNAT_HASH_BITS);
@@ -84,6 +86,7 @@ extern spinlock_t state_list_lock;
 extern spinlock_t loginfo_list_lock;
 extern spinlock_t snat_list_lock;
 extern spinlock_t dnat_list_lock;
+extern struct workqueue_struct *ipfire_wq;
 
 /* Other */
 extern int we_are_exiting;

@@ -99,7 +99,7 @@ unsigned badcsum_cnt_rcv = 0;
 struct response iph_in_get_response(struct sk_buff *skb, ipfi_flow *flow,
                                     struct info_flags *flags) {
   struct response response = {};
-
+  flags->direction = flow->direction;                                      
   /* invoke engine function passing the appropriate rule lists */
   if (flow->direction == IPFI_INPUT)
     response = ipfire_filter(&in_drop, &in_acc, &fwopts, skb, flow, flags);
@@ -508,15 +508,6 @@ int check_headers(struct sk_buff *skb) {
 unsigned int process(void *priv, struct sk_buff *skb,
                      const struct nf_hook_state *state) {
   unsigned int hooknum = state->hook;
-  /* Trace process entry */
-  if (hooknum == NF_IP_PRE_ROUTING) {
-    struct iphdr *iph = ip_hdr(skb);
-    if (iph && iph->protocol == IPPROTO_TCP) {
-      struct tcphdr *th = (struct tcphdr *)((void *)iph + iph->ihl * 4);
-      printk("IPFIRE_DEBUG: process() called for TCP:20022 hook=%d\n", hooknum);
-    }
-  }
-
   const struct net_device *in = state->in;
   const struct net_device *out = state->out;
 
@@ -543,15 +534,15 @@ unsigned int process(void *priv, struct sk_buff *skb,
   case NF_IP_LOCAL_IN:
     IPFI_STAT_INC(in_rcv);
     flow.direction = IPFI_INPUT;
-    return ipfi_response(skb, &flow);
+    return ipfi_response(state, skb, &flow);
   case NF_IP_LOCAL_OUT:
     IPFI_STAT_INC(out_rcv);
     flow.direction = IPFI_OUTPUT;
-    return ipfi_response(skb, &flow);
+    return ipfi_response(state, skb, &flow);
   case NF_IP_FORWARD:
     IPFI_STAT_INC(fwd_rcv);
     flow.direction = IPFI_FWD;
-    return ipfi_response(skb, &flow);
+    return ipfi_response(state, skb, &flow);
   case NF_IP_POST_ROUTING:
     IPFI_STAT_INC(post_rcv);
     flow.direction = IPFI_OUTPUT_POST;
@@ -610,17 +601,6 @@ int ipfi_pre_process(struct sk_buff *skb, const ipfi_flow *flow) {
 
   /* MASQUERADE or NAT are enabled: go on! */
 
-  /* Debug flow: Entry */
-  {
-    struct iphdr *iph_dbg = ip_hdr(skb);
-    if (iph_dbg->protocol == IPPROTO_TCP) {
-      struct tcphdr *th_dbg =
-          (struct tcphdr *)((void *)iph_dbg + iph_dbg->ihl * 4);
-      printk("IPFIRE_DEBUG: ipfi_pre_process: ENTRY. flags.dir=%d port=%d\n",
-             flags.direction, ntohs(th_dbg->dest));
-    }
-  }
-
   /* No more kmalloc for ipfire_info_t. We use stack-based flags and response.
    */
 
@@ -634,16 +614,6 @@ int ipfi_pre_process(struct sk_buff *skb, const ipfi_flow *flow) {
    */
   ret = pre_de_dnat(skb, flow, &resp, &flags);
 
-  /* Debug flow: pre_de_dnat result */
-  {
-    struct iphdr *iph_dbg = ip_hdr(skb);
-    if (iph_dbg->protocol == IPPROTO_TCP) {
-      struct tcphdr *th_dbg =
-          (struct tcphdr *)((void *)iph_dbg + iph_dbg->ihl * 4);
-      printk("IPFIRE_DEBUG: pre_de_dnat returned %d\n", ret);
-    }
-  }
-
   /* implements pre processing of the packets: DNAT.
    * check if we already have a translation for this session
    * (early lookup consolidated here)
@@ -651,14 +621,6 @@ int ipfi_pre_process(struct sk_buff *skb, const ipfi_flow *flow) {
   if (ret < 0) {
     struct dnatted_table *dnt = lookup_dnat_forward(skb, flow, &resp, &flags);
     if (dnt != NULL) {
-      /* Debug flow: lookup_dnat_forward hit */
-      struct iphdr *iph_dbg = ip_hdr(skb);
-      if (iph_dbg->protocol == IPPROTO_TCP) {
-        struct tcphdr *th_dbg =
-            (struct tcphdr *)((void *)iph_dbg + iph_dbg->ihl * 4);
-        printk("IPFIRE_DEBUG: lookup_dnat_forward FOUND entry port %d\n",
-               ntohs(th_dbg->dest));
-      }
       ret = dest_translate(skb, dnt);
     }
   }
@@ -671,22 +633,7 @@ int ipfi_pre_process(struct sk_buff *skb, const ipfi_flow *flow) {
   {
     /* Debug before dnat_translation call */
     struct iphdr *iph_dbg = ip_hdr(skb);
-    if (iph_dbg->protocol == IPPROTO_TCP) {
-      struct tcphdr *th_dbg =
-          (struct tcphdr *)((void *)iph_dbg + iph_dbg->ihl * 4);
-      printk("IPFIRE_DEBUG: Calling dnat_translation port %d\n",
-             ntohs(th_dbg->dest));
-    }
     ret = dnat_translation(skb, flow, &resp, &flags);
-
-    /* Debug result of dnat_translation */
-    struct iphdr *iph_dbg2 = ip_hdr(skb);
-    if (iph_dbg2->protocol == IPPROTO_TCP) {
-      struct tcphdr *th_dbg =
-          (struct tcphdr *)((void *)iph_dbg2 + iph_dbg2->ihl * 4);
-      printk("IPFIRE_DEBUG: dnat_translation ret=%d port %d\n", ret,
-             ntohs(th_dbg->dest));
-    }
   }
 
   /* now let's de-snat, or de-masquerade, if no match has previously succeeded
@@ -696,6 +643,7 @@ int ipfi_pre_process(struct sk_buff *skb, const ipfi_flow *flow) {
 
   /* checksum is calculated inside set_pairs_in_skb(), ipfi_translation.c */
   if (ret >= 0) {
+    resp.verdict = IPFI_ACCEPT;
     flags.nat = 1;
 
     /* we send to userspace old packet, to let see how translation changed it,
@@ -868,7 +816,8 @@ inline int copy_headers(const struct sk_buff *skb, ipfire_info_t *fireinfo) {
   return 0;
 }
 
-int ipfi_response(struct sk_buff *skb, ipfi_flow *flow) {
+int ipfi_response(const struct nf_hook_state *state, struct sk_buff *skb,
+                  ipfi_flow *flow) {
   /* 0.98.4: When we have to DNAT in output direction, we have to
    * check if the original destination is allowed by the
    * filter rules. Imagine we have setup a proxy web and the
@@ -922,17 +871,6 @@ int ipfi_response(struct sk_buff *skb, ipfi_flow *flow) {
   /* update the sum of the packets processed */
   kstats.sum++;
 
-  /* DEBUG Output DNAT */
-  {
-    struct iphdr *iph_dbg = ip_hdr(skb);
-    if (iph_dbg && iph_dbg->protocol == IPPROTO_TCP) {
-      struct tcphdr *th_dbg =
-          (struct tcphdr *)((void *)iph_dbg + iph_dbg->ihl * 4);
-      printk("IPFIRE_DEBUG: ipfi_response: verdict=%d nat=%d dir=%d port %d\n",
-             res.verdict, fwopts.nat, flow->direction, ntohs(th_dbg->dest));
-    }
-  }
-
   if (res.verdict > 0) {
     /* in output direction we can do DNAT, if the packet locally
      * generated is allowed to leave for its destination (i.e. ret > 0).
@@ -940,16 +878,84 @@ int ipfi_response(struct sk_buff *skb, ipfi_flow *flow) {
      * ipfi_translation: set_pairs_in_skb().
      */
     if (fwopts.nat != 0 && flow->direction == IPFI_OUTPUT) {
-      /* NOTE: DNAT in the OUTPUT path changes the destination of locally
-       * generated packets. In a standard Netfilter setup, this would trigger a
-       * re-route. For now, we perform the translation, but be aware that if the
-       * destination moves to a different interface, further kernel-level
-       * routing updates (like ip_route_me_harder) might be required for full
-       * integration.
-       */
-      if (dnat_translation(skb, flow, &res, &flags) >= 0) {
-        /* Translation happened in OUTPUT path. No additional processing for
-         * now. */
+      struct dnatted_table *dnt = lookup_dnat_forward(skb, flow, &res, &flags);
+      int dnat_ret = -1;
+
+      if (dnt != NULL) {
+        /*
+         * If an existing DNAT entry is found, we use it. We also synchronize the
+         * rule_id to ensure the logged message correctly identifies which rule
+         * originally caused this translation.
+         */
+        res.rule_id = dnt->rule_id;
+        dnat_ret = dest_translate(skb, dnt);
+      } else {
+        dnat_ret = dnat_translation(skb, flow, &res, &flags);
+      }
+
+      if (dnat_ret >= 0) {
+        flags.nat = 1;
+
+        /*
+         * EXHAUSTIVE COMMENT ON RE-ROUTING (OUTPUT DNAT):
+         *
+         * When a packet's destination IP address is modified in the LOCAL_OUT
+         * path (OUTPUT hook), the original routing decision (made by the stack
+         * BEFORE the netfilter hooks) becomes stale.
+         *
+         * If the new destination IP belongs to a different network reachable via
+         * a different interface, or if it requires a different gateway, the
+         * packet must be re-routed to ensure it reaches its intended destination
+         * and that the outgoing interface and source IP (if not fixed) are
+         * consistent with the new path.
+         *
+         * ip_route_me_harder() is the standard Linux kernel function used by
+         * Netfilter (e.g., iptables NAT) to perform this re-routing. It
+         * re-evaluates the routing table based on the updated skb->nh.iph
+         * (network header).
+         *
+         * Arguments:
+         * - state->net: The network namespace context.
+         * - state->sk:  The socket associated with the packet (locally generated).
+         * - skb:        The packet buffer itself.
+         * - RTN_UNSPEC: Address type (unspecified, let the routing engine decide).
+         *
+         * Failure to call this after DNAT in OUTPUT often leads to kernel panics
+         * or silent packet loss because the stack later finds inconsistencies
+         * between the skb->dst and the actual packet headers.
+         */
+        if (ip_route_me_harder(state->net, state->sk, skb, RTN_UNSPEC)) {
+          IPFI_PRINTK("IPFIRE: ip_route_me_harder failed after OUTPUT DNAT\n");
+          /* If re-routing fails, the packet is in an inconsistent state.
+           * We should ideally drop it to avoid further corruption or panics.
+           */
+          return NF_DROP;
+        }
+
+        /*
+         * EXHAUSTIVE COMMENT ON LOGGING (OUTPUT DNAT):
+         *
+         * After a successful DNAT translation and re-routing in the OUTPUT path,
+         * we send a log message to userspace. This provides visibility into
+         * locally generated packets that have been redirected.
+         *
+         * We use the explicit sequence:
+         * 1. build_info_t_nlmsg(): Constructs the netlink message containing
+         *    the packet headers and translation flags.
+         * 2. skb_send_to_user(): Dispatches the constructed message to the
+         *    registered userspace listener.
+         */
+        if ((userspace_data_pid) && (loguser_enabled) &&
+            (is_to_send(skb, &fwopts, &res, flow, &flags) > 0)) {
+          int err;
+          struct sk_buff *skb_touser =
+              build_info_t_nlmsg(skb, flow, &res, &flags, &err);
+          if (skb_touser != NULL) {
+            skb_send_to_user(skb_touser, LISTENER_DATA);
+          } else {
+            IPFI_PRINTK("IPFIRE: failed to build log message after OUTPUT DNAT\n");
+          }
+        }
       }
     }
   } /* ret > 0 */

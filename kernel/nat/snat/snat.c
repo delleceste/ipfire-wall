@@ -72,8 +72,10 @@ struct snatted_table *add_snatted_entry(const struct sk_buff *skb,
   spin_lock_bh(&snat_list_lock);
   fill_timer_snat_entry(snatted_entry);
   add_timer(&snatted_entry->timer_snattedlist);
-  INIT_LIST_HEAD(&snatted_entry->list);
-  list_add_rcu(&snatted_entry->list, &root_snatted_table.list);
+  hash_add_rcu(snat_hashtable, &snatted_entry->hnode,
+               get_snat_hash(snatted_entry->new_saddr, snatted_entry->new_sport,
+                             snatted_entry->old_daddr, snatted_entry->old_dport,
+                             snatted_entry->protocol));
   snatted_entry_counter++;
   spin_unlock_bh(&snat_list_lock);
   return snatted_entry;
@@ -110,8 +112,9 @@ int de_snat_table_match(struct snatted_table *snt, struct sk_buff *skb) {
 int pre_de_snat(struct sk_buff *skb, const ipfi_flow *flow,
                 struct response *resp, struct info_flags *flags) {
   struct snatted_table *sntmp;
+  int bkt;
   rcu_read_lock_bh();
-  list_for_each_entry_rcu(sntmp, &root_snatted_table.list, list) {
+  hash_for_each_rcu(snat_hashtable, bkt, sntmp, hnode) {
     if (de_snat_table_match(sntmp, skb) > 0) {
       sntmp->state = state_machine(skb, sntmp->state, 1);
       update_snat_timer(sntmp);
@@ -127,8 +130,9 @@ int pre_de_snat(struct sk_buff *skb, const ipfi_flow *flow,
 int post_snat_dynamic(struct sk_buff *skb, const ipfi_flow *flow,
                       struct response *resp, struct info_flags *flags) {
   struct dnatted_table *dntmp;
+  int bkt;
   rcu_read_lock_bh();
-  list_for_each_entry_rcu(dntmp, &root_dnatted_table.list, list) {
+  hash_for_each_rcu(dnat_hashtable, bkt, dntmp, hnode) {
     if (snat_dynamic_table_match(dntmp, skb) > 0) {
       dntmp->state = state_machine(skb, dntmp->state, 0);
       update_dnat_timer(dntmp);

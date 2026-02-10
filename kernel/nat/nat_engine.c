@@ -20,42 +20,24 @@ int translation_rule_match(const struct sk_buff *skb, const ipfi_flow *flow,
                            const struct info_flags *flags,
                            const ipfire_rule *r) {
   struct iphdr *iph = ip_hdr(skb);
-  int debug = 0;
-  struct tcphdr *th_dbg = NULL;
-
-  if (iph->protocol == IPPROTO_TCP) {
-      th_dbg = (struct tcphdr *)((void *)iph + iph->ihl * 4);
-      if (ntohs(th_dbg->dest) == 20022) {
-          debug = 1;
-          printk("IPFIRE_DEBUG: Checking Rule for Port 20022\n");
-      }
-  }
-
-  if (debug) printk("IPFIRE_DEBUG: Check Direction: Rule=%d Flags=%d\n", r->direction, flags->direction);
   if (r->direction != flags->direction) {
-    if (debug) printk("IPFIRE_DEBUG: FAILED Direction\n");
     return -1;
   }
 
-  if (debug) printk("IPFIRE_DEBUG: Check Proto: Rule=%d Pkt=%d\n", r->ip.protocol, iph->protocol);
   if (r->ip.protocol != iph->protocol) {
-    if (debug) printk("IPFIRE_DEBUG: FAILED Proto\n");
     return -1;
   }
 
   if (r->nflags.indev &&
       r->devpar.in_ifindex != (flow->in ? flow->in->ifindex : -1)) {
-    if (debug) printk("IPFIRE_DEBUG: FAILED InDev. Rule=%d Flow=%d\n", r->devpar.in_ifindex, (flow->in ? flow->in->ifindex : -1));
     return -1;
   }
   if (r->nflags.outdev &&
       r->devpar.out_ifindex != (flow->out ? flow->out->ifindex : -1)) {
-    if (debug) printk("IPFIRE_DEBUG: FAILED OutDev\n");
     return -1;
   }
 
-  if (address_match(iph, r, flags->direction, NULL, NULL) < 0) {
-    if (debug) printk("IPFIRE_DEBUG: FAILED Address Match\n");
+  if (address_match(iph, r, flags->direction, flow->in, flow->out) < 0) {
     return -1;
   }
 
@@ -63,7 +45,6 @@ int translation_rule_match(const struct sk_buff *skb, const ipfi_flow *flow,
   case IPPROTO_TCP: {
     struct tcphdr *th = (struct tcphdr *)((void *)iph + iph->ihl * 4);
     if (port_match(th, NULL, r, IPPROTO_TCP) < 0) {
-      if (debug) printk("IPFIRE_DEBUG: FAILED TCP Port Match\n");
       return -1;
     }
     break;
@@ -71,13 +52,11 @@ int translation_rule_match(const struct sk_buff *skb, const ipfi_flow *flow,
   case IPPROTO_UDP: {
     struct udphdr *uh = (struct udphdr *)((void *)iph + iph->ihl * 4);
     if (port_match(NULL, uh, r, IPPROTO_UDP) < 0) {
-      if (debug) printk("IPFIRE_DEBUG: FAILED UDP Port Match\n");
       return -1;
     }
     break;
   }
   }
-  if (debug) printk("IPFIRE_DEBUG: RULE MATCHED!\n");
   return 1;
 }
 
@@ -115,11 +94,18 @@ int manip_skb(struct sk_buff *skb, __u32 saddr, __u16 sport, __u32 daddr,
     return -1;
 
   ipheader = ip_hdr(skb);
+  if (ipheader == NULL)
+    return -1;
 
-  if (ipheader->protocol == IPPROTO_TCP)
+  if (ipheader->protocol == IPPROTO_TCP) {
+    if (skb->len < l4hdroff + sizeof(struct tcphdr))
+      return -1;
     ptcphead = (struct tcphdr *)(skb->data + l4hdroff);
-  else if (ipheader->protocol == IPPROTO_UDP)
+  } else if (ipheader->protocol == IPPROTO_UDP) {
+    if (skb->len < l4hdroff + sizeof(struct udphdr))
+      return -1;
     pudphead = (struct udphdr *)(skb->data + l4hdroff);
+  }
 
   if (mi.sa) {
     oldaddr = ipheader->saddr;
@@ -268,8 +254,9 @@ int get_orig_from_dnat_entry(const struct dnatted_table *dnt,
 int lookup_dnat_table_and_getorigdst(const net_quadruplet *n4,
                                      struct sockaddr_in *sin) {
   struct dnatted_table *dntmp;
+  int bkt;
   rcu_read_lock_bh();
-  list_for_each_entry_rcu(dntmp, &root_dnatted_table.list, list) {
+  hash_for_each_rcu(dnat_hashtable, bkt, dntmp, hnode) {
     if (get_orig_from_dnat_entry(dntmp, n4, sin) == 1) {
       rcu_read_unlock_bh();
       return 0;
@@ -352,10 +339,11 @@ static struct nf_sockopt_ops so_getoriginal_dst = {
 };
 
 int init_translation(void) {
-  INIT_LIST_HEAD(&root_dnatted_table.list);
-  INIT_LIST_HEAD(&root_snatted_table.list);
   hash_init(dnat_hashtable);
   hash_init(snat_hashtable);
+  ipfire_wq = alloc_workqueue("ipfire_wq", WQ_MEM_RECLAIM, 0);
+  if (!ipfire_wq)
+    return -ENOMEM;
   return nf_register_sockopt(&so_getoriginal_dst);
 }
 
@@ -365,4 +353,8 @@ void fini_translation(void) {
   might_sleep();
   rcu_barrier();
   nf_unregister_sockopt(&so_getoriginal_dst);
+  if (ipfire_wq) {
+    destroy_workqueue(ipfire_wq);
+    ipfire_wq = NULL;
+  }
 }

@@ -60,8 +60,8 @@ struct dnatted_table {
   char rulename[RULENAMELEN];
 #endif
   struct timer_list timer_dnattedlist;
+  struct work_struct cleanup_work;
   unsigned long last_timer_update;
-  struct list_head list;
   /* RCU */
   struct rcu_head dnat_rcuh;
   struct hlist_node hnode;
@@ -90,8 +90,8 @@ struct snatted_table {
   int out_ifindex;
 
   struct timer_list timer_snattedlist;
+  struct work_struct cleanup_work;
   unsigned long last_timer_update;
-  struct list_head list;
   /* RCU */
   struct rcu_head snat_rcuh;
   struct hlist_node hnode;
