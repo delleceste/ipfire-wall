@@ -221,18 +221,16 @@ int filter_packet_to_print(const ipfire_info_t *p,
   }
   /* interfaces */
   /* interfaces */
+  /* interfaces */
   if (f->device) {
-    char devnbuf[IFNAMSIZ];
     if (f->indevice) {
-      if (p->netdevs.in_idx == -1 ||
-          !if_indextoname(p->netdevs.in_idx, devnbuf) ||
-          strcmp(f->rule->devpar.in_devname, devnbuf))
+      if (p->netdevs.in_devname[0] == '\0' ||
+          strcmp(f->rule->devpar.in_devname, p->netdevs.in_devname))
         return -1;
     }
     if (f->outdevice) {
-      if (p->netdevs.out_idx == -1 ||
-          !if_indextoname(p->netdevs.out_idx, devnbuf) ||
-          strcmp(f->rule->devpar.out_devname, devnbuf))
+      if (p->netdevs.out_devname[0] == '\0' ||
+          strcmp(f->rule->devpar.out_devname, p->netdevs.out_devname))
         return -1;
     }
     if (!f->indevice &&
@@ -241,13 +239,12 @@ int filter_packet_to_print(const ipfire_info_t *p,
       int match_in = 0;
       int match_out = 0;
 
-      if (p->netdevs.in_idx != -1 && if_indextoname(p->netdevs.in_idx, devnbuf))
-        if (!strcmp(f->rule->devpar.in_devname, devnbuf))
+      if (p->netdevs.in_devname[0] != '\0')
+        if (!strcmp(f->rule->devpar.in_devname, p->netdevs.in_devname))
           match_in = 1;
 
-      if (p->netdevs.out_idx != -1 &&
-          if_indextoname(p->netdevs.out_idx, devnbuf))
-        if (!strcmp(f->rule->devpar.in_devname, devnbuf))
+      if (p->netdevs.out_devname[0] != '\0')
+        if (!strcmp(f->rule->devpar.in_devname, p->netdevs.out_devname))
           match_out = 1;
 
       if (!match_in && !match_out)
@@ -657,10 +654,10 @@ int print_packet(const ipfire_info_t *pack,
   inet_ntop(AF_INET, (void *)&source_addr, src_address, INET_ADDRSTRLEN);
   inet_ntop(AF_INET, (void *)&dest_addr, dst_address, INET_ADDRSTRLEN);
 
-  if (pack->netdevs.in_idx > 0)
-    if_indextoname(pack->netdevs.in_idx, in_name);
-  if (pack->netdevs.out_idx > 0)
-    if_indextoname(pack->netdevs.out_idx, out_name);
+  if (pack->netdevs.in_devname[0] != '\0')
+    snprintf(in_name, IFNAMSIZ, "%s", pack->netdevs.in_devname);
+  if (pack->netdevs.out_devname[0] != '\0')
+    snprintf(out_name, IFNAMSIZ, "%s", pack->netdevs.out_devname);
 
   if ((pack->flags.nat) & (!pack->flags.snat))
     printf("[" YELLOW "DNAT" CLR "] ");

@@ -83,10 +83,10 @@ direction:
   }
 
   /* DEVICE NAME FIELD */
-  if (pack->netdevs.in_idx > 0)
-    if_indextoname(pack->netdevs.in_idx, in_name);
-  if (pack->netdevs.out_idx > 0)
-    if_indextoname(pack->netdevs.out_idx, out_name);
+  if (pack->netdevs.in_devname[0] != '\0')
+    snprintf(in_name, IFNAMSIZ, "%s", pack->netdevs.in_devname);
+  if (pack->netdevs.out_devname[0] != '\0')
+    snprintf(out_name, IFNAMSIZ, "%s", pack->netdevs.out_devname);
 
   snprintf(c, LOGLINELEN, "|%s", in_name);
   flog(c);

@@ -98,8 +98,10 @@ struct sk_buff *build_info_t_nlmsg(const struct sk_buff *skb,
     msg->flags = *flags;
     msg->flags.direction =
         flow->direction; /* Ensure direction is set from flow */
-    msg->netdevs.in_idx = flow->in ? flow->in->ifindex : -1;
-    msg->netdevs.out_idx = flow->out ? flow->out->ifindex : -1;
+    if (flow->in)
+      strncpy(msg->netdevs.in_devname, flow->in->name, IFNAMSIZ - 1);
+    if (flow->out)
+      strncpy(msg->netdevs.out_devname, flow->out->name, IFNAMSIZ - 1);
   }
   return nl_skb;
 }

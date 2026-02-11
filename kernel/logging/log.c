@@ -112,8 +112,10 @@ int build_ipfire_info_from_skb(const struct sk_buff *skb, const ipfi_flow *flow,
   dest->flags = *flags;
   dest->flags.direction = flow->direction;
 
-  dest->netdevs.in_idx = flow->in != NULL ? flow->in->ifindex : -1;
-  dest->netdevs.out_idx = flow->out != NULL ? flow->out->ifindex : -1;
+  if (flow->in)
+    strscpy(dest->netdevs.in_devname, flow->in->name, IFNAMSIZ);
+  if (flow->out)
+    strscpy(dest->netdevs.out_devname, flow->out->name, IFNAMSIZ);
   dest->response = *res;
   return 0;
 }
@@ -227,9 +229,12 @@ int packet_matches_log_entry(const struct sk_buff *skb,
   if (res->verdict != p2->response.verdict) {
     return -1;
   }
-  const int in_ifidx = flow->in ? flow->in->ifindex : -1;
-  const int out_ifidx = flow->out ? flow->out->ifindex : -1;
-  if (in_ifidx != p2->netdevs.in_idx || out_ifidx != p2->netdevs.out_idx) {
+  const char *in_name = flow->in ? flow->in->name : "";
+  if (strncmp(in_name, p2->netdevs.in_devname, IFNAMSIZ) != 0) {
+    return -1;
+  }
+  const char *out_name = flow->out ? flow->out->name : "";
+  if (strncmp(out_name, p2->netdevs.out_devname, IFNAMSIZ) != 0) {
     return -1;
   }
 

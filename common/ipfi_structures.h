@@ -254,7 +254,8 @@ struct firesizes {
 };
 
 typedef struct {
-  int in_idx, out_idx;
+  char in_devname[IFNAMSIZ];
+  char out_devname[IFNAMSIZ];
 } net_dev;
 
 typedef struct {
@@ -510,7 +511,6 @@ struct state_info {
   uint32_t rule_id;
   unsigned int timeout;
   __u8 protocol;
-  // int in_ifindex, out_ifindex;
   char in_devname[IFNAMSIZ];
   char out_devname[IFNAMSIZ];
   struct state_t state;
