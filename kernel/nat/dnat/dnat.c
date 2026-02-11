@@ -194,6 +194,9 @@ struct dnatted_table *add_dnatted_entry(const struct sk_buff *skb,
                                         struct response *resp,
                                         struct info_flags *flags,
                                         const ipfire_rule *dnat_rule) {
+  if (unlikely(READ_ONCE(we_are_exiting)))
+    return NULL;
+  
   struct dnatted_table *newtable;
   struct dnatted_table lookup_entry;
   static unsigned int entry_id = 0;
@@ -228,6 +231,11 @@ struct dnatted_table *add_dnatted_entry(const struct sk_buff *skb,
   *newtable = lookup_entry;
   newtable->state = state_machine(skb, newtable->state, 0);
   spin_lock_bh(&dnat_list_lock);
+  if (unlikely(we_are_exiting)) {
+    spin_unlock_bh(&dnat_list_lock);
+    kfree(newtable);
+    return NULL;
+  }
   fill_timer_dnat_entry(newtable);
   newtable->rule_id = entry_id++;
   add_timer(&newtable->timer_dnattedlist);

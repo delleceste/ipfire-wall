@@ -466,17 +466,10 @@ int print_state_table_entry(const struct state_info *tr, int counter) {
     printf(GRAY "->" CLR);
     printf("%s:", daddr);
     printf("%d| ", ntohs(tr->dport));
-    char in_devname[IFNAMSIZ] = "n.a.";
-    char out_devname[IFNAMSIZ] = "n.a.";
-    if (tr->in_ifindex > 0)
-      if_indextoname(tr->in_ifindex, in_devname);
-    if (tr->out_ifindex > 0)
-      if_indextoname(tr->out_ifindex, out_devname);
-
-    if (strncmp(in_devname, "n.a.", 4))
-      printf(TR("IF IN:" CYAN "%s"), in_devname);
-    if (strncmp(out_devname, "n.a.", 4))
-      printf(TR("IF OUT:" GREEN "%s"), out_devname);
+    if (tr->in_devname[0] != '\0')
+      printf(TR("IF IN:" CYAN "%s"), tr->in_devname);
+    if (tr->out_devname[0] != '\0')
+      printf(TR("IF OUT:" GREEN "%s"), tr->out_devname);
 
     printf("[");
     print_state(tr->state.state);
@@ -521,17 +514,10 @@ int print_dnat_table_entry(const struct dnat_info *di, int counter) {
     printf(GREEN "%d" CLR "|" CLR, ntohs(di->newdport));
   }
 
-  char in_devname[IFNAMSIZ] = "n.a.";
-  char out_devname[IFNAMSIZ] = "n.a.";
-  if (di->in_ifindex > 0)
-    if_indextoname(di->in_ifindex, in_devname);
-  if (di->out_ifindex > 0)
-    if_indextoname(di->out_ifindex, out_devname);
-
-  if (strncmp(in_devname, "n.a.", 4))
-    printf(TR("INDEV: %s"), in_devname);
-  if (strncmp(out_devname, "n.a.", 4))
-    printf(TR("OUTDEV: %s"), out_devname);
+  if (di->in_devname[0] != '\0')
+    printf(TR("INDEV: %s"), di->in_devname);
+  if (di->out_devname[0] != '\0')
+    printf(TR("OUTDEV: %s"), di->out_devname);
 
   printf("|[");
   print_state(di->state.state);
@@ -575,17 +561,10 @@ int print_snat_table_entry(const struct snat_info *di, int counter) {
     printf("%d|", ntohs(di->dport));
   }
 
-  char in_devname[IFNAMSIZ] = "n.a.";
-  char out_devname[IFNAMSIZ] = "n.a.";
-  if (di->in_ifindex > 0)
-    if_indextoname(di->in_ifindex, in_devname);
-  if (di->out_ifindex > 0)
-    if_indextoname(di->out_ifindex, out_devname);
-
-  if (strncmp(in_devname, "n.a.", 4))
-    printf(TR("INDEV: %s"), in_devname);
-  if (strncmp(out_devname, "n.a.", 4))
-    printf(TR("OUTDEV: %s"), out_devname);
+  if (di->in_devname[0] != '\0')
+    printf(TR("INDEV: %s"), di->in_devname);
+  if (di->out_devname[0] != '\0')
+    printf(TR("OUTDEV: %s"), di->out_devname);
 
   printf("|[");
   print_state(di->state.state);

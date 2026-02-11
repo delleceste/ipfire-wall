@@ -13,7 +13,9 @@
 struct response check_state(struct sk_buff *skb, const ipfi_flow *flow,
                             __u8 *ftp_state) {
   struct state_table *table_entry = NULL, *new_ftp_entry = NULL;
-  struct response ret = {};
+  struct response ret = {
+      .verdict = IPFI_IMPLICIT,
+  };
   short reverse = 0;
   struct iphdr *iph = ip_hdr(skb);
   __u16 sport = 0, dport = 0;

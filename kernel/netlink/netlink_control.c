@@ -24,8 +24,8 @@ void fill_dnat_info(struct dnat_info *dninfo,
   dninfo->timeout = (dntt->timer_dnattedlist.expires - jiffies) / HZ;
   dninfo->direction = dntt->direction;
   dninfo->state.state = dntt->state;
-  dninfo->in_ifindex = dntt->in_ifindex;
-  dninfo->out_ifindex = dntt->out_ifindex;
+  strncpy(dninfo->in_devname, dntt->in_devname, IFNAMSIZ);
+  strncpy(dninfo->out_devname, dntt->out_devname, IFNAMSIZ);
   dninfo->protocol = dntt->protocol;
 }
 
@@ -42,8 +42,8 @@ void fill_snat_info(struct snat_info *sninfo,
   sninfo->timeout = (sntt->timer_snattedlist.expires - jiffies) / HZ;
   sninfo->direction = sntt->direction;
   sninfo->state.state = sntt->state;
-  sninfo->in_ifindex = sntt->in_ifindex;
-  sninfo->out_ifindex = sntt->out_ifindex;
+  strncpy(sninfo->in_devname, sntt->in_devname, IFNAMSIZ);
+  strncpy(sninfo->out_devname, sntt->out_devname, IFNAMSIZ);
   sninfo->protocol = sntt->protocol;
 }
 

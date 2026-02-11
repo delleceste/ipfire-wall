@@ -663,26 +663,26 @@ int print_packet(const ipfire_info_t *pack,
     if_indextoname(pack->netdevs.out_idx, out_name);
 
   if ((pack->flags.nat) & (!pack->flags.snat))
-    printf("[" YELLOW "DNAT" CLR "]");
+    printf("[" YELLOW "DNAT" CLR "] ");
   else if ((pack->flags.snat))
-    printf("[" MAROON "SNAT" CLR "]");
+    printf("[" MAROON "SNAT" CLR "] ");
 
   if (pack->flags.badsum)
     PRED, printf(TR("CKSUM ERR!")), PCL;
   else {
     if (pack->response.verdict == IPFI_DROP)
-      printf(RED "[X " CLR);
+      printf("[" RED "X" CLR "] ");
     else if (pack->response.verdict == IPFI_ACCEPT)
-      printf(GREEN "[OK " CLR);
+      printf( "[" GREEN "OK" CLR "] ");
     else if (pack->response.verdict == IPFI_IMPLICIT)
-      printf(VIOLET "[IMPL]" CLR);
+      printf("[" VIOLET "IMPL" CLR "] ");
     else
-      printf(VIOLET "[? %d]" CLR, pack->response.verdict);
+      printf("[ " VIOLET "?" CLR " ] ");
 
-    if (pack->response.verdict == IPFI_DROP)
-      printf(RED "]" CLR);
-    else if (pack->response.verdict == IPFI_ACCEPT)
-      printf(GREEN "]" CLR);
+    // if (pack->response.verdict == IPFI_DROP)
+    //   printf(RED "]" CLR);
+    // else if (pack->response.verdict == IPFI_ACCEPT)
+    //   printf(GREEN "]" CLR);
   }
 
   switch (pack->flags.direction) {

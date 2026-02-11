@@ -62,14 +62,18 @@ int direct_state_match(const struct sk_buff *skb,
 
   /* Lenient check: Only mismatch if flow has interface AND entry has specific
    * interface AND they differ */
-  if (flow->in && entry->in_ifindex > 0 &&
-      flow->in->ifindex != entry->in_ifindex) {
+  /* Lenient check: Only mismatch if flow has interface AND entry has specific
+   * interface AND they differ */
+  /*
+  if (flow->in && entry->in_devname[0] &&
+      strncmp(flow->in->name, entry->in_devname, IFNAMSIZ) != 0) {
     return -1;
   }
-  if (flow->out && entry->out_ifindex > 0 &&
-      flow->out->ifindex != entry->out_ifindex) {
+  if (flow->out && entry->out_devname[0] &&
+      strncmp(flow->out->name, entry->out_devname, IFNAMSIZ) != 0) {
     return -1;
   }
+  */
   return 1;
 }
 
@@ -95,14 +99,16 @@ int reverse_state_match(const struct sk_buff *skb,
   } break;
   }
   /* Lenient check: Reverse direction swaps in/out */
-  if (flow->in && entry->out_ifindex > 0 &&
-      flow->in->ifindex != entry->out_ifindex) {
+  /*
+  if (flow->in && entry->out_devname[0] &&
+      strncmp(flow->in->name, entry->out_devname, IFNAMSIZ) != 0) {
     return -1;
   }
-  if (flow->out && entry->in_ifindex > 0 &&
-      flow->out->ifindex != entry->in_ifindex) {
+  if (flow->out && entry->in_devname[0] &&
+      strncmp(flow->out->name, entry->in_devname, IFNAMSIZ) != 0) {
     return -1;
   }
+  */
   return 1;
 }
 
@@ -115,28 +121,31 @@ inline int l2l3match(const struct sk_buff *skb, const struct state_table *entry,
     return -1;
   /* Direct Match */
   if (iph->saddr == entry->saddr && iph->daddr == entry->daddr) {
-    /* Lenient interface check: match if interface is identical OR if entry
-     * index is UNSET (<=0) OR if flow interface is NULL */
-    if ((!flow->in || flow->in->ifindex == entry->in_ifindex ||
-         entry->in_ifindex <= 0) &&
-        (!flow->out || flow->out->ifindex == entry->out_ifindex ||
-         entry->out_ifindex <= 0)) {
+    /* Lenient interface check */
+    /*
+    if ((!flow->in || strncmp(flow->in->name, entry->in_devname, IFNAMSIZ) == 0 ||
+         entry->in_devname[0] == '\0') &&
+        (!flow->out || strncmp(flow->out->name, entry->out_devname, IFNAMSIZ) == 0 ||
+         entry->out_devname[0] == '\0')) {
+    */
       *reverse = 0;
       return 1;
-    }
+    // }
   }
 
   /* Reverse Match */
   if (iph->saddr == entry->daddr && iph->daddr == entry->saddr) {
     /* Cross-check interfaces: incoming response should match outgoing request
      * interface (and vice-versa) */
-    if ((!flow->in || flow->in->ifindex == entry->out_ifindex ||
-         entry->out_ifindex <= 0) &&
-        (!flow->out || flow->out->ifindex == entry->in_ifindex ||
-         entry->in_ifindex <= 0)) {
+    /*
+    if ((!flow->in || strncmp(flow->in->name, entry->out_devname, IFNAMSIZ) == 0 ||
+         entry->out_devname[0] == '\0') &&
+        (!flow->out || strncmp(flow->out->name, entry->in_devname, IFNAMSIZ) == 0 ||
+         entry->in_devname[0] == '\0')) {
+    */
       *reverse = 1;
       return 1;
-    }
+    // }
   }
   return -1;
 }
@@ -226,11 +235,9 @@ int fill_net_table_fields(struct state_table *state_t,
     state_t->direction = flow->direction;
     state_t->protocol = iph->protocol;
     if (flow->in) {
-      state_t->in_ifindex = flow->in->ifindex;
       strncpy(state_t->in_devname, flow->in->name, IFNAMSIZ);
     }
     if (flow->out) {
-      state_t->out_ifindex = flow->out->ifindex;
       strncpy(state_t->out_devname, flow->out->name, IFNAMSIZ);
     }
     return 0;
@@ -242,9 +249,10 @@ int compare_state_entries(const struct state_table *s1,
                           const struct state_table *s2) {
   return (s1->saddr == s2->saddr) && (s1->daddr == s2->daddr) &&
          (s1->sport == s2->sport) && (s1->dport == s2->dport) &&
-         (s1->direction == s2->direction) && (s1->protocol == s2->protocol) &&
-         (s1->in_ifindex == s2->in_ifindex) &&
-         (s1->out_ifindex == s2->out_ifindex);
+         (s1->direction == s2->direction) && (s1->protocol == s2->protocol);
+         /* ifindex comparison removed */
+         // (s1->in_ifindex == s2->in_ifindex) &&
+         // (s1->out_ifindex == s2->out_ifindex);
 }
 
 struct state_table *
@@ -272,10 +280,21 @@ lookup_state_table_n_update_timer(const struct state_table *stt, int lock) {
 }
 
 int add_state_table_to_list(struct state_table *newtable) {
+  if (unlikely(READ_ONCE(we_are_exiting))) {
+    kfree(newtable);
+    return -EBUSY;
+  }
+
   u32 key = get_state_hash(newtable->saddr, newtable->daddr, newtable->sport,
                            newtable->dport, newtable->protocol);
 
   spin_lock_bh(&state_list_lock);
+
+  if (unlikely(we_are_exiting)) {
+    spin_unlock_bh(&state_list_lock);
+    kfree(newtable);
+    return -EBUSY;
+  }
 
   fill_timer_table_fields(newtable);
   add_timer(&newtable->timer_statelist);
@@ -323,45 +342,20 @@ void fill_timer_table_fields(struct state_table *state_t) {
   state_t->last_timer_update = jiffies;
 }
 
-void update_ifindex_in_state_tables(const char *name, int new_index) {
-  struct state_table *entry;
-  int bkt;
+/* update_ifindex_in_state_tables removed */
 
-  spin_lock_bh(&state_list_lock);
-  hash_for_each(state_hashtable, bkt, entry, hnode) {
-    if (entry->in_devname[0] && strcmp(entry->in_devname, name) == 0)
-      entry->in_ifindex = new_index;
-    if (entry->out_devname[0] && strcmp(entry->out_devname, name) == 0)
-      entry->out_ifindex = new_index;
-  }
-  spin_unlock_bh(&state_list_lock);
-}
+/* ipfire_netdev_event removed */
 
-static int ipfire_netdev_event(struct notifier_block *this, unsigned long event,
-                               void *ptr) {
-  struct net_device *dev = netdev_notifier_info_to_dev(ptr);
-
-  if (event == NETDEV_UP || event == NETDEV_CHANGENAME ||
-      event == NETDEV_REGISTER) {
-    update_ifindex_in_rules(dev->name, dev->ifindex);
-    update_ifindex_in_state_tables(dev->name, dev->ifindex);
-  } else if (event == NETDEV_UNREGISTER) {
-    update_ifindex_in_rules(dev->name, -1);
-    update_ifindex_in_state_tables(dev->name, -1);
-  }
-  return NOTIFY_DONE;
-}
-
-static struct notifier_block ipfire_netdev_notifier = {
-    .notifier_call = ipfire_netdev_event,
-};
+/* ipfire_netdev_notifier removed */
 
 void register_ipfire_netdev_notifier(void) {
-  register_netdevice_notifier(&ipfire_netdev_notifier);
+  /* No-op */
+  // register_netdevice_notifier(&ipfire_netdev_notifier);
 }
 
 void unregister_ipfire_netdev_notifier(void) {
-  unregister_netdevice_notifier(&ipfire_netdev_notifier);
+  /* No-op */
+  // unregister_netdevice_notifier(&ipfire_netdev_notifier);
 }
 
 int free_state_tables(void) {
@@ -399,5 +393,4 @@ void fini_machine(void) {
   ret = free_state_tables();
   IPFI_PRINTK("IPFIRE: state tables freed: %d.\n", ret);
   might_sleep();
-  rcu_barrier();
 }

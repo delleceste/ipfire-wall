@@ -29,11 +29,11 @@ int translation_rule_match(const struct sk_buff *skb, const ipfi_flow *flow,
   }
 
   if (r->nflags.indev &&
-      r->devpar.in_ifindex != (flow->in ? flow->in->ifindex : -1)) {
+      (flow->in == NULL || strncmp(r->devpar.in_devname, flow->in->name, IFNAMSIZ) != 0)) {
     return -1;
   }
   if (r->nflags.outdev &&
-      r->devpar.out_ifindex != (flow->out ? flow->out->ifindex : -1)) {
+      (flow->out == NULL || strncmp(r->devpar.out_devname, flow->out->name, IFNAMSIZ) != 0)) {
     return -1;
   }
 
@@ -351,10 +351,6 @@ void fini_translation(void) {
   free_dnatted_table();
   free_snatted_table();
   might_sleep();
-  rcu_barrier();
   nf_unregister_sockopt(&so_getoriginal_dst);
-  if (ipfire_wq) {
-    destroy_workqueue(ipfire_wq);
-    ipfire_wq = NULL;
-  }
+  rcu_barrier();
 }

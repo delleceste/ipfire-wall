@@ -192,6 +192,8 @@ static int __init ini(void) { return welcome(); }
 static void __exit fini(void) {
   IPFI_PRINTK("IPFIRE-wall unloading:  \n");
 
+  /* SIGNAL EXIT START */
+  WRITE_ONCE(we_are_exiting, true);
   /* net/core/dev.c : synchronizes with packet receive processing.
    * calls might_sleep() and
    * synchronize_rcu()
@@ -207,13 +209,18 @@ static void __exit fini(void) {
   /* will call might_sleep() and rcu_barrier() */
   fini_machine();
   /* will call might_sleep() and rcu_barrier() */
-  fini_translation();
-  /* will call might_sleep() and rcu_barrier() */
   fini_log();
+  /* will call might_sleep() and rcu_barrier() */
+  fini_translation();
 
   /* fini_netl(): just calls sock_release on the netlink socket */
   fini_netl();
   clean_proc();
+
+  if (ipfire_wq) {
+    destroy_workqueue(ipfire_wq);
+    ipfire_wq = NULL;
+  }
 
   if (ipfi_counters)
     free_percpu(ipfi_counters);

@@ -284,7 +284,7 @@ struct state_t {
 
 struct response {
   struct state_t st;
-  uint8_t notify : 1, state : 1, verdict : 6;
+  int8_t  notify : 1, state : 1, verdict : 6;
   uint32_t rule_id; /* 32-bit hash or unique ID */
 };
 
@@ -412,7 +412,7 @@ typedef struct {
       state : 1; /* stateful connection implementation */
 
   /* icmp */
-  __u16 icmp_type : 1, icmp_code : 1, icmp_echo_id : 1, icmp_echo_seq : 1,
+  int16_t icmp_type : 1, icmp_code : 1, icmp_echo_id : 1, icmp_echo_seq : 1,
       policy : 3,
       /* ACCEPT or DENIAL or TRANSLATION */
       /* match the name of the device */
@@ -426,7 +426,6 @@ typedef struct {
 typedef struct {
   char in_devname[IFNAMSIZ];
   char out_devname[IFNAMSIZ];
-  int in_ifindex, out_ifindex; // filled in in kernel space
 } deviceparams;
 
 /* NOTE: only user who inserted a rule is able to
@@ -511,7 +510,9 @@ struct state_info {
   uint32_t rule_id;
   unsigned int timeout;
   __u8 protocol;
-  int in_ifindex, out_ifindex;
+  // int in_ifindex, out_ifindex;
+  char in_devname[IFNAMSIZ];
+  char out_devname[IFNAMSIZ];
   struct state_t state;
   __u8 notify : 1, admin : 1, ftp : 2, other : 4;
 };
@@ -528,8 +529,8 @@ struct dnat_info {
   unsigned int id;
   unsigned int timeout;
   __u8 protocol;
-  int in_ifindex;
-  int out_ifindex;
+  char in_devname[IFNAMSIZ];
+  char out_devname[IFNAMSIZ];
   struct state_t state;
 };
 
@@ -545,7 +546,8 @@ struct snat_info {
   unsigned int id;
   unsigned int timeout;
   __u8 protocol;
-  int in_ifindex, out_ifindex;
+  char in_devname[IFNAMSIZ];
+  char out_devname[IFNAMSIZ];
   struct state_t state;
 };
 

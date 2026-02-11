@@ -89,6 +89,6 @@ extern spinlock_t dnat_list_lock;
 extern struct workqueue_struct *ipfire_wq;
 
 /* Other */
-extern int we_are_exiting;
+extern bool we_are_exiting;
 
 #endif /* IPFI_GLOBALS_H */

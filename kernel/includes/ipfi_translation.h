@@ -56,6 +56,8 @@ struct dnatted_table {
 
   int in_ifindex;
   int out_ifindex;
+  char in_devname[IFNAMSIZ];
+  char out_devname[IFNAMSIZ];
 #ifdef ENABLE_RULENAME
   char rulename[RULENAMELEN];
 #endif
@@ -88,6 +90,8 @@ struct snatted_table {
 
   int in_ifindex;
   int out_ifindex;
+  char in_devname[IFNAMSIZ];
+  char out_devname[IFNAMSIZ];
 
   struct timer_list timer_snattedlist;
   struct work_struct cleanup_work;

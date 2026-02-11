@@ -140,10 +140,19 @@ inline int add_packet_to_infolist(const struct sk_buff *skb,
                                   const struct response *res,
                                   const ipfi_flow *flow,
                                   const struct info_flags *flags) {
+  if (unlikely(READ_ONCE(we_are_exiting)))
+    return -EBUSY;
+
   struct ipfire_loginfo *ipli = loginfo_new(skb, res, flow, flags);
   if (ipli) {
     u32 hash = get_loginfo_hash(skb, res, flow, flags);
     spin_lock_bh(&loginfo_list_lock);
+
+    if (unlikely(we_are_exiting)) {
+      spin_unlock_bh(&loginfo_list_lock);
+      kfree(ipli);
+      return -EBUSY;
+    }
     fill_timer_loginfo_entry(ipli);
     /* add timer */
     add_timer(&ipli->timer_loginfo);
@@ -384,15 +393,6 @@ void fini_log(void) {
 
   /* See the important comments on ipfi_machine.c fini() */
   might_sleep();
-  /* free_state_tables() calls the timeout handler which
-   * schedules the rcu callback. We must wait until all
-   * the callbacks which free the state tables end.
-   */
-  /**
-   * rcu_barrier - Wait until all the in-flight RCUs are complete.
-   * see linux kernel sources/kernel/rcupdate.c
-   */
-  rcu_barrier();
 }
 
 MODULE_DESCRIPTION("IPFIRE smart logging module");

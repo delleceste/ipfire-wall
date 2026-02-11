@@ -44,6 +44,9 @@ struct snatted_table *add_snatted_entry(const struct sk_buff *skb,
   struct snatted_table *snatted_entry;
   struct snatted_table lookup_entry;
 
+  if (unlikely(READ_ONCE(we_are_exiting)))
+    return NULL;
+
   fill_snat_entry_net_fields(&lookup_entry, skb, flow, resp, flags, snat_rule);
 
   if ((snatted_entry = lookup_snatted_table_n_update_timer(
@@ -70,6 +73,11 @@ struct snatted_table *add_snatted_entry(const struct sk_buff *skb,
   *snatted_entry = lookup_entry;
   snatted_entry->state = state_machine(skb, snatted_entry->state, 0);
   spin_lock_bh(&snat_list_lock);
+  if (unlikely(we_are_exiting)) {
+    spin_unlock_bh(&snat_list_lock);
+    kfree(snatted_entry);
+    return NULL;
+  }
   fill_timer_snat_entry(snatted_entry);
   add_timer(&snatted_entry->timer_snattedlist);
   hash_add_rcu(snat_hashtable, &snatted_entry->hnode,

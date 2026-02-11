@@ -17,24 +17,25 @@ int add_rule_to_list_by_command(command *cmd_with_rule)
         return -1;
     memcpy(newrule, &(cmd_with_rule->content.rule), sizeof(ipfire_rule));
 
-    if (newrule->nflags.indev) {
-        struct net_device *dev = dev_get_by_name(&init_net, newrule->devpar.in_devname);
-        if (dev) {
-            newrule->devpar.in_ifindex = dev->ifindex;
-            dev_put(dev);
-        } else {
-            newrule->devpar.in_ifindex = -1;
-        }
-    }
-    if (newrule->nflags.outdev) {
-        struct net_device *dev = dev_get_by_name(&init_net, newrule->devpar.out_devname);
-        if (dev) {
-            newrule->devpar.out_ifindex = dev->ifindex;
-            dev_put(dev);
-        } else {
-            newrule->devpar.out_ifindex = -1;
-        }
-    }
+    /* ifindex resolution removed for namespace robustification */
+    // if (newrule->nflags.indev) {
+    //     struct net_device *dev = dev_get_by_name(&init_net, newrule->devpar.in_devname);
+    //     if (dev) {
+    //         newrule->devpar.in_ifindex = dev->ifindex;
+    //         dev_put(dev);
+    //     } else {
+    //         newrule->devpar.in_ifindex = -1;
+    //     }
+    // }
+    // if (newrule->nflags.outdev) {
+    //     struct net_device *dev = dev_get_by_name(&init_net, newrule->devpar.out_devname);
+    //     if (dev) {
+    //         newrule->devpar.out_ifindex = dev->ifindex;
+    //         dev_put(dev);
+    //     } else {
+    //         newrule->devpar.out_ifindex = -1;
+    //     }
+    // }
 
     INIT_LIST_HEAD(&newrule->list);
     spin_lock(&rulelist_lock);
@@ -150,21 +151,8 @@ int manage_rule(command * rule_from_user)
 
 void update_ifindex_in_rules(const char *name, int new_index)
 {
-    ipfire_rule *roots[] = {&in_acc, &in_drop, &out_acc, &out_drop, &fwd_acc, &fwd_drop,
-                            &translation_pre, &translation_post, &translation_out, &masquerade_post};
-    int i;
-    ipfire_rule *rule;
-
-    spin_lock(&rulelist_lock);
-    for (i = 0; i < 10; i++) {
-        list_for_each_entry(rule, &roots[i]->list, list) {
-            if (rule->nflags.indev && strcmp(rule->devpar.in_devname, name) == 0)
-                rule->devpar.in_ifindex = new_index;
-            if (rule->nflags.outdev && strcmp(rule->devpar.out_devname, name) == 0)
-                rule->devpar.out_ifindex = new_index;
-        }
-    }
-    spin_unlock(&rulelist_lock);
+    /* No-op: ifindex is no longer used for rule matching */
+    return;
 }
 
 int flush_ruleset(uid_t userspace_commander, int flush_com)

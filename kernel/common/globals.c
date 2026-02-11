@@ -141,7 +141,7 @@ DEFINE_SPINLOCK(snat_list_lock);
 DEFINE_SPINLOCK(dnat_list_lock);
 struct workqueue_struct *ipfire_wq = NULL;
 
-int we_are_exiting = 0;
+bool we_are_exiting = false;
 
 /* Export symbols if needed by other modules, but here they are used within the
  * same module */

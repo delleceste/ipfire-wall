@@ -50,8 +50,10 @@ int fill_entry_net_fields(struct dnatted_table *dnentry,
   dnentry->old_saddr = iph->saddr;
   dnentry->old_daddr = iph->daddr;
   dnentry->new_daddr = iph->daddr;
-  dnentry->in_ifindex = flow->in ? flow->in->ifindex : -1;
-  dnentry->out_ifindex = flow->out ? flow->out->ifindex : -1;
+  if (flow->in)
+    strncpy(dnentry->in_devname, flow->in->name, IFNAMSIZ);
+  if (flow->out)
+    strncpy(dnentry->out_devname, flow->out->name, IFNAMSIZ);
   if (iph->protocol == IPPROTO_TCP || iph->protocol == IPPROTO_UDP) {
     struct tcphdr *th = (struct tcphdr *)((void *)iph + iph->ihl * 4);
     dnentry->old_sport = th->source;
@@ -196,8 +198,10 @@ int fill_snat_entry_net_fields(struct snatted_table *snentry,
   snentry->protocol = iph->protocol;
   snentry->old_saddr = iph->saddr;
   snentry->old_daddr = iph->daddr;
-  snentry->in_ifindex = flow->in ? flow->in->ifindex : -1;
-  snentry->out_ifindex = flow->out ? flow->out->ifindex : -1;
+  if (flow->in)
+    strncpy(snentry->in_devname, flow->in->name, IFNAMSIZ);
+  if (flow->out)
+    strncpy(snentry->out_devname, flow->out->name, IFNAMSIZ);
   if (iph->protocol == IPPROTO_TCP || iph->protocol == IPPROTO_UDP) {
     struct tcphdr *th = (struct tcphdr *)((void *)iph + iph->ihl * 4);
     snentry->old_sport = th->source;
@@ -228,9 +232,7 @@ int compare_entries(const struct dnatted_table *dne1,
           (dne1->old_sport == dne2->old_sport) &&
           (dne1->new_daddr == dne2->new_daddr) &&
           (dne1->new_dport == dne2->new_dport) &&
-          (dne1->direction == dne2->direction) &&
-          (dne1->in_ifindex == dne2->in_ifindex) &&
-          (dne1->out_ifindex == dne2->out_ifindex));
+          (dne1->direction == dne2->direction));
 }
 
 int compare_snat_entries(const struct snatted_table *sne1,
@@ -242,9 +244,7 @@ int compare_snat_entries(const struct snatted_table *sne1,
           (sne1->old_sport == sne2->old_sport) &&
           (sne1->new_saddr == sne2->new_saddr) &&
           (sne1->new_sport == sne2->new_sport) &&
-          (sne1->direction == sne2->direction) &&
-          (sne1->in_ifindex == sne2->in_ifindex) &&
-          (sne1->out_ifindex == sne2->out_ifindex));
+          (sne1->direction == sne2->direction));
 }
 
 void update_dnat_timer(struct dnatted_table *dnt) {

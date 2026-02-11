@@ -26,14 +26,14 @@ int device_filter(const ipfire_rule * r,
     /* don't bother if user fills in output rule within input context
         * or viceversa */
     if (r->nflags.indev && in != NULL) {
-        if (in->ifindex == r->devpar.in_ifindex)
+        if(strncmp(in->name, r->devpar.in_devname, IFNAMSIZ) == 0)
             return 1;
         else
             return -1;
     }
 
     if (r->nflags.outdev && out != NULL) {
-        if(out->ifindex == r->devpar.out_ifindex)
+        if(strncmp(out->name, r->devpar.out_devname, IFNAMSIZ) == 0)
             return 1;
         else
             return -1;
