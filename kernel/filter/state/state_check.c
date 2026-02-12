@@ -41,7 +41,8 @@ struct response check_state(struct sk_buff *skb, const ipfi_flow *flow,
     if (skb_matches_state_table(skb, table_entry, &reverse, flow) > 0) {
       ret.verdict = IPFI_ACCEPT;
       ret.notify = table_entry->notify;
-      ret.st.reverse = reverse;
+      ret.st.reverse = reverse > 0 ? 1U : 0;
+      ret.st.reverse_relaxed = reverse > 1 ? 1U : 0;
       ret.st.state = set_state(skb, table_entry, reverse);
       ret.state = 1U;
 

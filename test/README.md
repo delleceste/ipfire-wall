@@ -653,3 +653,26 @@ Run #3
 [  5]   0.00-60.00  sec   826 MBytes   115 Mbits/sec  0.001 ms  0/13532077 (0%)  receiver
 ```
 
+# Firewall Test Summary – Visual
+
+| Test Type | Protocol | Load / Params | Without Firewall | With Firewall | Notes / Observations |
+|-----------|----------|---------------|-----------------|---------------|--------------------|
+| **Base** | TCP | 1 stream, 10s | ✅ ~100% link | ✅ ~100% link | Minimal overhead |
+| **Base** | UDP | 100 Mbit/s, 10s | ✅ 0–0.005% loss | ✅ 0–0.006% loss | Low jitter/loss |
+| **Moderate** | TCP | 4 streams, 30s | ✅ 929 Mbit/s | ✅ 928–931 Mbit/s | Firewall almost invisible |
+| **Moderate** | UDP | 500 Mbit/s, 30s | ✅ 0.0056% loss | ⚪ 0.0009–0.023% loss | Slight jitter increase |
+| **Stress** | TCP | 8 streams, 60s | ⚪ 920–928 Mbit/s | ⚪ 924–925 Mbit/s | CPU spikes, high retransmits |
+| **Stress** | UDP | 2 Gbit/s, 60s | ⚪ 775–779 Mbit/s | ⚠️ 765–767 Mbit/s | Small drop due to firewall |
+| **PPS Apocalypse** | UDP | 1 Gbit/s, 64B packets | ⚪ 542–543 Mbit/s | ❌ 113–115 Mbit/s | CPU-bound per-packet bottleneck |
+| **Local NS Forwarding** | TCP | 500 Mbit/s, 10s | ✅ 500 Mbit/s | ✅ 500 Mbit/s | Transparent |
+| **Local NS Forwarding** | UDP | 500 Mbit/s, 10s | ✅ ~0–0.03% loss | ⚪ 0–0.023% loss | Minor packet loss |
+
+## Legend
+
+- ✅ Excellent / negligible impact  
+- ⚪ Minor impact / slight throttling  
+- ⚠️ Noticeable degradation / CPU spikes  
+- ❌ Severe bottleneck / throughput collapse  
+
+> ⚡ PPS Apocalypse clearly shows the firewall’s per-packet limits. Even at 1 Gbit/s link, 64-byte packets saturate CPU before bandwidth.
+

@@ -123,13 +123,13 @@ inline int l2l3match(const struct sk_buff *skb, const struct state_table *entry,
   if (iph->saddr == entry->saddr && iph->daddr == entry->daddr) {
     /* Lenient interface check */
     /*
-    if ((!flow->in || strncmp(flow->in->name, entry->in_devname, IFNAMSIZ) == 0 ||
-         entry->in_devname[0] == '\0') &&
-        (!flow->out || strncmp(flow->out->name, entry->out_devname, IFNAMSIZ) == 0 ||
-         entry->out_devname[0] == '\0')) {
+    if ((!flow->in || strncmp(flow->in->name, entry->in_devname, IFNAMSIZ) == 0
+    || entry->in_devname[0] == '\0') &&
+        (!flow->out || strncmp(flow->out->name, entry->out_devname, IFNAMSIZ) ==
+    0 || entry->out_devname[0] == '\0')) {
     */
-      *reverse = 0;
-      return 1;
+    *reverse = 0;
+    return 1;
     // }
   }
 
@@ -138,46 +138,167 @@ inline int l2l3match(const struct sk_buff *skb, const struct state_table *entry,
     /* Cross-check interfaces: incoming response should match outgoing request
      * interface (and vice-versa) */
     /*
-    if ((!flow->in || strncmp(flow->in->name, entry->out_devname, IFNAMSIZ) == 0 ||
-         entry->out_devname[0] == '\0') &&
-        (!flow->out || strncmp(flow->out->name, entry->in_devname, IFNAMSIZ) == 0 ||
-         entry->in_devname[0] == '\0')) {
+    if ((!flow->in || strncmp(flow->in->name, entry->out_devname, IFNAMSIZ) == 0
+    || entry->out_devname[0] == '\0') &&
+        (!flow->out || strncmp(flow->out->name, entry->in_devname, IFNAMSIZ) ==
+    0 || entry->in_devname[0] == '\0')) {
     */
-      *reverse = 1;
-      return 1;
+    *reverse = 1;
+    return 1;
     // }
   }
   return -1;
 }
 
+/**
+ * skb_matches_state_table - check if skb matches a state table entry
+ * @skb: packet to check
+ * @entry: state table entry
+ * @reverse: output flag
+ *           0  = direct match
+ *           1  = reverse match
+ *          -1  = no match
+ * @flow: packet metadata (direction, etc.)
+ *
+ * Returns:
+ *   >0  if matched
+ *   -1  if no match
+ *
+ * Security model:
+ *
+ * 1) Direct match (same 5-tuple):
+ *    This is safe to allow across INPUT <-> OUTPUT symmetry.
+ *    Reason: an external attacker cannot realistically inject a packet
+ *    with the exact same 5-tuple in direct form because routing would not
+ *    deliver such a packet to us. A real external reply always appears
+ *    as a reverse 5-tuple, not direct.
+ *
+ *    Therefore allowing direct INPUT/OUTPUT symmetry fixes netns traversal
+ *    without creating a spoofing hole.
+ *
+ * 2) Reverse match (swapped 5-tuple):
+ *    This is what real replies look like.
+ *    This must be controlled carefully to prevent spoofed replies.
+ *
+ *    Allowed:
+ *      - OUTPUT entry -> INPUT reply
+ *      - INPUT entry  -> OUTPUT reply
+ *      - OUTPUT entry -> OUTPUT (lenient netns case)
+ *
+ *    Not allowed:
+ *      - Reverse matches in arbitrary directions.
+ */
 int skb_matches_state_table(const struct sk_buff *skb,
                             const struct state_table *entry, short *reverse,
                             const ipfi_flow *flow) {
-  short tr_match = 0;
   const struct iphdr *iph = ip_hdr(skb);
-  *reverse = -1; /* negative means no match */
+  short tr_match = 0;
 
+  *reverse = -1; /* default: no match */
+
+  /* Protocol must match */
   if (iph->protocol != entry->protocol)
     return -1;
 
+  /* Special protocols */
   if (iph->protocol == IPPROTO_ICMP || iph->protocol == IPPROTO_IGMP ||
       iph->protocol == IPPROTO_GRE || iph->protocol == IPPROTO_PIM) {
-    /* l2l3match now handles setting the reverse flag */
     return l2l3match(skb, entry, reverse, flow);
   }
 
-  if ((tr_match = direct_state_match(skb, entry, flow)) > 0)
+  /* Try direct 5-tuple match */
+  if ((tr_match = direct_state_match(skb, entry, flow)) > 0) {
     *reverse = 0;
-  else if ((tr_match = reverse_state_match(skb, entry, flow)) > 0)
+  }
+  /* Try reverse 5-tuple match */
+  else if ((tr_match = reverse_state_match(skb, entry, flow)) > 0) {
     *reverse = 1;
+  } else {
+    return -1; /* no tuple match at all */
+  }
 
-  if (flow->direction == IPFI_FWD)
-    return tr_match;
+  /* ----------------------------
+   * Direction validation
+   * ---------------------------- */
 
-  if (flow->direction == entry->direction && *reverse == 0)
+  /* FWD flows: only match FWD entries */
+  if (entry->direction == IPFI_FWD && flow->direction == IPFI_FWD) {
     return tr_match;
-  else if (flow->direction != entry->direction && *reverse == 1)
-    return tr_match;
+  }
+
+  /* ----------------------------
+   * DIRECT MATCH HANDLING
+   * ---------------------------- */
+  if (*reverse == 0) {
+
+    /*
+     * Standard direct match:
+     * same direction as state creation.
+     */
+    if (flow->direction == entry->direction)
+      return tr_match;
+
+    /*
+     * Allow INPUT <-> OUTPUT symmetry for direct matches.
+     *
+     * Why this is safe:
+     * A true external reply does NOT appear as a direct 5-tuple.
+     * It appears as a reverse 5-tuple.
+     *
+     * Therefore allowing direct symmetry does not allow spoofed
+     * replies from outside. It only allows the same packet to
+     * traverse multiple hooks (netns case).
+     */
+    if ((entry->direction == IPFI_OUTPUT && flow->direction == IPFI_INPUT) ||
+        (entry->direction == IPFI_INPUT && flow->direction == IPFI_OUTPUT)) {
+      *reverse = 2; /* mark special namespace reverse */
+      return tr_match;
+    }
+
+    return -1;
+  }
+
+  /* ----------------------------
+   * REVERSE MATCH HANDLING
+   * ---------------------------- */
+  if (*reverse == 1) {
+
+    /*
+     * Legitimate reply case:
+     * OUTPUT entry -> INPUT reply
+     */
+    if (entry->direction == IPFI_OUTPUT && flow->direction == IPFI_INPUT)
+      return tr_match;
+
+    /*
+     * Legitimate reply case:
+     * INPUT entry -> OUTPUT reply
+     */
+    if (entry->direction == IPFI_INPUT && flow->direction == IPFI_OUTPUT)
+      return tr_match;
+
+    /*
+     * Lenient namespace case:
+     * reverse 5-tuple still seen in OUTPUT hook.
+     *
+     * This happens when traffic crosses veth/netns boundaries
+     * and appears again in OUTPUT context.
+     */
+    if (entry->direction == IPFI_OUTPUT && flow->direction == IPFI_OUTPUT) {
+      *reverse = 2; /* mark special namespace reverse */
+      return tr_match;
+    }
+
+    /*
+     * All other reverse combinations are rejected.
+     *
+     * This is critical for spoofing protection:
+     * A malicious external host can attempt to inject
+     * reverse 5-tuples to hijack state. We only allow
+     * directionally correct reply paths.
+     */
+    return -1;
+  }
 
   return -1;
 }
@@ -250,9 +371,9 @@ int compare_state_entries(const struct state_table *s1,
   return (s1->saddr == s2->saddr) && (s1->daddr == s2->daddr) &&
          (s1->sport == s2->sport) && (s1->dport == s2->dport) &&
          (s1->direction == s2->direction) && (s1->protocol == s2->protocol);
-         /* ifindex comparison removed */
-         // (s1->in_ifindex == s2->in_ifindex) &&
-         // (s1->out_ifindex == s2->out_ifindex);
+  /* ifindex comparison removed */
+  // (s1->in_ifindex == s2->in_ifindex) &&
+  // (s1->out_ifindex == s2->out_ifindex);
 }
 
 struct state_table *

@@ -93,7 +93,7 @@ ipfire_rule *lookup_rule_by_id(uint32_t id, int *policy) {
 #define LOGLINELEN 200
 #define MAXFILENAMELEN 60
 
-#define PROTONAMELEN 6
+#define PROTONAMELEN 5
 #define SERVICENAMELEN 16
 
 #define MAXLEN 64
@@ -670,7 +670,7 @@ int print_packet(const ipfire_info_t *pack,
     if (pack->response.verdict == IPFI_DROP)
       printf("[" RED "X" CLR "] ");
     else if (pack->response.verdict == IPFI_ACCEPT)
-      printf( "[" GREEN "OK" CLR "] ");
+      printf("[" GREEN "OK" CLR "] ");
     else if (pack->response.verdict == IPFI_IMPLICIT)
       printf("[" VIOLET "IMPL" CLR "] ");
     else
@@ -699,6 +699,9 @@ int print_packet(const ipfire_info_t *pack,
     printf("\e[0;36mPOST:");
     break;
   }
+
+  if (pack->response.st.reverse_relaxed)
+    printf(" [RELAXED]");
   if (pack->flags.direction == IPFI_FWD)
     printf("[%s->%s] ", in_name, out_name);
   else {

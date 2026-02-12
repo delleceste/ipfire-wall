@@ -280,12 +280,12 @@ struct manip_info {
 
 /* The following stores information about a connection state */
 struct state_t {
-  __u8 state : 7, reverse : 1;
+  __u8 state : 6, reverse : 1, reverse_relaxed : 1;
 };
 
 struct response {
   struct state_t st;
-  int8_t  notify : 1, state : 1, verdict : 6;
+  int8_t notify : 1, state : 1, verdict : 6;
   uint32_t rule_id; /* 32-bit hash or unique ID */
 };
 
