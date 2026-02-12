@@ -99,7 +99,7 @@ unsigned badcsum_cnt_rcv = 0;
 struct response iph_in_get_response(struct sk_buff *skb, ipfi_flow *flow,
                                     struct info_flags *flags) {
   struct response response = {};
-  flags->direction = flow->direction;                                      
+  flags->direction = flow->direction;
   /* invoke engine function passing the appropriate rule lists */
   if (flow->direction == IPFI_INPUT)
     response = ipfire_filter(&in_drop, &in_acc, &fwopts, skb, flow, flags);
@@ -116,26 +116,10 @@ struct nf_hook_ops nfh_pre, nfh_in, nfh_out, nfh_fwd, nfh_post, nfh_defrag_pre,
     nfh_defrag_out;
 
 /*
- * Per-Namespace Hook Registration
+ * Global Hook Registration
  *
- * Modern Linux kernels support network namespaces, which provide isolated
- * network stacks for containers (Docker, Kubernetes, etc.) and testing.
- * Each namespace has its own interfaces, routing tables, and netfilter hooks.
- *
- * To properly support namespaces, we use pernet_operations to register our
- * netfilter hooks in ALL network namespaces, not just the initial one.
- *
- * Benefits:
- * - Works correctly with containers and virtualization
- * - Enables isolated testing with network namespaces
- * - Follows modern kernel best practices (required since Linux 4.13+)
- * - Zero performance overhead compared to init_net-only registration
- * - Automatic cleanup when namespaces are destroyed
- *
- * The ipfi_net_init() callback is invoked whenever a new namespace is created,
- * and ipfi_net_exit() is called when a namespace is destroyed.
+ * We register our netfilter hooks in the initial network namespace (init_net).
  */
-static struct pernet_operations ipfi_net_ops;
 
 #define KERNEL_MODULE_VERSION "1.99.5"
 #define BUILD_DATE _BUILD_DATE
@@ -200,11 +184,16 @@ static void __exit fini(void) {
    */
   synchronize_net();
 
-  /* Stop receiving anything from the network */
-  /* Stop receiving anything from the network - unregister from all namespaces
+  /* Stop receiving anything from the network - unregister from init_net
    */
-  unregister_pernet_subsys(&ipfi_net_ops);
-  IPFI_PRINTK("IPFIRE: Unregistered hooks from all namespaces\n");
+  nf_unregister_net_hook(&init_net, &nfh_post);
+  nf_unregister_net_hook(&init_net, &nfh_defrag_out);
+  nf_unregister_net_hook(&init_net, &nfh_out);
+  nf_unregister_net_hook(&init_net, &nfh_fwd);
+  nf_unregister_net_hook(&init_net, &nfh_in);
+  nf_unregister_net_hook(&init_net, &nfh_pre);
+  nf_unregister_net_hook(&init_net, &nfh_defrag_pre);
+  IPFI_PRINTK("IPFIRE: Unregistered hooks from init_net\n");
 
   /* will call might_sleep() and rcu_barrier() */
   fini_machine();
@@ -262,140 +251,17 @@ void init_options(struct ipfire_options *opts) {
 // };
 
 /*
- * ipfi_net_init - Register netfilter hooks for a new network namespace
- * @net: The network namespace being initialized
- *
- * This function is called automatically by the kernel whenever a new network
- * namespace is created (e.g., via 'ip netns add' or container creation).
- *
- * We register all our netfilter hooks (PRE_ROUTING, INPUT, FORWARD, OUTPUT,
- * POST_ROUTING, and defragmentation hooks) for this specific namespace.
- *
- * Hook registration order matches the packet flow through netfilter:
- * 1. DEFRAG (PRE_ROUTING) - Reassemble fragmented packets
- * 2. PRE_ROUTING - DNAT, routing decisions
- * 3. INPUT - Packets destined for local delivery
- * 4. FORWARD - Packets being routed through this host
- * 5. OUTPUT - Locally generated packets
- * 6. DEFRAG (OUTPUT) - Reassemble fragmented locally-generated packets
- * 7. POST_ROUTING - SNAT, masquerading
- *
- * Returns: 0 on success, negative error code on failure
- */
-static int __net_init ipfi_net_init(struct net *net) {
-  int ret;
-  printk("IPFIRE_DEBUG: ipfi_net_init called for net %p\n", net);
-
-  /* Register hooks for this namespace in packet flow order */
-  ret = nf_register_net_hook(net, &nfh_defrag_pre);
-  if (ret < 0)
-    goto err_defrag_pre;
-
-  ret = nf_register_net_hook(net, &nfh_pre);
-  if (ret < 0)
-    goto err_pre;
-
-  ret = nf_register_net_hook(net, &nfh_in);
-  if (ret < 0)
-    goto err_in;
-
-  ret = nf_register_net_hook(net, &nfh_fwd);
-  if (ret < 0)
-    goto err_fwd;
-
-  ret = nf_register_net_hook(net, &nfh_out);
-  if (ret < 0)
-    goto err_out;
-
-  ret = nf_register_net_hook(net, &nfh_defrag_out);
-  if (ret < 0)
-    goto err_defrag_out;
-
-  ret = nf_register_net_hook(net, &nfh_post);
-  if (ret < 0)
-    goto err_post;
-
-  IPFI_PRINTK("IPFIRE: Registered hooks for namespace %p\n", net);
-  return 0;
-
-  /* Error handling - unregister in reverse order */
-err_post:
-  nf_unregister_net_hook(net, &nfh_defrag_out);
-err_defrag_out:
-  nf_unregister_net_hook(net, &nfh_out);
-err_out:
-  nf_unregister_net_hook(net, &nfh_fwd);
-err_fwd:
-  nf_unregister_net_hook(net, &nfh_in);
-err_in:
-  nf_unregister_net_hook(net, &nfh_pre);
-err_pre:
-  nf_unregister_net_hook(net, &nfh_defrag_pre);
-err_defrag_pre:
-  return ret;
-}
-
-/*
- * ipfi_net_exit - Unregister netfilter hooks when a namespace is destroyed
- * @net: The network namespace being destroyed
- *
- * This function is called automatically by the kernel when a network namespace
- * is being torn down (e.g., 'ip netns del' or container shutdown).
- *
- * We unregister all hooks in reverse order of packet flow to ensure clean
- * shutdown without race conditions.
- *
- * Note: The kernel ensures this is called before the namespace is fully
- * destroyed, so our hooks won't receive packets from a half-destroyed
- * namespace.
- */
-static void __net_exit ipfi_net_exit(struct net *net) {
-  /* Unregister hooks in reverse order of packet flow */
-  nf_unregister_net_hook(net, &nfh_post);
-  nf_unregister_net_hook(net, &nfh_defrag_out);
-  nf_unregister_net_hook(net, &nfh_out);
-  nf_unregister_net_hook(net, &nfh_fwd);
-  nf_unregister_net_hook(net, &nfh_in);
-  nf_unregister_net_hook(net, &nfh_pre);
-  nf_unregister_net_hook(net, &nfh_defrag_pre);
-
-  IPFI_PRINTK("IPFIRE: Unregistered hooks for namespace %p\n", net);
-}
-
-/*
- * register_hooks - Initialize and register netfilter hooks for all namespaces
+ * register_hooks - Initialize and register netfilter hooks for init_net
  *
  * This function sets up the hook structures (nf_hook_ops) that define our
- * packet processing callbacks, then registers them across all network
- * namespaces using the pernet_operations mechanism.
- *
- * Hook Structure Setup:
- * Each hook is configured with:
- * - Protocol family (PF_INET for IPv4)
- * - Hook point (PRE_ROUTING, INPUT, FORWARD, OUTPUT, POST_ROUTING)
- * - Priority (determines order relative to other netfilter modules)
- * - Callback function (process() for filtering, ipfi_defrag() for defrag)
- *
- * Priority Values (from linux/netfilter_ipv4.h):
- * - NF_IP_PRI_CONNTRACK_DEFRAG (-400): Defragmentation (must be first)
- * - NF_IP_PRI_NAT_DST (-100): DNAT in PRE_ROUTING
- * - NF_IP_PRI_FILTER (0): Filtering decisions
- * - NF_IP_PRI_NAT_SRC (100): SNAT/masquerading in POST_ROUTING
- *
- * Namespace Registration:
- * Instead of calling nf_register_net_hook() for each hook individually,
- * we use register_pernet_subsys() which:
- * 1. Calls ipfi_net_init() for the initial namespace (init_net)
- * 2. Calls ipfi_net_init() for any existing namespaces
- * 3. Automatically calls ipfi_net_init() for future namespaces
- * 4. Ensures ipfi_net_exit() is called when namespaces are destroyed
+ * packet processing callbacks, then registers them in the initial namespace.
  *
  * Returns: 0 on success, negative error code on failure
  */
 int register_hooks(void) {
   int ret;
 
-  /* Setup hook structures - these are shared across all namespaces */
+  /* Setup hook structures */
   /* PRE_ROUTING: Defragmentation hook (highest priority) */
   nfh_defrag_pre.pf = PF_INET;
   nfh_defrag_pre.hook = ipfi_defrag;
@@ -438,30 +304,53 @@ int register_hooks(void) {
   nfh_post.priority = NF_IP_PRI_NAT_SRC;
   nfh_post.hook = process;
 
-  /*
-   * Register per-namespace operations
-   *
-   * This is the modern way to register netfilter hooks that work across
-   * all network namespaces. The kernel will:
-   * 1. Call ipfi_net_init() for init_net (the default namespace)
-   * 2. Call ipfi_net_init() for any existing namespaces
-   * 3. Call ipfi_net_init() whenever a new namespace is created
-   * 4. Call ipfi_net_exit() whenever a namespace is destroyed
-   *
-   * This replaces the old approach of calling nf_register_net_hook(&init_net,
-   * ...) which only registered hooks in the initial namespace.
-   */
-  ipfi_net_ops.init = ipfi_net_init;
-  ipfi_net_ops.exit = ipfi_net_exit;
+  /* Register hooks for init_net in packet flow order */
+  ret = nf_register_net_hook(&init_net, &nfh_defrag_pre);
+  if (ret < 0)
+    goto err_defrag_pre;
 
-  ret = register_pernet_subsys(&ipfi_net_ops);
-  if (ret < 0) {
-    IPFI_PRINTK("IPFIRE: Failed to register pernet subsys: %d\n", ret);
-    return ret;
-  }
+  ret = nf_register_net_hook(&init_net, &nfh_pre);
+  if (ret < 0)
+    goto err_pre;
 
-  IPFI_PRINTK("IPFIRE: Registered hooks for all namespaces\n");
+  ret = nf_register_net_hook(&init_net, &nfh_in);
+  if (ret < 0)
+    goto err_in;
+
+  ret = nf_register_net_hook(&init_net, &nfh_fwd);
+  if (ret < 0)
+    goto err_fwd;
+
+  ret = nf_register_net_hook(&init_net, &nfh_out);
+  if (ret < 0)
+    goto err_out;
+
+  ret = nf_register_net_hook(&init_net, &nfh_defrag_out);
+  if (ret < 0)
+    goto err_defrag_out;
+
+  ret = nf_register_net_hook(&init_net, &nfh_post);
+  if (ret < 0)
+    goto err_post;
+
+  IPFI_PRINTK("IPFIRE: Registered hooks for init_net\n");
   return 0;
+
+  /* Error handling - unregister in reverse order */
+err_post:
+  nf_unregister_net_hook(&init_net, &nfh_defrag_out);
+err_defrag_out:
+  nf_unregister_net_hook(&init_net, &nfh_out);
+err_out:
+  nf_unregister_net_hook(&init_net, &nfh_fwd);
+err_fwd:
+  nf_unregister_net_hook(&init_net, &nfh_in);
+err_in:
+  nf_unregister_net_hook(&init_net, &nfh_pre);
+err_pre:
+  nf_unregister_net_hook(&init_net, &nfh_defrag_pre);
+err_defrag_pre:
+  return ret;
 }
 
 int check_headers(struct sk_buff *skb) {
@@ -890,9 +779,9 @@ int ipfi_response(const struct nf_hook_state *state, struct sk_buff *skb,
 
       if (dnt != NULL) {
         /*
-         * If an existing DNAT entry is found, we use it. We also synchronize the
-         * rule_id to ensure the logged message correctly identifies which rule
-         * originally caused this translation.
+         * If an existing DNAT entry is found, we use it. We also synchronize
+         * the rule_id to ensure the logged message correctly identifies which
+         * rule originally caused this translation.
          */
         res.rule_id = dnt->rule_id;
         dnat_ret = dest_translate(skb, dnt);
@@ -910,11 +799,11 @@ int ipfi_response(const struct nf_hook_state *state, struct sk_buff *skb,
          * path (OUTPUT hook), the original routing decision (made by the stack
          * BEFORE the netfilter hooks) becomes stale.
          *
-         * If the new destination IP belongs to a different network reachable via
-         * a different interface, or if it requires a different gateway, the
-         * packet must be re-routed to ensure it reaches its intended destination
-         * and that the outgoing interface and source IP (if not fixed) are
-         * consistent with the new path.
+         * If the new destination IP belongs to a different network reachable
+         * via a different interface, or if it requires a different gateway, the
+         * packet must be re-routed to ensure it reaches its intended
+         * destination and that the outgoing interface and source IP (if not
+         * fixed) are consistent with the new path.
          *
          * ip_route_me_harder() is the standard Linux kernel function used by
          * Netfilter (e.g., iptables NAT) to perform this re-routing. It
@@ -923,13 +812,15 @@ int ipfi_response(const struct nf_hook_state *state, struct sk_buff *skb,
          *
          * Arguments:
          * - state->net: The network namespace context.
-         * - state->sk:  The socket associated with the packet (locally generated).
+         * - state->sk:  The socket associated with the packet (locally
+         * generated).
          * - skb:        The packet buffer itself.
-         * - RTN_UNSPEC: Address type (unspecified, let the routing engine decide).
+         * - RTN_UNSPEC: Address type (unspecified, let the routing engine
+         * decide).
          *
-         * Failure to call this after DNAT in OUTPUT often leads to kernel panics
-         * or silent packet loss because the stack later finds inconsistencies
-         * between the skb->dst and the actual packet headers.
+         * Failure to call this after DNAT in OUTPUT often leads to kernel
+         * panics or silent packet loss because the stack later finds
+         * inconsistencies between the skb->dst and the actual packet headers.
          */
         if (ip_route_me_harder(state->net, state->sk, skb, RTN_UNSPEC)) {
           IPFI_PRINTK("IPFIRE: ip_route_me_harder failed after OUTPUT DNAT\n");
@@ -942,9 +833,9 @@ int ipfi_response(const struct nf_hook_state *state, struct sk_buff *skb,
         /*
          * EXHAUSTIVE COMMENT ON LOGGING (OUTPUT DNAT):
          *
-         * After a successful DNAT translation and re-routing in the OUTPUT path,
-         * we send a log message to userspace. This provides visibility into
-         * locally generated packets that have been redirected.
+         * After a successful DNAT translation and re-routing in the OUTPUT
+         * path, we send a log message to userspace. This provides visibility
+         * into locally generated packets that have been redirected.
          *
          * We use the explicit sequence:
          * 1. build_info_t_nlmsg(): Constructs the netlink message containing
@@ -960,7 +851,8 @@ int ipfi_response(const struct nf_hook_state *state, struct sk_buff *skb,
           if (skb_touser != NULL) {
             skb_send_to_user(skb_touser, LISTENER_DATA);
           } else {
-            IPFI_PRINTK("IPFIRE: failed to build log message after OUTPUT DNAT\n");
+            IPFI_PRINTK(
+                "IPFIRE: failed to build log message after OUTPUT DNAT\n");
           }
         }
       }
