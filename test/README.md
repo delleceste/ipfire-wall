@@ -198,6 +198,20 @@ Test #3
 [SUM]   0.00-30.00  sec  3.24 GBytes   929 Mbits/sec                  receiver
 ```
 
+##### Old legacy version
+
+```
+[  5]   0.00-30.00  sec   835 MBytes   233 Mbits/sec    0            sender
+[  5]   0.00-30.00  sec   834 MBytes   233 Mbits/sec                  receiver
+[  7]   0.00-30.00  sec   835 MBytes   234 Mbits/sec    0            sender
+[  7]   0.00-30.00  sec   834 MBytes   233 Mbits/sec                  receiver
+[  9]   0.00-30.00  sec   835 MBytes   234 Mbits/sec    0            sender
+[  9]   0.00-30.00  sec   834 MBytes   233 Mbits/sec                  receiver
+[ 11]   0.00-30.00  sec   836 MBytes   234 Mbits/sec    0            sender
+[ 11]   0.00-30.00  sec   834 MBytes   233 Mbits/sec                  receiver
+[SUM]   0.00-30.00  sec  3.26 GBytes   934 Mbits/sec    0             sender
+[SUM]   0.00-30.00  sec  3.26 GBytes   933 Mbits/sec                  receiver
+```
 
 ### UDP:
 
@@ -259,6 +273,14 @@ Test #3
 [ ID] Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
 [  5]   0.00-30.00  sec  1.75 GBytes   500 Mbits/sec  0.000 ms  0/1294935 (0%)  sender
 [  5]   0.00-30.00  sec  1.75 GBytes   500 Mbits/sec  0.019 ms  55/1294935 (0.0042%)  receiver
+```
+
+#### Legacy IPFIRE-wall
+
+```
+[ ID] Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
+[  5]   0.00-30.00  sec  1.75 GBytes   500 Mbits/sec  0.000 ms  0/1294937 (0%)  sender
+[  5]   0.00-30.00  sec  1.75 GBytes   500 Mbits/sec  0.017 ms  0/1294937 (0%)  receiver
 ```
 
 ## 3. STRESS TEST – push to limits
@@ -420,6 +442,31 @@ Test #3
 [SUM]   0.00-60.00  sec  6.44 GBytes   921 Mbits/sec  37450             sender
 [SUM]   0.00-60.00  sec  6.43 GBytes   920 Mbits/sec                  receiver
 ```
+
+##### Legacy ipfire-wall
+
+```
+[ ID] Interval           Transfer     Bitrate         Retr
+[  5]   0.00-60.00  sec   833 MBytes   117 Mbits/sec  4597            sender
+[  5]   0.00-60.00  sec   833 MBytes   116 Mbits/sec                  receiver
+[  7]   0.00-60.00  sec   834 MBytes   117 Mbits/sec  4630            sender
+[  7]   0.00-60.00  sec   833 MBytes   116 Mbits/sec                  receiver
+[  9]   0.00-60.00  sec   834 MBytes   117 Mbits/sec  4400            sender
+[  9]   0.00-60.00  sec   833 MBytes   116 Mbits/sec                  receiver
+[ 11]   0.00-60.00  sec   833 MBytes   117 Mbits/sec  4494            sender
+[ 11]   0.00-60.00  sec   833 MBytes   116 Mbits/sec                  receiver
+[ 13]   0.00-60.00  sec   834 MBytes   117 Mbits/sec  4560            sender
+[ 13]   0.00-60.00  sec   833 MBytes   116 Mbits/sec                  receiver
+[ 15]   0.00-60.00  sec   834 MBytes   117 Mbits/sec  4602            sender
+[ 15]   0.00-60.00  sec   833 MBytes   116 Mbits/sec                  receiver
+[ 17]   0.00-60.00  sec   834 MBytes   117 Mbits/sec  4483            sender
+[ 17]   0.00-60.00  sec   833 MBytes   116 Mbits/sec                  receiver
+[ 19]   0.00-60.00  sec   833 MBytes   117 Mbits/sec  4524            sender
+[ 19]   0.00-60.00  sec   833 MBytes   116 Mbits/sec                  receiver
+[SUM]   0.00-60.00  sec  6.51 GBytes   932 Mbits/sec  36290             sender
+[SUM]   0.00-60.00  sec  6.51 GBytes   931 Mbits/sec                  receiver
+```
+
 
 ### UDP:
 
@@ -651,6 +698,14 @@ Run #3
 [ ID] Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
 [  5]   0.00-60.00  sec   826 MBytes   115 Mbits/sec  0.000 ms  0/13532077 (0%)  sender
 [  5]   0.00-60.00  sec   826 MBytes   115 Mbits/sec  0.001 ms  0/13532077 (0%)  receiver
+```
+
+#### Legacy IPFIRE-wall
+
+```
+[ ID] Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
+[  5]   0.00-60.00  sec  2.48 GBytes   356 Mbits/sec  0.000 ms  0/41689765 (0%)  sender
+[  5]   0.00-60.00  sec  2.48 GBytes   356 Mbits/sec  0.001 ms  739/41689765 (0.0018%)  receiver
 ```
 
 # Firewall Test Summary – Visual
