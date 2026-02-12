@@ -88,7 +88,7 @@ inline void update_timer_of_state_entry(struct state_table *sttable) {
   unsigned int timeout =
       get_timeout_by_state(sttable->protocol, sttable->state.state);
 
-  if (time_after(jiffies, sttable->last_timer_update + HZ)) {
+  if (time_after(jiffies, sttable->last_timer_update + (5 * HZ)) ) {
     mod_timer(&sttable->timer_statelist, jiffies + HZ * timeout);
     sttable->last_timer_update = jiffies;
   }
