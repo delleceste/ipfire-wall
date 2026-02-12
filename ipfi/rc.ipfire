@@ -1,5 +1,7 @@
 #!/bin/bash
 
+PREFIX=/usr/local
+export LD_LIBRARY_PATH=$PREFIX/lib
 FAIL_LOG=/tmp/ipfire.fail.log
 
 if [ `id -u` -ne 0 ]; then
@@ -31,11 +33,11 @@ success()
 case "$1" in
     start)
 	    echo -e -n "\n\e[1;37mstarting \e[1;32mIPFIRE\e[1;37m: \e[0m"
-            (/usr/bin/ipfire -rc -user && success) || fail
+	    ($PREFIX/bin/ipfire -rc -user && success) || fail
 	    ;;
     stop)
 	    echo -e -n "\n\e[1;35mstopping the firewall: \e[00m"
-	    (/usr/bin/ipfire -rc -rmmod -flush && success) || fail
+	    ($PREFIX/bin/ipfire -rc -rmmod -flush && success) || fail
 	    ;;
     restart)
 	    $0 stop && sleep 1 &&  $0 start || exit 1
