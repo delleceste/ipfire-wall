@@ -121,7 +121,7 @@ int max_loginfo_entries = 100;
 int (*smartlog_func)(const struct sk_buff *skb, const struct response *res,
                      const ipfi_flow *flow,
                      const struct info_flags *flags) = NULL;
-unsigned int max_state_entries = 0;
+unsigned int max_state_entries = 65536;
 
 /* Print limiting */
 unsigned int moderate_print[MAXMODERATE_ARGS];
