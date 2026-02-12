@@ -137,6 +137,12 @@ struct dnatted_table *lookup_dnat_forward(const struct sk_buff *skb,
                                           struct info_flags *flags) {
   struct dnatted_table *dntmp;
   int bkt;
+
+  /* Optimization: if no DNAT entries exist, skip the lookup */
+  /* This reads a global int, which is atomic enough for this heuristic check */
+  if (dnatted_entry_counter == 0)
+    return NULL;
+
   rcu_read_lock_bh();
   hash_for_each_rcu(dnat_hashtable, bkt, dntmp, hnode) {
     if (forward_dnat_match(dntmp, skb) > 0) {
@@ -175,6 +181,11 @@ struct snatted_table *lookup_snat_forward(const struct sk_buff *skb,
                                           struct info_flags *flags) {
   struct snatted_table *sntmp;
   int bkt;
+
+  /* Optimization: if no SNAT entries exist, skip the lookup */
+  if (snatted_entry_counter == 0)
+    return NULL;
+
   rcu_read_lock_bh();
   hash_for_each_rcu(snat_hashtable, bkt, sntmp, hnode) {
     if (forward_snat_match(sntmp, skb) > 0) {
@@ -249,8 +260,10 @@ int compare_snat_entries(const struct snatted_table *sne1,
 
 void update_dnat_timer(struct dnatted_table *dnt) {
   unsigned int timeout = get_timeout_by_state(dnt->protocol, dnt->state);
-  mod_timer(&dnt->timer_dnattedlist, jiffies + HZ * timeout);
-  dnt->last_timer_update = jiffies;
+  if (time_after(jiffies, dnt->last_timer_update + HZ)) {
+    mod_timer(&dnt->timer_dnattedlist, jiffies + HZ * timeout);
+    dnt->last_timer_update = jiffies;
+  }
 }
 
 void update_snat_timer(struct snatted_table *snt) {
