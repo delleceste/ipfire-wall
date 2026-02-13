@@ -107,9 +107,7 @@ LIST_HEAD(dnat_list);
 LIST_HEAD(snat_list);
 
 /* Log info */
-/* DEFINE_HASHTABLE(loginfo_hashtable, LOGINFO_HASH_BITS); TODO: restore hash
- */
-LIST_HEAD(loginfo_list);
+LIST_HEAD(active_logi_list);
 
 /* Counters */
 unsigned int table_id = 0;
@@ -122,7 +120,7 @@ int loginfo_entry_counter = 0;
 unsigned int state_lifetime = 432000; /* 5 days in seconds */
 unsigned int setup_shutd_state_lifetime = 120;
 unsigned int loginfo_lifetime = 0;
-int max_loginfo_entries = 100;
+unsigned int max_loginfo_entries = 100;
 int (*smartlog_func)(const struct sk_buff *skb, const struct response *res,
                      const ipfi_flow *flow,
                      const struct info_flags *flags) = NULL;

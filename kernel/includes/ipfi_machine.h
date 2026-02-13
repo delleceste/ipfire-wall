@@ -37,6 +37,8 @@ struct state {
   struct state_t state;
 };
 
+#define IPFI_ST_REMOVED 0
+
 struct state_table {
   __u32 saddr;
   __u32 daddr;
@@ -44,8 +46,9 @@ struct state_table {
   __u16 dport;
   __u8 direction : 3, ftp : 3, /* passive ftp support */
       notify : 1, admin : 1;
-  uint32_t rule_id; /* ID of the rule that originated this state */
+  __u32 rule_id; /* ID of the rule that originated this state */
   __u8 protocol;
+  unsigned long status;
   char in_devname[IFNAMSIZ];
   char out_devname[IFNAMSIZ];
   int in_ifindex, out_ifindex;

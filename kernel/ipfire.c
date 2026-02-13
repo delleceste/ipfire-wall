@@ -13,6 +13,7 @@
 #include <linux/list.h>
 #include <linux/module.h>
 #include <linux/netfilter.h>
+#include <net/net_namespace.h>
 #include <net/tcp.h>
 #include <net/udp.h>
 
@@ -82,6 +83,11 @@ char *policy = "drop";
 module_param(policy, charp, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 MODULE_PARM_DESC(default_policy, "\"accept\" or \"drop\" policy as default.\n");
 
+static int per_net = 0;
+module_param(per_net, int, S_IRUGO);
+MODULE_PARM_DESC(
+    per_net, "Enable per-network namespace hook registration (default: 0)\n");
+
 int welcome(void);
 
 /* packet counters */
@@ -114,6 +120,18 @@ struct response iph_in_get_response(struct sk_buff *skb, ipfi_flow *flow,
 
 struct nf_hook_ops nfh_pre, nfh_in, nfh_out, nfh_fwd, nfh_post, nfh_defrag_pre,
     nfh_defrag_out;
+
+static int register_ipfire_net(struct net *net);
+static void unregister_ipfire_net(struct net *net);
+
+static int ipfire_net_init(struct net *net) { return register_ipfire_net(net); }
+
+static void ipfire_net_exit(struct net *net) { unregister_ipfire_net(net); }
+
+static struct pernet_operations ipfire_net_ops = {
+    .init = ipfire_net_init,
+    .exit = ipfire_net_exit,
+};
 
 /*
  * Global Hook Registration
@@ -166,7 +184,14 @@ int welcome(void) {
   init_log();
   if (init_netl() == 0) {
     init_machine(); /* registers netdevice notifier */
-    register_hooks();
+    if (per_net) {
+      if (register_pernet_subsys(&ipfire_net_ops) < 0) {
+        IPFI_PRINTK("IPFIRE: failed to register pernet subsystem\n");
+        return -1;
+      }
+    } else {
+      register_ipfire_net(&init_net);
+    }
   }
   return 0;
 }
@@ -184,16 +209,14 @@ static void __exit fini(void) {
    */
   synchronize_net();
 
-  /* Stop receiving anything from the network - unregister from init_net
+  /* Stop receiving anything from the network
    */
-  nf_unregister_net_hook(&init_net, &nfh_post);
-  nf_unregister_net_hook(&init_net, &nfh_defrag_out);
-  nf_unregister_net_hook(&init_net, &nfh_out);
-  nf_unregister_net_hook(&init_net, &nfh_fwd);
-  nf_unregister_net_hook(&init_net, &nfh_in);
-  nf_unregister_net_hook(&init_net, &nfh_pre);
-  nf_unregister_net_hook(&init_net, &nfh_defrag_pre);
-  IPFI_PRINTK("IPFIRE: Unregistered hooks from init_net\n");
+  if (per_net) {
+    unregister_pernet_subsys(&ipfire_net_ops);
+  } else {
+    unregister_ipfire_net(&init_net);
+  }
+  IPFI_PRINTK("IPFIRE: Unregistered hooks\n");
 
   /* will call might_sleep() and rcu_barrier() */
   fini_machine();
@@ -251,17 +274,20 @@ void init_options(struct ipfire_options *opts) {
 // };
 
 /*
- * register_hooks - Initialize and register netfilter hooks for init_net
+ * register_ipfire_net - Initialize and register netfilter hooks for a namespace
  *
  * This function sets up the hook structures (nf_hook_ops) that define our
- * packet processing callbacks, then registers them in the initial namespace.
+ * packet processing callbacks, then registers them in the given namespace.
  *
  * Returns: 0 on success, negative error code on failure
  */
-int register_hooks(void) {
+static int register_ipfire_net(struct net *net) {
   int ret;
 
-  /* Setup hook structures */
+  /* Setup hook structures (using global ops for simplicity if they can be
+   * shared)
+   * Note: In modern kernels, nf_hook_ops can be shared if they are immutable.
+   */
   /* PRE_ROUTING: Defragmentation hook (highest priority) */
   nfh_defrag_pre.pf = PF_INET;
   nfh_defrag_pre.hook = ipfi_defrag;
@@ -304,53 +330,63 @@ int register_hooks(void) {
   nfh_post.priority = NF_IP_PRI_NAT_SRC;
   nfh_post.hook = process;
 
-  /* Register hooks for init_net in packet flow order */
-  ret = nf_register_net_hook(&init_net, &nfh_defrag_pre);
+  /* Register hooks for the given net namespace */
+  ret = nf_register_net_hook(net, &nfh_defrag_pre);
   if (ret < 0)
     goto err_defrag_pre;
 
-  ret = nf_register_net_hook(&init_net, &nfh_pre);
+  ret = nf_register_net_hook(net, &nfh_pre);
   if (ret < 0)
     goto err_pre;
 
-  ret = nf_register_net_hook(&init_net, &nfh_in);
+  ret = nf_register_net_hook(net, &nfh_in);
   if (ret < 0)
     goto err_in;
 
-  ret = nf_register_net_hook(&init_net, &nfh_fwd);
+  ret = nf_register_net_hook(net, &nfh_fwd);
   if (ret < 0)
     goto err_fwd;
 
-  ret = nf_register_net_hook(&init_net, &nfh_out);
+  ret = nf_register_net_hook(net, &nfh_out);
   if (ret < 0)
     goto err_out;
 
-  ret = nf_register_net_hook(&init_net, &nfh_defrag_out);
+  ret = nf_register_net_hook(net, &nfh_defrag_out);
   if (ret < 0)
     goto err_defrag_out;
 
-  ret = nf_register_net_hook(&init_net, &nfh_post);
+  ret = nf_register_net_hook(net, &nfh_post);
   if (ret < 0)
     goto err_post;
 
-  IPFI_PRINTK("IPFIRE: Registered hooks for init_net\n");
+  IPFI_PRINTK("IPFIRE: Registered hooks for net %px\n", net);
   return 0;
 
   /* Error handling - unregister in reverse order */
 err_post:
-  nf_unregister_net_hook(&init_net, &nfh_defrag_out);
+  nf_unregister_net_hook(net, &nfh_defrag_out);
 err_defrag_out:
-  nf_unregister_net_hook(&init_net, &nfh_out);
+  nf_unregister_net_hook(net, &nfh_out);
 err_out:
-  nf_unregister_net_hook(&init_net, &nfh_fwd);
+  nf_unregister_net_hook(net, &nfh_fwd);
 err_fwd:
-  nf_unregister_net_hook(&init_net, &nfh_in);
+  nf_unregister_net_hook(net, &nfh_in);
 err_in:
-  nf_unregister_net_hook(&init_net, &nfh_pre);
+  nf_unregister_net_hook(net, &nfh_pre);
 err_pre:
-  nf_unregister_net_hook(&init_net, &nfh_defrag_pre);
+  nf_unregister_net_hook(net, &nfh_defrag_pre);
 err_defrag_pre:
   return ret;
+}
+
+static void unregister_ipfire_net(struct net *net) {
+  nf_unregister_net_hook(net, &nfh_post);
+  nf_unregister_net_hook(net, &nfh_defrag_out);
+  nf_unregister_net_hook(net, &nfh_out);
+  nf_unregister_net_hook(net, &nfh_fwd);
+  nf_unregister_net_hook(net, &nfh_in);
+  nf_unregister_net_hook(net, &nfh_pre);
+  nf_unregister_net_hook(net, &nfh_defrag_pre);
 }
 
 int check_headers(struct sk_buff *skb) {

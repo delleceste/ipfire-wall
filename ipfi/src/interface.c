@@ -196,7 +196,7 @@ int main(int argc, char *argv[]) {
   }
   /* open log if necessary */
   if (uops.loglevel > NOLOG)
-    if (openlog(&uops) < 0)
+    if (ipfire_openlog(&uops) < 0)
       exit(EXIT_FAILURE);
 
   /* should we run as a daemon? */
@@ -625,7 +625,7 @@ void son_signal_handler(int signum) {
       t_m = localtime(&tp);
       log_exiting(t_m, upper_username, &nlstats);
       PNL, printf(TR("Closing logfile..."));
-      if (closelog() < 0)
+      if (ipfire_closelog() < 0)
         PRED, PTAB, printf(TR("FAILED")), PNL;
       else
         printf("\t["), PGRN, printf(TR("done")), PCL, printf(".]" NL);

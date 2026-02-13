@@ -1,34 +1,33 @@
 #ifndef IPFI_LOG_H
 #define IPFI_LOG_H
 
-/* See ipfi.c for details and
- * use of this software.
- * (C) 2005 Giacomo S.
- */
-
 #include "ipfi.h"
+#include <linux/list.h>
 #include <linux/skbuff.h>
+#include <linux/spinlock.h>
+#include <linux/types.h>
 
-#define LOGINFO_HASH_BITS 10
+#define MAX_LOGINFO_ENTRIES 10000UL
+
+enum log_entry_state { ENTRY_FREE = 0, ENTRY_ACTIVE };
 
 struct ipfire_loginfo {
   ipfire_info_t info;
-  struct timer_list timer_loginfo;
-  struct work_struct cleanup_work;
+  unsigned long timestamp;
   struct rcu_head rcuh;
   struct list_head lnode;
-  /* TODO: restore hash
-  struct hlist_node hnode;
-  */
+};
+
+struct ipfire_loginfo_pool {
+  struct ipfire_loginfo entries[MAX_LOGINFO_ENTRIES];
+  u8 state[MAX_LOGINFO_ENTRIES];
+  unsigned int head;
+  spinlock_t lock;
 };
 
 int init_log(void);
-
 void fini_log(void);
 
-/* updates timer of a loginfo entry, when a packet is already
- * present il packlist list. Invoked by packet_not_seen() when
- * it has seen this packet in list */
 inline void update_loginfo_timer(struct ipfire_loginfo *iplo);
 
 int build_ipfire_info_from_skb(const struct sk_buff *skb, const ipfi_flow *flow,
@@ -36,63 +35,34 @@ int build_ipfire_info_from_skb(const struct sk_buff *skb, const ipfi_flow *flow,
                                const struct info_flags *flags,
                                ipfire_info_t *dest);
 
-inline void fill_timer_loginfo_entry(struct ipfire_loginfo *ipfilog);
-
 int packet_matches_log_entry(const struct sk_buff *skb,
                              const struct response *res, const ipfi_flow *flow,
                              const struct info_flags *flags,
                              const ipfire_info_t *p2);
 
-/* compares two packets in the shape of ipfire_info_t. All
- * fields are compared, except packet_id, the last one */
 inline int compare_loginfo_packets(const struct sk_buff *skb,
                                    const struct response *res,
                                    const ipfi_flow *flow,
                                    const struct info_flags *flags,
                                    const ipfire_info_t *packet2);
 
-/* returns 1 if packet has never been seen,
- * 0 otherwise. If a packet is already in list,
- * its timer is updated */
 inline int packet_not_seen(const struct sk_buff *skb,
                            const struct response *res, const ipfi_flow *flow,
                            const struct info_flags *flags, int chk_state);
 
-/* Invoked when loglevel is 1, this function compares
- * packet with all other packets seen. If a packet has
- * already been seen, it's not logged and nothing is
- * done, if it is the first packet, it is added to list of seen
- * packets and 1 is return, as to indicate that packet
- * must be logged to userspace. This "smart logging"
- * reduces load in userspace communication via netlink
- * socket.
- */
 int smart_log(const struct sk_buff *skb, const struct response *res,
               const ipfi_flow *flow, const struct info_flags *flags);
 
-/* This is registered when the log level is MART_LOG_WITH_STATE_CHECK.
- * Applies all the same procedures as the one above, but also
- * does checks against the state.
- */
 int smart_log_with_state_check(const struct sk_buff *skb,
                                const struct response *res,
                                const ipfi_flow *flow,
                                const struct info_flags *flags);
 
-/* copies a packet to info field of ipfire_loginfo, then initializes
- * timers and adds to packlist list */
 inline int add_packet_to_infolist(const struct sk_buff *skb,
                                   const struct response *res,
                                   const ipfi_flow *flow,
                                   const struct info_flags *flags);
 
-void handle_loginfo_entry_timeout(struct timer_list *t);
-
-void free_entry_rcu_call(struct rcu_head *head);
-
-struct ipfire_loginfo *loginfo_new(const struct sk_buff *skb,
-                                   const struct response *res,
-                                   const ipfi_flow *flow,
-                                   const struct info_flags *flags);
+void loginfo_expire_entries(void);
 
 #endif

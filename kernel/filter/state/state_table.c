@@ -4,6 +4,7 @@
 #include "ipfi.h"
 #include "ipfi_machine.h"
 #include "ipfi_state_machine.h"
+#include <linux/bitops.h>
 #include <linux/jhash.h>
 #include <linux/list.h>
 #include <linux/module.h>
@@ -465,6 +466,7 @@ void handle_keep_state_timeout(struct timer_list *t) {
   hash_del_rcu(&st->hnode);
   */
   list_del_rcu(&st->lnode);
+  set_bit(IPFI_ST_REMOVED, &st->status);
   state_tables_counter--;
   spin_unlock_bh(&state_list_lock);
 
@@ -479,6 +481,7 @@ void fill_timer_table_fields(struct state_table *state_t) {
   INIT_WORK(&state_t->cleanup_work, free_state_work);
   timer_setup(&state_t->timer_statelist, handle_keep_state_timeout, 0);
   state_t->timer_statelist.expires = jiffies + expi * HZ;
+  state_t->status = 0;
   state_t->last_timer_update = jiffies;
 }
 
@@ -516,6 +519,7 @@ int free_state_tables(void) {
     hash_del_rcu(&tl->hnode);
     */
     list_del_rcu(&tl->lnode);
+    set_bit(IPFI_ST_REMOVED, &tl->status);
     state_tables_counter--;
 
     /* Now queue work to safely timer_delete_sync and call_rcu

@@ -3,6 +3,7 @@
 #include <arpa/inet.h>
 #include <ctype.h>
 #include <ipfire_structs.h>
+#include <syslog.h>
 
 /* functions treating parameters received by command line */
 void init_cmdopts(struct cmdopts *cmdo) {
@@ -1337,6 +1338,16 @@ int send_to_kernel(void *mess, const struct netl_handle *handle,
   if (!p) {
     printf("send_to_kernel(): cannot send message for problems in sizes\n");
     return -1;
+  }
+
+  if (type_of_message == CONTROL_DATA) {
+    int flushed = netl_flush_socket(handle);
+    if (flushed > 0) {
+      syslog(LOG_INFO,
+             "common.c: send_to_kernel(): flushed %d stale messages from "
+             "control socket",
+             flushed);
+    }
   }
 
   if (send_to_kern(handle, (void *)messhead, messhead->nlmsg_len) < 0) {

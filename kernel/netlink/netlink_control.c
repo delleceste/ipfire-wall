@@ -492,8 +492,11 @@ int send_a_list(ipfire_rule *rlist) {
       memset(cmd, 0, sizeof(command));
       cmd->cmd = PRINT_RULES;
       memcpy(&cmd->content.rule, tmp, sizeof(ipfire_rule));
-      if (send_back_command(cmd) < 0)
+      if (send_back_command(cmd) < 0) {
         IPFI_PRINTK("IPFIRE: error sending rule %d to userspace!\n", i);
+        kfree(cmd);
+        return -1;
+      }
       kfree(cmd);
     }
   }
@@ -519,8 +522,12 @@ int send_tables(void) {
     if (st_info != NULL) {
       fill_state_info(st_info, st);
       buf_touser = build_state_info_packet(st_info);
-      if (buf_touser != NULL)
-        skb_send_to_user(buf_touser, CONTROL_DATA);
+      if (buf_touser != NULL) {
+        if (skb_send_to_user(buf_touser, CONTROL_DATA) < 0) {
+          kfree(st_info);
+          break;
+        }
+      }
       kfree(st_info);
     }
   }
@@ -553,11 +560,15 @@ int send_dnat_tables(void) {
   */
   list_for_each_entry_rcu(dt, &dnat_list, lnode) {
     dn_info = (struct dnat_info *)kmalloc(sizeof(struct dnat_info), GFP_ATOMIC);
-    if (dn_info) {
+    if (dn_info != NULL) {
       fill_dnat_info(dn_info, dt);
       skb_to_user = build_dnat_info_packet(dn_info);
-      if (skb_to_user != NULL)
-        skb_send_to_user(skb_to_user, CONTROL_DATA);
+      if (skb_to_user != NULL) {
+        if (skb_send_to_user(skb_to_user, CONTROL_DATA) < 0) {
+          kfree(dn_info);
+          break;
+        }
+      }
       kfree(dn_info);
     }
   }
@@ -593,8 +604,12 @@ int send_snat_tables(void) {
     if (sn_info != NULL) {
       fill_snat_info(sn_info, st);
       skb_to_user = build_snat_info_packet(sn_info);
-      if (skb_to_user != NULL)
-        skb_send_to_user(skb_to_user, CONTROL_DATA);
+      if (skb_to_user != NULL) {
+        if (skb_send_to_user(skb_to_user, CONTROL_DATA) < 0) {
+          kfree(sn_info);
+          break;
+        }
+      }
       kfree(sn_info);
     }
   }

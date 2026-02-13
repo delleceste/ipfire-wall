@@ -28,7 +28,7 @@
 
 #include "includes/libnetl.h"
 
-#define NETL_RECVBUF 4096
+#define NETL_RECVBUF 65536
 
 /* private interface */
 
@@ -98,19 +98,21 @@ static int netl_receive_from_kernel(const struct netl_handle *h, void *buf,
   int status;
   unsigned addrlen = sizeof(h->peer);
   unsigned char tmpbuf[NETL_RECVBUF];
-  memset(buf, 0, len);
-  memset(tmpbuf, 0, sizeof(unsigned char) * NETL_RECVBUF);
   struct nlmsghdr *nh;
+
+  memset(tmpbuf, 0, sizeof(unsigned char) * NETL_RECVBUF);
 
   /* receive from kernel */
   status = recvfrom(h->fd, tmpbuf, NETL_RECVBUF, 0, (struct sockaddr *)&h->peer,
                     &addrlen);
   /* recvfrom returned a negative value */
   if (status < 0) {
-    perror("libnetl.c: netl_receive_from_kernel(): recvfrom() error ");
-    syslog(LOG_ERR,
-           "libnetl.c: netl_receive_from_kernel(): recvfrom() error (%m)");
-    netl_errno = LIBNETL_ERR_RECVFROM;
+    if (errno != EAGAIN && errno != EWOULDBLOCK) {
+      perror("libnetl.c: netl_receive_from_kernel(): recvfrom() error ");
+      syslog(LOG_ERR,
+             "libnetl.c: netl_receive_from_kernel(): recvfrom() error (%m)");
+      netl_errno = LIBNETL_ERR_RECVFROM;
+    }
     return -1;
   }
   if (addrlen != sizeof(h->peer)) /* must be equal */
@@ -142,15 +144,47 @@ static int netl_receive_from_kernel(const struct netl_handle *h, void *buf,
   /* NLMSG_OK returns true if the netlink message is not truncated and ok to
    * parse. */
   if (NLMSG_OK(nh, status)) {
-    /* NLMSG_DATA() returns a pointer to the payload associated with the passed
-     * nlmsghdr. */
-    memcpy(buf, NLMSG_DATA(nh), len);
+    /* Check if the payload length is at least what we expect.
+     * If len is 0, we just drain the message.
+     */
+    if (len > 0) {
+      size_t payload_len = NLMSG_PAYLOAD(nh, 0);
+      if (payload_len < len) {
+        syslog(LOG_WARNING,
+               "libnetl.c: netl_receive_from_kernel(): payload too short (%zu "
+               "< %zu)",
+               payload_len, len);
+        return -1;
+      }
+      memcpy(buf, NLMSG_DATA(nh), len);
+    }
   } else {
     printf("libnetl.c: netl_receive_from_kernel() NLMSG_OK not ok!\n");
     syslog(LOG_ERR, "libnetl.c: netl_receive_from_kernel() NLMSG_OK not ok!\n");
+    return -1;
   }
   /* message truncated? see libipq in netfilter sources */
   return status;
+}
+
+int netl_flush_socket(const struct netl_handle *h) {
+  int status;
+  int flushed = 0;
+  unsigned addrlen = sizeof(h->peer);
+  unsigned char tmpbuf[NETL_RECVBUF];
+
+  /* drain everything without blocking */
+  while ((status = recvfrom(h->fd, tmpbuf, NETL_RECVBUF, MSG_DONTWAIT,
+                            (struct sockaddr *)&h->peer, &addrlen)) > 0) {
+    flushed++;
+  }
+
+  if (status < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
+    perror("libnetl.c: netl_flush_socket(): recvfrom() error ");
+    return -1;
+  }
+
+  return flushed;
 }
 
 /* error handling */
@@ -182,7 +216,7 @@ alloc_netl_handle(int protocol) /* returns a mallocated handle or NULL */
    * ideally, though for SO_RCVBUF it can be done anytime, but Good Practice
    * (TM)) Actually, let's do it after socket creation.
    */
-  int rcvbuf = 2 * 1024 * 1024; /* 2MB */
+  int rcvbuf = 16 * 1024 * 1024; /* 16MB */
   if (setsockopt(netlh->fd, SOL_SOCKET, SO_RCVBUF, &rcvbuf, sizeof(rcvbuf)) <
       0) {
     perror("setsockopt(SO_RCVBUF) failed");

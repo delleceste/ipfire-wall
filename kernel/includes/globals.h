@@ -67,7 +67,7 @@ extern struct list_head snat_list;
 /* extern DECLARE_HASHTABLE(loginfo_hashtable, LOGINFO_HASH_BITS); TODO: restore
  * hash
  */
-extern struct list_head loginfo_list;
+extern struct list_head active_logi_list;
 
 /* Counters */
 extern unsigned int table_id;
@@ -80,7 +80,7 @@ extern int loginfo_entry_counter;
 extern unsigned int state_lifetime;
 extern unsigned int setup_shutd_state_lifetime;
 extern unsigned int loginfo_lifetime;
-extern int max_loginfo_entries;
+extern unsigned int max_loginfo_entries;
 extern int (*smartlog_func)(const struct sk_buff *skb,
                             const struct response *res, const ipfi_flow *flow,
                             const struct info_flags *flags);
