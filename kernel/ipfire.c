@@ -413,16 +413,21 @@ unsigned int process(void *priv, struct sk_buff *skb,
   // malformed packet or unsupported protocol
   if (check_headers(skb) < 0)
     return NF_DROP;
+  bool no_nat = (READ_ONCE(dnatted_entry_counter) == 0 &&
+                 READ_ONCE(snatted_entry_counter) == 0) ||
+                (fwopts.masquerade == 0 && fwopts.nat == 0);
 
   switch (hooknum) {
   case NF_IP_PRE_ROUTING:
-    IPFI_STAT_INC(pre_rcv);     // stats
+    IPFI_STAT_INC(pre_rcv); // stats
+    if (no_nat)
+      return NF_ACCEPT;
+
     daddr = ip_hdr(skb)->daddr; /* save original destination address */
     flow.direction = IPFI_INPUT_PRE;
     ret = ipfi_pre_process(skb, &flow);
     if (ret != NF_DROP && ret != NF_STOLEN && daddr != ip_hdr(skb)->daddr) {
-      /* destination nat applied and destination address changed in pre routing
-       */
+      // destination nat applied and destination address changed in pre routing
       dst_release(skb_dst(skb));
       skb_dst_set(skb, NULL);
     }
@@ -441,6 +446,9 @@ unsigned int process(void *priv, struct sk_buff *skb,
     return ipfi_response(state, skb, &flow);
   case NF_IP_POST_ROUTING:
     IPFI_STAT_INC(post_rcv);
+    if (no_nat)
+      return NF_ACCEPT;
+
     flow.direction = IPFI_OUTPUT_POST;
     return ipfi_post_process(skb, &flow);
   default:
@@ -486,12 +494,14 @@ int ipfi_pre_process(struct sk_buff *skb, const ipfi_flow *flow) {
   /* in pre routing we do not do any filtering. In normal cases we will return
    * IPFI_ACCEPT as verdict in this hook. In case of errors instead, we'll
    * return IPFI_DROP, to interrupt packet processing. This happens in case of
-   * checksum error in incoming packets or (unprobable) memory allocation errors
+   * checksum error in incoming packets or (unprobable) memory allocation
+   * errors
    */
   verdict = NF_ACCEPT;
   /* nat and masquerade options disabled: return NF_ACCEPT in pre process */
-  if ((fwopts.masquerade == 0) && (fwopts.nat == 0)) {
-    printk("IPFIRE_DEBUG: ipfi_pre_process: NAT/MASQ disabled\n");
+  if ((fwopts.masquerade == 0) && (fwopts.nat == 0) &&
+      READ_ONCE(dnatted_entry_counter) == 0 &&
+      READ_ONCE(snatted_entry_counter) == 0) {
     return NF_ACCEPT;
   }
 
@@ -508,33 +518,29 @@ int ipfi_pre_process(struct sk_buff *skb, const ipfi_flow *flow) {
    * i.e. has been forwarded, we must de dnat it. Dynamic
    * rules are checked in this case.
    */
-  ret = pre_de_dnat(skb, flow, &resp, &flags);
+  if (READ_ONCE(dnatted_entry_counter) > 0) {
+    ret = pre_de_dnat(skb, flow, &resp, &flags);
 
-  /* implements pre processing of the packets: DNAT.
-   * check if we already have a translation for this session
-   * (early lookup consolidated here)
-   */
-  if (ret < 0) {
-    struct dnatted_table *dnt = lookup_dnat_forward(skb, flow, &resp, &flags);
-    if (dnt != NULL) {
-      ret = dest_translate(skb, dnt);
+    /* implements pre processing of the packets: DNAT.
+     * check if we already have a translation for this session
+     * (early lookup consolidated here)
+     */
+    if (ret < 0) {
+      struct dnatted_table *dnt = lookup_dnat_forward(skb, flow, &resp, &flags);
+      if (dnt != NULL) {
+        ret = dest_translate(skb, dnt);
+      }
     }
   }
 
-  /* dnat_translation() requires direct match with DNAT
-   * rules inserted by user.
-   * Explicit rule match has the precedence on dynamic entries
+  /* dnat_translation() requires direct match with DNAT rules inserted by user.
    */
   if (ret < 0) /* no pre_de_dnat, maybe dnat_translation */
-  {
-    /* Debug before dnat_translation call */
-    struct iphdr *iph_dbg = ip_hdr(skb);
     ret = dnat_translation(skb, flow, &resp, &flags);
-  }
 
   /* now let's de-snat, or de-masquerade, if no match has previously succeeded
    */
-  if (ret < 0)
+  if (ret < 0 && READ_ONCE(snatted_entry_counter) > 0)
     ret = pre_de_snat(skb, flow, &resp, &flags);
 
   /* checksum is calculated inside set_pairs_in_skb(), ipfi_translation.c */
@@ -572,8 +578,8 @@ int ipfi_post_process(struct sk_buff *skb, const ipfi_flow *flow) {
   struct response resp = {.verdict = IPFI_ACCEPT};
   struct info_flags flags = {};
   flags.direction = flow->direction;
-  /* do post routing tasks. Checksumming is performed in set_pairs_in_skb(), the
-   * manipulation function inside ipfi_translation.c
+  /* do post routing tasks. Checksumming is performed in set_pairs_in_skb(),
+   * the manipulation function inside ipfi_translation.c
    */
   int de_dnat_done = -1, snat_done = -1;
 
@@ -582,7 +588,9 @@ int ipfi_post_process(struct sk_buff *skb, const ipfi_flow *flow) {
    */
   kstats.post_rcv++;
   /* masquerade and NAT disabled: nothing to do. We accept here */
-  if ((fwopts.masquerade == 0) && (fwopts.nat == 0))
+  if ((fwopts.masquerade == 0) && (fwopts.nat == 0) &&
+      READ_ONCE(dnatted_entry_counter) == 0 &&
+      READ_ONCE(snatted_entry_counter) == 0)
     return NF_ACCEPT;
 
   /* No more kmalloc for ipfire_info_t. */
@@ -590,29 +598,25 @@ int ipfi_post_process(struct sk_buff *skb, const ipfi_flow *flow) {
   /* MASQUERADE and SNAT now take components directly. No
    * build_ipfire_info_from_skb needed here. */
 
-  /* if NAT is enabled, there might be packets forwarded to another machine.
-   * In that case, before leaving local node, source address of leaving packet,
-   * which is old address of sending node, must be set to our address, so
-   * that destination machine responds to us, unless first packet arrived
-   * from external network. This happens in the same flow of originating
-   * connection.
-   */
-  if ((snat_done = post_snat_dynamic(skb, flow, &resp, &flags)) >= 0)
-    goto send_touser;
+  if (READ_ONCE(dnatted_entry_counter) > 0) {
+    if ((snat_done = post_snat_dynamic(skb, flow, &resp, &flags)) >= 0)
+      goto send_touser;
 
-  /* If NAT is enabled, there might be packets that have been destination natted
-   * in pre routing phase. Those packets must be de-natted: source address must
-   * be put equal to the original destination address of the dnatted packet.
-   * We must check if packet has destination address _and_  port equal to source
-   * address _and_ port of dnatted packet. This happens in the opposite flow
-   * with respect to the one that originated communication.
-   */
-  de_dnat_done = de_dnat_translation(skb, flow, &resp, &flags);
+    /* If NAT is enabled, there might be packets that have been destination
+     * natted in pre routing phase. Those packets must be de-natted: source
+     * address must be put equal to the original destination address of the
+     * dnatted packet. We must check if packet has destination address _and_
+     * port equal to source address _and_ port of dnatted packet. This happens
+     * in the opposite flow with respect to the one that originated
+     * communication.
+     */
+    de_dnat_done = de_dnat_translation(skb, flow, &resp, &flags);
+  }
 
   /* check if we already have a translation for this session
    * (early lookup consolidated here, covers both SNAT and Masquerade)
    */
-  {
+  if (READ_ONCE(snatted_entry_counter) > 0) {
     struct snatted_table *snt = lookup_snat_forward(skb, flow, &resp, &flags);
     if (snt != NULL) {
       snat_done = snat_packet(skb, snt);
@@ -737,18 +741,19 @@ int ipfi_response(const struct nf_hook_state *state, struct sk_buff *skb,
         update_kernel_stats(IPFI_FAILED_NETLINK_USPACE, res.verdict);
     }
 
-    /* if gui_notifier_enabled we send the info if there is no match (popup
-     * asking the user the verdict for the new seen packet - if directions are
-     * in or out -) OR if there was a rule matching and a notification was
-     * requested for tha packets matching _that_ rule.
+    /* Qt-GUI: if gui_notifier_enabled we send the info if there is no match
+     * (popup asking the user the verdict for the new seen packet - if
+     * directions are in or out -) OR if there was a rule matching and a
+     * notification was requested for tha packets matching _that_ rule.
      */
     if (gui_notifier_enabled &&
         ((res.verdict == IPFI_IMPLICIT && flow->direction != IPFI_FWD) ||
          (res.verdict != IPFI_IMPLICIT && res.notify))) {
+      printk("GUI NOTIFIER ENABLED!!\n");
       /* previous socket buffer sent to userspace: the kernel will have freed
        * it... so the pointer skb_touser is no more valid: create a new socket
-       * buffer with the same ipfire_info_t contents: this will be sent via the
-       * notifier socket.
+       * buffer with the same ipfire_info_t contents: this will be sent via
+       * the notifier socket.
        */
       int err = 0;
       struct sk_buff *skb_touser =
@@ -774,9 +779,11 @@ int ipfi_response(const struct nf_hook_state *state, struct sk_buff *skb,
      * ipfi_translation: set_pairs_in_skb().
      */
     if (fwopts.nat != 0 && flow->direction == IPFI_OUTPUT) {
-      struct dnatted_table *dnt = lookup_dnat_forward(skb, flow, &res, &flags);
+      struct dnatted_table *dnt =
+          READ_ONCE(dnatted_entry_counter) > 0
+              ? lookup_dnat_forward(skb, flow, &res, &flags)
+              : NULL;
       int dnat_ret = -1;
-
       if (dnt != NULL) {
         /*
          * If an existing DNAT entry is found, we use it. We also synchronize
@@ -796,12 +803,12 @@ int ipfi_response(const struct nf_hook_state *state, struct sk_buff *skb,
          * EXHAUSTIVE COMMENT ON RE-ROUTING (OUTPUT DNAT):
          *
          * When a packet's destination IP address is modified in the LOCAL_OUT
-         * path (OUTPUT hook), the original routing decision (made by the stack
-         * BEFORE the netfilter hooks) becomes stale.
+         * path (OUTPUT hook), the original routing decision (made by the
+         * stack BEFORE the netfilter hooks) becomes stale.
          *
          * If the new destination IP belongs to a different network reachable
-         * via a different interface, or if it requires a different gateway, the
-         * packet must be re-routed to ensure it reaches its intended
+         * via a different interface, or if it requires a different gateway,
+         * the packet must be re-routed to ensure it reaches its intended
          * destination and that the outgoing interface and source IP (if not
          * fixed) are consistent with the new path.
          *
@@ -831,8 +838,6 @@ int ipfi_response(const struct nf_hook_state *state, struct sk_buff *skb,
         }
 
         /*
-         * EXHAUSTIVE COMMENT ON LOGGING (OUTPUT DNAT):
-         *
          * After a successful DNAT translation and re-routing in the OUTPUT
          * path, we send a log message to userspace. This provides visibility
          * into locally generated packets that have been redirected.
@@ -855,9 +860,9 @@ int ipfi_response(const struct nf_hook_state *state, struct sk_buff *skb,
                 "IPFIRE: failed to build log message after OUTPUT DNAT\n");
           }
         }
-      }
-    }
-  } /* ret > 0 */
+      } // dnat_ret >= 0
+    } // fwopts.nat != 0 and flow->direction == IPFI_OUTPUT
+  } // res.verdict > 0
 
   /* update statistics */
   update_kernel_stats(flow->direction, res.verdict);

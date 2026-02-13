@@ -150,10 +150,7 @@ struct dnatted_table *lookup_dnat_forward(const struct sk_buff *skb,
   int bkt;
   */
 
-  /* Optimization: if no DNAT entries exist, skip the lookup */
-  /* This reads a global int, which is atomic enough for this heuristic check */
-  if (dnatted_entry_counter == 0)
-    return NULL;
+  /* Optimization: check moved to caller (ipfi_pre/post_process) */
 
   rcu_read_lock_bh();
   /* TODO: restore hash
@@ -199,9 +196,7 @@ struct snatted_table *lookup_snat_forward(const struct sk_buff *skb,
   int bkt;
   */
 
-  /* Optimization: if no SNAT entries exist, skip the lookup */
-  if (snatted_entry_counter == 0)
-    return NULL;
+  /* Optimization: check moved to caller */
 
   rcu_read_lock_bh();
   /* TODO: restore hash
