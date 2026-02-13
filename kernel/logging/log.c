@@ -30,8 +30,10 @@ void free_entry_rcu_call(struct rcu_head *head) {
 }
 
 /* see get_state_hash in state_table.c for details */
-u32 get_loginfo_hash(const struct sk_buff *skb, const struct response *res,
-                     const ipfi_flow *flow, const struct info_flags *flags) {
+/* TODO: restore hash
+static u32 get_loginfo_hash(const struct sk_buff *skb,
+                            const struct response *res, const ipfi_flow *flow,
+                            const struct info_flags *flags) {
   struct iphdr *iph = ip_hdr(skb);
   u32 saddr = iph->saddr;
   u32 daddr = iph->daddr;
@@ -50,8 +52,9 @@ u32 get_loginfo_hash(const struct sk_buff *skb, const struct response *res,
   return jhash_3words(saddr ^ daddr, ((u32)sport << 16) | dport,
                       ((u32)proto << 16) | flow->direction, 0);
 }
+*/
 
-void free_loginfo_work(struct work_struct *work) {
+static void free_loginfo_work(struct work_struct *work) {
   struct ipfire_loginfo *ipfilog =
       container_of(work, struct ipfire_loginfo, cleanup_work);
 
@@ -67,11 +70,14 @@ void handle_loginfo_entry_timeout(struct timer_list *t) {
       timer_container_of(ipfilog, t, timer_loginfo);
 
   spin_lock_bh(&loginfo_list_lock);
+  /* TODO: restore hash
   if (hlist_unhashed(&ipfilog->hnode)) {
     spin_unlock_bh(&loginfo_list_lock);
     return;
   }
   hash_del_rcu(&ipfilog->hnode);
+  */
+  list_del_rcu(&ipfilog->lnode);
   loginfo_entry_counter--;
   spin_unlock_bh(&loginfo_list_lock);
 
@@ -147,7 +153,9 @@ inline int add_packet_to_infolist(const struct sk_buff *skb,
 
   struct ipfire_loginfo *ipli = loginfo_new(skb, res, flow, flags);
   if (ipli) {
+    /* TODO: restore hash
     u32 hash = get_loginfo_hash(skb, res, flow, flags);
+    */
     spin_lock_bh(&loginfo_list_lock);
 
     if (unlikely(we_are_exiting)) {
@@ -159,7 +167,10 @@ inline int add_packet_to_infolist(const struct sk_buff *skb,
     /* add timer */
     add_timer(&ipli->timer_loginfo);
     /* add entry to root table */
+    /* TODO: restore hash
     hash_add_rcu(loginfo_hashtable, &ipli->hnode, hash);
+    */
+    list_add_rcu(&ipli->lnode, &loginfo_list);
     loginfo_entry_counter++;
     spin_unlock_bh(&loginfo_list_lock);
     return 0;
@@ -305,10 +316,15 @@ inline int packet_not_seen(const struct sk_buff *skb,
                            const struct response *res, const ipfi_flow *flow,
                            const struct info_flags *flags, int chk_state) {
   struct ipfire_loginfo *loginfo;
+  /* TODO: restore hash
   u32 hash = get_loginfo_hash(skb, res, flow, flags);
+  */
 
   rcu_read_lock_bh();
+  /* TODO: restore hash
   hash_for_each_possible_rcu(loginfo_hashtable, loginfo, hnode, hash) {
+  */
+  list_for_each_entry_rcu(loginfo, &loginfo_list, lnode) {
     if (compare_loginfo_packets(skb, res, flow, flags, &loginfo->info)) {
       if (!chk_state ||
           (chk_state && (res->st.state == loginfo->info.response.st.state))) {
@@ -354,15 +370,23 @@ int smart_log_with_state_check(const struct sk_buff *skb,
   return 0;
 }
 
-int free_loginfo_entries(void) {
-  struct hlist_node *tmp;
+static int free_loginfo_entries(void) {
   struct ipfire_loginfo *ilo;
+  struct ipfire_loginfo *tmp;
   int counter = 0;
+  /* TODO: restore hash
   int bkt;
+  */
   spin_lock_bh(&loginfo_list_lock);
+  /* TODO: restore hash
   hash_for_each_safe(loginfo_hashtable, bkt, tmp, ilo, hnode) {
+  */
+  list_for_each_entry_safe(ilo, tmp, &loginfo_list, lnode) {
     /* Removal under lock - this ensures we win against the timer handler. */
+    /* TODO: restore hash
     hash_del_rcu(&ilo->hnode);
+    */
+    list_del_rcu(&ilo->lnode);
     loginfo_entry_counter--;
 
     /* Now queue work to safely timer_delete_sync and call_rcu
@@ -379,7 +403,9 @@ int free_loginfo_entries(void) {
 // static int __init init(void)
 int init_log(void) {
   /* initialize loginfo hashtable */
+  /* TODO: restore hash
   hash_init(loginfo_hashtable);
+  */
   return 0;
 }
 

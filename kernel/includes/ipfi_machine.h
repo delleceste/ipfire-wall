@@ -17,8 +17,10 @@
 #define STATE_HASH_BITS 12
 
 #include <linux/jhash.h>
+/* TODO: restore hash
 u32 get_state_hash(__u32 saddr, __u32 daddr, __u16 sport, __u16 dport,
                    __u8 proto);
+*/
 
 /* ftp passive support */
 #define FTP_NONE 0     /* not an ftp rule */
@@ -58,7 +60,10 @@ struct state_table {
 
   /* RCU */
   struct rcu_head state_rcuh;
+  struct list_head lnode;
+  /* TODO: restore hash
   struct hlist_node hnode;
+  */
 };
 
 int init_machine(void);

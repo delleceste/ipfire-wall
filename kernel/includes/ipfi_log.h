@@ -16,7 +16,10 @@ struct ipfire_loginfo {
   struct timer_list timer_loginfo;
   struct work_struct cleanup_work;
   struct rcu_head rcuh;
+  struct list_head lnode;
+  /* TODO: restore hash
   struct hlist_node hnode;
+  */
 };
 
 int init_log(void);

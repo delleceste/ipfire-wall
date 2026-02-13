@@ -99,12 +99,17 @@ ipfire_rule masquerade_post;
 
 /* State and NAT tables */
 
-DEFINE_HASHTABLE(state_hashtable, STATE_HASH_BITS);
-DEFINE_HASHTABLE(dnat_hashtable, DNAT_HASH_BITS);
-DEFINE_HASHTABLE(snat_hashtable, SNAT_HASH_BITS);
+/* DEFINE_HASHTABLE(state_hashtable, STATE_HASH_BITS); TODO: restore hash */
+LIST_HEAD(state_list);
+/* DEFINE_HASHTABLE(dnat_hashtable, DNAT_HASH_BITS); TODO: restore hash */
+/* DEFINE_HASHTABLE(snat_hashtable, SNAT_HASH_BITS); TODO: restore hash */
+LIST_HEAD(dnat_list);
+LIST_HEAD(snat_list);
 
 /* Log info */
-DEFINE_HASHTABLE(loginfo_hashtable, LOGINFO_HASH_BITS);
+/* DEFINE_HASHTABLE(loginfo_hashtable, LOGINFO_HASH_BITS); TODO: restore hash
+ */
+LIST_HEAD(loginfo_list);
 
 /* Counters */
 unsigned int table_id = 0;

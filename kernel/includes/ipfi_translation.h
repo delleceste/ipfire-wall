@@ -66,7 +66,9 @@ struct dnatted_table {
   unsigned long last_timer_update;
   /* RCU */
   struct rcu_head dnat_rcuh;
-  struct hlist_node hnode;
+  struct list_head
+      lnode; /* list-based lookup - TODO: remove when back to hash */
+  struct hlist_node hnode; /* hash-based lookup - TODO: restore hash */
 };
 
 /* the table contains information about source adddress
@@ -98,7 +100,9 @@ struct snatted_table {
   unsigned long last_timer_update;
   /* RCU */
   struct rcu_head snat_rcuh;
-  struct hlist_node hnode;
+  struct list_head
+      lnode; /* list-based lookup - TODO: remove when back to hash */
+  struct hlist_node hnode; /* hash-based lookup - TODO: restore hash */
 };
 
 int init_translation(void);

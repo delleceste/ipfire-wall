@@ -29,11 +29,13 @@ int translation_rule_match(const struct sk_buff *skb, const ipfi_flow *flow,
   }
 
   if (r->nflags.indev &&
-      (flow->in == NULL || strncmp(r->devpar.in_devname, flow->in->name, IFNAMSIZ) != 0)) {
+      (flow->in == NULL ||
+       strncmp(r->devpar.in_devname, flow->in->name, IFNAMSIZ) != 0)) {
     return -1;
   }
   if (r->nflags.outdev &&
-      (flow->out == NULL || strncmp(r->devpar.out_devname, flow->out->name, IFNAMSIZ) != 0)) {
+      (flow->out == NULL ||
+       strncmp(r->devpar.out_devname, flow->out->name, IFNAMSIZ) != 0)) {
     return -1;
   }
 
@@ -254,9 +256,14 @@ int get_orig_from_dnat_entry(const struct dnatted_table *dnt,
 int lookup_dnat_table_and_getorigdst(const net_quadruplet *n4,
                                      struct sockaddr_in *sin) {
   struct dnatted_table *dntmp;
+  /* TODO: restore hash
   int bkt;
+  */
   rcu_read_lock_bh();
+  /* TODO: restore hash
   hash_for_each_rcu(dnat_hashtable, bkt, dntmp, hnode) {
+  */
+  list_for_each_entry_rcu(dntmp, &dnat_list, lnode) {
     if (get_orig_from_dnat_entry(dntmp, n4, sin) == 1) {
       rcu_read_unlock_bh();
       return 0;
@@ -339,8 +346,10 @@ static struct nf_sockopt_ops so_getoriginal_dst = {
 };
 
 int init_translation(void) {
+  /* TODO: restore hash
   hash_init(dnat_hashtable);
   hash_init(snat_hashtable);
+  */
   ipfire_wq = alloc_workqueue("ipfire_wq", WQ_MEM_RECLAIM, 0);
   if (!ipfire_wq)
     return -ENOMEM;

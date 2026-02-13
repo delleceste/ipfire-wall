@@ -52,12 +52,22 @@ extern ipfire_rule masquerade_post;
 
 /* State and NAT tables */
 
-extern DECLARE_HASHTABLE(state_hashtable, STATE_HASH_BITS);
-extern DECLARE_HASHTABLE(dnat_hashtable, DNAT_HASH_BITS);
-extern DECLARE_HASHTABLE(snat_hashtable, SNAT_HASH_BITS);
+/* extern DECLARE_HASHTABLE(state_hashtable, STATE_HASH_BITS); TODO: restore
+ * hash
+ */
+extern struct list_head state_list;
+/* extern DECLARE_HASHTABLE(dnat_hashtable, DNAT_HASH_BITS); TODO: restore hash
+ */
+/* extern DECLARE_HASHTABLE(snat_hashtable, SNAT_HASH_BITS); TODO: restore hash
+ */
+extern struct list_head dnat_list;
+extern struct list_head snat_list;
 
 /* Log info */
-extern DECLARE_HASHTABLE(loginfo_hashtable, LOGINFO_HASH_BITS);
+/* extern DECLARE_HASHTABLE(loginfo_hashtable, LOGINFO_HASH_BITS); TODO: restore
+ * hash
+ */
+extern struct list_head loginfo_list;
 
 /* Counters */
 extern unsigned int table_id;

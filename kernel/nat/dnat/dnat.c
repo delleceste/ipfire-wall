@@ -71,14 +71,21 @@ int de_dnat_translation(struct sk_buff *skb, const ipfi_flow *flow,
                         struct response *resp, struct info_flags *flags) {
   struct dnatted_table *dntmp;
   net_quadruplet netq;
+  /* TODO: restore hash
   u32 hash;
+  */
   netq = get_quad_from_skb(skb);
   if (!netq.valid)
     return -1;
+  /* TODO: restore hash
   hash = get_dnat_hash(netq.daddr, netq.dport, netq.saddr, netq.sport,
                        ip_hdr(skb)->protocol);
+  */
   rcu_read_lock_bh();
+  /* TODO: restore hash
   hash_for_each_possible_rcu(dnat_hashtable, dntmp, hnode, hash) {
+  */
+  list_for_each_entry_rcu(dntmp, &dnat_list, lnode) {
     if (de_dnat_table_match(dntmp, skb) > 0) {
       dntmp->state = state_machine(skb, dntmp->state, 1);
       update_dnat_timer(dntmp);
@@ -118,9 +125,11 @@ int de_dnat_table_match(const struct dnatted_table *dnt,
 int pre_de_dnat(struct sk_buff *skb, const ipfi_flow *flow,
                 struct response *resp, struct info_flags *flags) {
   struct dnatted_table *dntmp;
-  int bkt;
   rcu_read_lock_bh();
+  /* TODO: restore hash
   hash_for_each_rcu(dnat_hashtable, bkt, dntmp, hnode) {
+  */
+  list_for_each_entry_rcu(dntmp, &dnat_list, lnode) {
     if (pre_denat_table_match(dntmp, skb) > 0) {
       dntmp->state = state_machine(skb, dntmp->state, 1);
       update_dnat_timer(dntmp);
@@ -196,7 +205,7 @@ struct dnatted_table *add_dnatted_entry(const struct sk_buff *skb,
                                         const ipfire_rule *dnat_rule) {
   if (unlikely(READ_ONCE(we_are_exiting)))
     return NULL;
-  
+
   struct dnatted_table *newtable;
   struct dnatted_table lookup_entry;
   static unsigned int entry_id = 0;
@@ -239,7 +248,10 @@ struct dnatted_table *add_dnatted_entry(const struct sk_buff *skb,
   fill_timer_dnat_entry(newtable);
   newtable->rule_id = entry_id++;
   add_timer(&newtable->timer_dnattedlist);
+  /* TODO: restore hash
   hash_add_rcu(dnat_hashtable, &newtable->hnode, hash);
+  */
+  list_add_rcu(&newtable->lnode, &dnat_list);
   dnatted_entry_counter++;
   spin_unlock_bh(&dnat_list_lock);
   return newtable;

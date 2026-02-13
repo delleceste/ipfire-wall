@@ -18,26 +18,18 @@ struct response check_state(struct sk_buff *skb, const ipfi_flow *flow,
   };
   short reverse = 0;
   struct iphdr *iph = ip_hdr(skb);
+  /* TODO: restore hash
   __u16 sport = 0, dport = 0;
-  u32 key;
-
-  if (!iph)
-    return ret;
-
-  if (iph->protocol == IPPROTO_TCP) {
-    struct tcphdr *th = (struct tcphdr *)((void *)iph + iph->ihl * 4);
-    sport = th->source;
-    dport = th->dest;
-  } else if (iph->protocol == IPPROTO_UDP) {
-    struct udphdr *uh = (struct udphdr *)((void *)iph + iph->ihl * 4);
-    sport = uh->source;
-    dport = uh->dest;
-  }
-
+  */
+  /* TODO: restore hash
   key = get_state_hash(iph->saddr, iph->daddr, sport, dport, iph->protocol);
+  */
   rcu_read_lock_bh();
 
+  /* TODO: restore hash
   hash_for_each_possible_rcu(state_hashtable, table_entry, hnode, key) {
+  */
+  list_for_each_entry_rcu(table_entry, &state_list, lnode) {
     if (skb_matches_state_table(skb, table_entry, &reverse, flow) > 0) {
       ret.verdict = IPFI_ACCEPT;
       ret.notify = table_entry->notify;

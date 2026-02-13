@@ -78,10 +78,15 @@ struct dnatted_table *lookup_dnatted_table_n_update_timer(
     const struct dnatted_table *dne, const struct sk_buff *skb,
     const ipfi_flow *flow, struct response *resp, struct info_flags *flags) {
   struct dnatted_table *dntmp;
+  /* TODO: restore hash
   u32 hash = get_dnat_hash(dne->old_saddr, dne->old_sport, dne->new_daddr,
                            dne->new_dport, dne->protocol);
+  */
   rcu_read_lock_bh();
+  /* TODO: restore hash
   hash_for_each_possible_rcu(dnat_hashtable, dntmp, hnode, hash) {
+  */
+  list_for_each_entry_rcu(dntmp, &dnat_list, lnode) {
     if (compare_entries(dntmp, dne) == 1) {
       dntmp->state = state_machine(skb, dntmp->state, 0);
       update_dnat_timer(dntmp);
@@ -97,10 +102,15 @@ struct snatted_table *lookup_snatted_table_n_update_timer(
     const struct snatted_table *sne, const struct sk_buff *skb,
     const ipfi_flow *flow, struct response *resp, struct info_flags *flags) {
   struct snatted_table *sntmp;
+  /* TODO: restore hash
   u32 hash = get_snat_hash(sne->new_saddr, sne->new_sport, sne->old_daddr,
                            sne->old_dport, sne->protocol);
+  */
   rcu_read_lock_bh();
+  /* TODO: restore hash
   hash_for_each_possible_rcu(snat_hashtable, sntmp, hnode, hash) {
+  */
+  list_for_each_entry_rcu(sntmp, &snat_list, lnode) {
     if (compare_snat_entries(sntmp, sne) == 1) {
       sntmp->state = state_machine(skb, sntmp->state, 0);
       update_snat_timer(sntmp);
@@ -136,7 +146,9 @@ struct dnatted_table *lookup_dnat_forward(const struct sk_buff *skb,
                                           struct response *resp,
                                           struct info_flags *flags) {
   struct dnatted_table *dntmp;
+  /* TODO: restore hash
   int bkt;
+  */
 
   /* Optimization: if no DNAT entries exist, skip the lookup */
   /* This reads a global int, which is atomic enough for this heuristic check */
@@ -144,7 +156,10 @@ struct dnatted_table *lookup_dnat_forward(const struct sk_buff *skb,
     return NULL;
 
   rcu_read_lock_bh();
+  /* TODO: restore hash
   hash_for_each_rcu(dnat_hashtable, bkt, dntmp, hnode) {
+  */
+  list_for_each_entry_rcu(dntmp, &dnat_list, lnode) {
     if (forward_dnat_match(dntmp, skb) > 0) {
       dntmp->state = state_machine(skb, dntmp->state, 0);
       update_dnat_timer(dntmp);
@@ -180,14 +195,19 @@ struct snatted_table *lookup_snat_forward(const struct sk_buff *skb,
                                           struct response *resp,
                                           struct info_flags *flags) {
   struct snatted_table *sntmp;
+  /* TODO: restore hash
   int bkt;
+  */
 
   /* Optimization: if no SNAT entries exist, skip the lookup */
   if (snatted_entry_counter == 0)
     return NULL;
 
   rcu_read_lock_bh();
+  /* TODO: restore hash
   hash_for_each_rcu(snat_hashtable, bkt, sntmp, hnode) {
+  */
+  list_for_each_entry_rcu(sntmp, &snat_list, lnode) {
     if (forward_snat_match(sntmp, skb) > 0) {
       sntmp->state = state_machine(skb, sntmp->state, 0);
       update_snat_timer(sntmp);
@@ -274,7 +294,7 @@ void update_snat_timer(struct snatted_table *snt) {
   }
 }
 
-void free_dnat_work(struct work_struct *work) {
+static void free_dnat_work(struct work_struct *work) {
   struct dnatted_table *dnt =
       container_of(work, struct dnatted_table, cleanup_work);
 
@@ -285,7 +305,7 @@ void free_dnat_work(struct work_struct *work) {
   call_rcu(&dnt->dnat_rcuh, free_dnat_entry_rcu_call);
 }
 
-void free_snat_work(struct work_struct *work) {
+static void free_snat_work(struct work_struct *work) {
   struct snatted_table *snt =
       container_of(work, struct snatted_table, cleanup_work);
 
@@ -298,11 +318,14 @@ void handle_dnatted_entry_timeout(struct timer_list *t) {
   struct dnatted_table *dnt = timer_container_of(dnt, t, timer_dnattedlist);
 
   spin_lock_bh(&dnat_list_lock);
+  /* TODO: restore hash
   if (hlist_unhashed(&dnt->hnode)) {
     spin_unlock_bh(&dnat_list_lock);
     return;
   }
   hash_del_rcu(&dnt->hnode);
+  */
+  list_del_rcu(&dnt->lnode);
   dnatted_entry_counter--;
   spin_unlock_bh(&dnat_list_lock);
 
@@ -314,11 +337,14 @@ void handle_snatted_entry_timeout(struct timer_list *t) {
   struct snatted_table *snt = timer_container_of(snt, t, timer_snattedlist);
 
   spin_lock_bh(&snat_list_lock);
+  /* TODO: restore hash
   if (hlist_unhashed(&snt->hnode)) {
     spin_unlock_bh(&snat_list_lock);
     return;
   }
   hash_del_rcu(&snt->hnode);
+  */
+  list_del_rcu(&snt->lnode);
   snatted_entry_counter--;
   spin_unlock_bh(&snat_list_lock);
 
@@ -356,13 +382,18 @@ void free_snat_entry_rcu_call(struct rcu_head *head) {
 
 int free_dnatted_table(void) {
   struct dnatted_table *dtl;
-  struct hlist_node *tmp;
-  int bkt;
+  struct dnatted_table *dnttmp;
   int counter = 0;
   spin_lock_bh(&dnat_list_lock);
+  /* TODO: restore hash
   hash_for_each_safe(dnat_hashtable, bkt, tmp, dtl, hnode) {
+  */
+  list_for_each_entry_safe(dtl, dnttmp, &dnat_list, lnode) {
     /* Removal under lock - this ensures we win against the timer handler. */
+    /* TODO: restore hash
     hash_del_rcu(&dtl->hnode);
+    */
+    list_del_rcu(&dtl->lnode);
     dnatted_entry_counter--;
     /* Now queue work to safely timer_delete_sync(dtl->timer_dnattedlist)
      * and call_rcu outside of the spinlock block.
@@ -377,13 +408,18 @@ int free_dnatted_table(void) {
 
 int free_snatted_table(void) {
   struct snatted_table *stl;
-  struct hlist_node *tmp;
-  int bkt;
+  struct snatted_table *snttmp;
   int counter = 0;
   synchronize_net();
   spin_lock_bh(&snat_list_lock);
+  /* TODO: restore hash
   hash_for_each_safe(snat_hashtable, bkt, tmp, stl, hnode) {
+  */
+  list_for_each_entry_safe(stl, snttmp, &snat_list, lnode) {
+    /* TODO: restore hash
     hash_del_rcu(&stl->hnode);
+    */
+    list_del_rcu(&stl->lnode);
     snatted_entry_counter--;
     if (ipfire_wq)
       queue_work(ipfire_wq, &stl->cleanup_work);

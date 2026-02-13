@@ -18,6 +18,7 @@ void update_timer_of_state_entry(struct state_table *sttable);
  and is the standard way to hash network flow identifiers (like IP addresses and
  ports) because it is extremely fast and provides excellent bit distribution.
 */
+/* TODO: restore hash
 __u32 get_state_hash(__u32 saddr, __u32 daddr, __u16 sport, __u16 dport,
                      __u8 proto) {
   __u32 a1 = saddr, a2 = daddr;
@@ -33,6 +34,7 @@ __u32 get_state_hash(__u32 saddr, __u32 daddr, __u16 sport, __u16 dport,
 
   return jhash_3words(a1, a2, ((u32)p1 << 16) | p2, proto);
 }
+*/
 
 int direct_state_match(const struct sk_buff *skb,
                        const struct state_table *entry, const ipfi_flow *flow) {
@@ -378,16 +380,25 @@ int compare_state_entries(const struct state_table *s1,
 
 struct state_table *
 lookup_state_table_n_update_timer(const struct state_table *stt, int lock) {
+  /* TODO: restore hash
   int counter = 0;
+  */
   struct state_table *statet;
+  /* TODO: restore hash
   u32 key = get_state_hash(stt->saddr, stt->daddr, stt->sport, stt->dport,
                            stt->protocol);
+  */
 
   if (lock == ACQUIRE_LOCK)
     rcu_read_lock_bh();
 
+  /* TODO: restore hash
   hash_for_each_possible_rcu(state_hashtable, statet, hnode, key) {
+  */
+  list_for_each_entry_rcu(statet, &state_list, lnode) {
+    /* TODO: restore hash
     counter++;
+    */
     if (compare_state_entries(statet, stt) == 1) {
       update_timer_of_state_entry(statet);
       if (lock == ACQUIRE_LOCK)
@@ -406,8 +417,10 @@ int add_state_table_to_list(struct state_table *newtable) {
     return -EBUSY;
   }
 
+  /* TODO: restore hash
   u32 key = get_state_hash(newtable->saddr, newtable->daddr, newtable->sport,
                            newtable->dport, newtable->protocol);
+  */
 
   spin_lock_bh(&state_list_lock);
 
@@ -419,7 +432,10 @@ int add_state_table_to_list(struct state_table *newtable) {
 
   fill_timer_table_fields(newtable);
   add_timer(&newtable->timer_statelist);
+  /* TODO: restore hash
   hash_add_rcu(state_hashtable, &newtable->hnode, key);
+  */
+  list_add_rcu(&newtable->lnode, &state_list);
 
   state_tables_counter++;
   table_id++;
@@ -427,7 +443,7 @@ int add_state_table_to_list(struct state_table *newtable) {
   return 0;
 }
 
-void free_state_work(struct work_struct *work) {
+static void free_state_work(struct work_struct *work) {
   struct state_table *st = container_of(work, struct state_table, cleanup_work);
 
   /* Safe to sync because we are in process context (workqueue worker) */
@@ -441,11 +457,14 @@ void handle_keep_state_timeout(struct timer_list *t) {
   struct state_table *st = timer_container_of(st, t, timer_statelist);
 
   spin_lock_bh(&state_list_lock);
+  /* TODO: restore hash
   if (hlist_unhashed(&st->hnode)) {
     spin_unlock_bh(&state_list_lock);
     return;
   }
   hash_del_rcu(&st->hnode);
+  */
+  list_del_rcu(&st->lnode);
   state_tables_counter--;
   spin_unlock_bh(&state_list_lock);
 
@@ -481,14 +500,22 @@ void unregister_ipfire_netdev_notifier(void) {
 
 int free_state_tables(void) {
   struct state_table *tl;
-  struct hlist_node *tmp;
+  struct state_table *tmp;
   int counter = 0;
+  /* TODO: restore hash
   int bkt;
+  */
 
   spin_lock_bh(&state_list_lock);
+  /* TODO: restore hash
   hash_for_each_safe(state_hashtable, bkt, tmp, tl, hnode) {
+  */
+  list_for_each_entry_safe(tl, tmp, &state_list, lnode) {
     /* Removal under lock - this ensures we win against the timer handler. */
+    /* TODO: restore hash
     hash_del_rcu(&tl->hnode);
+    */
+    list_del_rcu(&tl->lnode);
     state_tables_counter--;
 
     /* Now queue work to safely timer_delete_sync and call_rcu
@@ -503,7 +530,9 @@ int free_state_tables(void) {
 }
 
 int init_machine(void) {
+  /* TODO: restore hash
   hash_init(state_hashtable);
+  */
   register_ipfire_netdev_notifier();
   return 0;
 }
