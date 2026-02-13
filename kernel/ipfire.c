@@ -766,8 +766,9 @@ int ipfi_response(const struct nf_hook_state *state, struct sk_buff *skb,
       }
     }
 
-  } else /* packets not sent because of log level */
+  } else /* packets not sent because of log level */ {
     kstats.not_sent++;
+  }
 
   /* update the sum of the packets processed */
   kstats.sum++;
