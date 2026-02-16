@@ -41,18 +41,10 @@ struct snatted_table *add_snatted_entry(const struct sk_buff *skb,
                                         struct response *resp,
                                         struct info_flags *flags,
                                         const ipfire_rule *snat_rule) {
-  struct snatted_table *snatted_entry;
-  struct snatted_table lookup_entry;
-
+	struct snatted_table *snatted_entry = NULL;
   if (unlikely(READ_ONCE(we_are_exiting)))
     return NULL;
 
-  fill_snat_entry_net_fields(&lookup_entry, skb, flow, resp, flags, snat_rule);
-
-  if ((snatted_entry = lookup_snatted_table_n_update_timer(
-           &lookup_entry, skb, flow, resp, flags)) != NULL) {
-    return snatted_entry;
-  }
 
   if (snatted_entry_counter == fwopts.max_nat_entries) {
     int err;
@@ -69,17 +61,17 @@ struct snatted_table *add_snatted_entry(const struct sk_buff *skb,
   snatted_entry = kmalloc(sizeof(struct snatted_table), GFP_ATOMIC);
   if (!snatted_entry)
     return NULL;
-
-  *snatted_entry = lookup_entry;
+	fill_snat_entry_net_fields(snatted_entry, skb, flow, resp, flags, snat_rule);
   snatted_entry->state = state_machine(skb, snatted_entry->state, 0);
+	refcount_set(&snatted_entry->refcnt, 1);   // initial refcount
+
   spin_lock_bh(&snat_list_lock);
   if (unlikely(we_are_exiting)) {
     spin_unlock_bh(&snat_list_lock);
     kfree(snatted_entry);
     return NULL;
   }
-  fill_timer_snat_entry(snatted_entry);
-  add_timer(&snatted_entry->timer_snattedlist);
+	fill_timer_snat_entry(snatted_entry);
   /* TODO: restore hash
   hash_add_rcu(snat_hashtable, &snatted_entry->hnode,
                get_snat_hash(snatted_entry->new_saddr, snatted_entry->new_sport,
@@ -89,6 +81,7 @@ struct snatted_table *add_snatted_entry(const struct sk_buff *skb,
   list_add_rcu(&snatted_entry->lnode, &snat_list);
   snatted_entry_counter++;
   spin_unlock_bh(&snat_list_lock);
+	add_timer(&snatted_entry->timer_snattedlist);
   return snatted_entry;
 }
 

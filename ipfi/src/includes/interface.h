@@ -69,9 +69,7 @@ int get_icmp_specific_parameters(ipfire_rule *r);
 
 int get_masquerade_parameters(ipfire_rule *r);
 
-#ifdef ENABLE_RULENAME
 int get_in_rule_name(ipfire_rule *r);
-#endif
 
 /* returns 0 if it's not an interval, the position of
  * dividing character "-" otherwise */

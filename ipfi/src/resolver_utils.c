@@ -277,7 +277,6 @@ int print_packet(const ipfire_info_t *pack,
 	}
 	else
 		printf("  ");
-	#ifdef ENABLE_RULENAME
 	/* finally, print rule name */
 	if(strlen(pack->rulename) > 0)
 	{
@@ -287,8 +286,7 @@ int print_packet(const ipfire_info_t *pack,
 			printf(RED "[" CLR "%s" RED "]", pack->rulename);
 		else
 			printf(MAROON "[" CLR "%s" MAROON "]", pack->rulename);
-	}	
-	#endif
+	}
 	if(filter != NULL) /* if we are here we have passed the filter */
 		 PCL, printf(" "),  PVIO, PBOLD, printf("F" CLR);
 
@@ -467,7 +465,6 @@ int log_packet(const ipfire_info_t *pack, int loglevel)
 			flog("|0|0|0|0|0|0|0|0|0|0");
 		break;
 	}
-	#ifdef ENABLE_RULENAME
 	/* finally, log rule name */
 	if(strlen(pack->rulename) > 0)
 	{
@@ -476,7 +473,6 @@ int log_packet(const ipfire_info_t *pack, int loglevel)
 	}
 	else
 		flog("|x");
-	#endif
 	
 	flog("|\n");
 	return 0;

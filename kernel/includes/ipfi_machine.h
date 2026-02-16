@@ -51,23 +51,36 @@ struct state_table {
   unsigned long status;
   char in_devname[IFNAMSIZ];
   char out_devname[IFNAMSIZ];
-  int in_ifindex, out_ifindex;
+	unsigned long last_timer_update;
+	struct state_t state;
 
   /* Note: pkmanip removed - MSS mangling applied directly on rule match,
    * no need to store in state tables */
 
   struct timer_list timer_statelist;
-  struct work_struct cleanup_work;
-  unsigned long last_timer_update;
-  struct state_t state;
+	struct work_struct cleanup_work;
 
   /* RCU */
   struct rcu_head state_rcuh;
   struct list_head lnode;
-  /* TODO: restore hash
-  struct hlist_node hnode;
-  */
+
+
+	refcount_t refcnt;
 };
+
+/* Helper for refcounting */
+static inline void state_hold(struct state_table *st) {
+	refcount_inc(&st->refcnt);
+}
+
+static inline void state_put(struct state_table *st) {
+	if (refcount_dec_and_test(&st->refcnt)) {
+		if (ipfire_wq)
+			queue_work(ipfire_wq, &st->cleanup_work);
+		else
+			kfree(st);	/* Fallback if wq is not available (e.g. unload) */
+	}
+}
 
 int init_machine(void);
 void fini_machine(void);
@@ -100,7 +113,6 @@ int port_match(const struct tcphdr *tcph, const struct udphdr *udph,
 int address_match(const struct iphdr *iph, const ipfire_rule *r, int direction,
                   const struct net_device *in, const struct net_device *out);
 
-#ifdef ENABLE_RULENAME
 /* copies rulename from packet to state table */
 inline void fill_table_with_name(struct state_table *state_t,
                                  const ipfire_info_t *packet);
@@ -111,7 +123,6 @@ inline void fill_packet_with_name(ipfire_info_t *packet, const ipfire_rule *r);
 /* copies rulename field from state table to packet */
 inline void fill_packet_with_table_rulename(ipfire_info_t *packet,
                                             const struct state_table *stt);
-#endif
 
 inline int direction_filter(int direction, const ipfire_rule *r);
 
@@ -191,14 +202,13 @@ int compare_state_entries(const struct state_table *s1,
                           const struct state_table *s2);
 
 /* scans root list looking for already present entries.
- * Returns NULL if none is found, the pointer to the entry
- * if a match is found. If a match is found, befre returning,
+ * Returns 0 if none is found, 1 otherwise.
+ * If a match is found, befre returning,
  * the matching table will have its timer updated. The choice
  * to update timers here avoids putting another lock when
  * calling timer updating routine elsewhere.
  */
-struct state_table *
-lookup_state_table_n_update_timer(const struct state_table *stt, int lock);
+int lookup_state_table_n_update_timer(const struct state_table *stt);
 
 /* returns in *addr the internet address corresponding to
  * ouput or input interface, depending on field "direction" of info

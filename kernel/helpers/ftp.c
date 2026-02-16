@@ -110,8 +110,7 @@ int data_start_with_227(const struct sk_buff* skb, char *ftp_buffer)
  * original ftp table, with the new address and port. 
  * _Remember_ to initialize a new timer and to add the rule at the tail
  * of the list in the calling function. */
-	struct state_table* 
-get_params_and_alloc_newentry(const struct state_table* orig, char *ftp_buffer)
+struct state_table* get_params_and_alloc_newentry(const struct state_table* orig, char *ftp_buffer)
 {
 	ftp_info ftpi;
 	struct state_table *newt = NULL;
@@ -128,7 +127,22 @@ get_params_and_alloc_newentry(const struct state_table* orig, char *ftp_buffer)
 		}
 		/* to start, copy old table into new one */
 		memset(newt, 0, sizeof(struct state_table));
-		memcpy(newt, orig, sizeof(struct state_table) );
+        newt->saddr = orig->saddr;
+        newt->sport = orig->sport;
+        newt->direction = orig->direction;
+        newt->notify = orig->notify;
+        newt->admin = orig->admin;
+        newt->protocol = orig->protocol;
+        newt->status = orig->status;
+        if(orig->in_devname[0]) {
+            strncpy(newt->in_devname, orig->in_devname, IFNAMSIZ - 1);
+            newt->in_devname[IFNAMSIZ-1] = '\0';
+        }
+        if(orig->out_devname[0]) {
+            strncpy(newt->out_devname, orig->out_devname, IFNAMSIZ - 1);
+            newt->out_devname[IFNAMSIZ-1] = '\0';
+        }
+        newt->state = orig->state;
 		newt->daddr = ftpi.ftp_addr;
 		newt->dport = ftpi.ftp_port;
 		newt->ftp = FTP_DEFINED;

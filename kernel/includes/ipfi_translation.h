@@ -58,17 +58,15 @@ struct dnatted_table {
   int out_ifindex;
   char in_devname[IFNAMSIZ];
   char out_devname[IFNAMSIZ];
-#ifdef ENABLE_RULENAME
   char rulename[RULENAMELEN];
-#endif
   struct timer_list timer_dnattedlist;
   struct work_struct cleanup_work;
   unsigned long last_timer_update;
   /* RCU */
   struct rcu_head dnat_rcuh;
-  struct list_head
-      lnode; /* list-based lookup - TODO: remove when back to hash */
-  struct hlist_node hnode; /* hash-based lookup - TODO: restore hash */
+	struct list_head lnode; /* list-based lookup  */
+
+	refcount_t refcnt;
 };
 
 /* the table contains information about source adddress
@@ -100,9 +98,9 @@ struct snatted_table {
   unsigned long last_timer_update;
   /* RCU */
   struct rcu_head snat_rcuh;
-  struct list_head
-      lnode; /* list-based lookup - TODO: remove when back to hash */
-  struct hlist_node hnode; /* hash-based lookup - TODO: restore hash */
+	struct list_head lnode; /* list-based lookup - TODO: remove when back to hash */
+
+	refcount_t refcnt;
 };
 
 int init_translation(void);

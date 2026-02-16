@@ -1203,10 +1203,8 @@ int print_rules(const ipfire_rule *v_rules, int numrules,
               PTAB;
       }
       /* rulename, if enabled */
-#ifdef ENABLE_RULENAME
       if (strlen(v_rules[i].rulename) > 0)
         printf(GRAY "\"" VIOLET "%s" GRAY "\"", v_rules[i].rulename);
-#endif
       printf(NL);
       /* print direction */
       if (v_rules[i].direction == IPFI_INPUT)
@@ -2118,7 +2116,6 @@ get_nat:
       printf(TR(" no.")), PNL;
     }
   }
-#ifdef ENABLE_RULENAME
 get_name:
   PNL;
   printf(TR("GIVE RULE A SIMPLE NAME [MAX 20 CHARS]: "));
@@ -2126,7 +2123,6 @@ get_name:
     PNL, PRED, printf(TR("Bad rule name: too long!")), PNL, PNL;
     goto get_name;
   }
-#endif
   return 0;
 }
 
@@ -3150,7 +3146,6 @@ void print_sysinfo(void) {
   printf(GRAY "Free software! :)" NL NL);
 }
 
-#ifdef ENABLE_RULENAME
 int get_in_rule_name(ipfire_rule *r) {
   char name[MAXLINELEN];
   int ret;
@@ -3439,5 +3434,3 @@ char **remove_line(char **list, int nlines, int cancline) {
 
   return copy;
 }
-
-#endif

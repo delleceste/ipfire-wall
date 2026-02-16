@@ -227,7 +227,6 @@ int module_already_loaded(void) {
   return 0; /* not loaded */
 }
 
-#ifdef ENABLE_RULENAME
 void get_rule_name(const char *line, char *name) {
   unsigned i = 0, j = 0;
 
@@ -242,7 +241,6 @@ void get_rule_name(const char *line, char *name) {
   }
   name[j] = '\0';
 }
-#endif
 
 /* address in string addr in the form x.y.z.w/a.b.c.d
  * or x.y.z.w/n is converted in a string of the form
@@ -876,9 +874,7 @@ int get_address(struct in_addr *addr, const char *line) {
 
 void init_rule(ipfire_rule *rule) {
   memset((void *)rule, 0, sizeof(ipfire_rule));
-#ifdef ENABLE_RULENAME
   strcpy(rule->rulename, "");
-#endif
 }
 
 /* checks if timeouts are too long and, if so, sets them to the maximum
@@ -1431,11 +1427,9 @@ int write_rule(FILE *fp, const ipfire_rule arule, int index) {
     fprintf(fp, "RULE\n");
   }
 
-#ifdef ENABLE_RULENAME
   /* COMMENT */
   if (strlen(arule.rulename) > 0)
     fprintf(fp, "NAME=%s\n", arule.rulename);
-#endif
 
   // 	fprintf(fp, "POSITION=%d\n", index+1);
 

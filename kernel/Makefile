@@ -9,9 +9,7 @@ SUBDIRS = common filter filter/state netlink nat nat/dnat nat/snat mangle loggin
 # First pass, kernel Makefile reads module objects
 ifneq ($(KERNELRELEASE),)
 
-ifndef DISABLE_RULENAME
-ccflags-y += -DENABLE_RULENAME=1 -Wall -O3
-endif
+
 
 # Main Source
 $(MODULE_NAME)-objs += ipfire.o common/globals.o common/stats.o

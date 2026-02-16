@@ -39,8 +39,7 @@ int dnat_translation(struct sk_buff *skb, const ipfi_flow *flow,
       if (public_to_private_address(skb, transrule))
         flags->external = 1;
 
-      if ((dnt = add_dnatted_entry(skb, flow, resp, flags, transrule)) !=
-          NULL) {
+			if ((dnt = add_dnatted_entry(skb, flow, resp, flags, transrule)) != NULL) {
         dest_translate(skb, dnt);
         rcu_read_unlock_bh();
         return 0;
@@ -206,20 +205,13 @@ struct dnatted_table *add_dnatted_entry(const struct sk_buff *skb,
   if (unlikely(READ_ONCE(we_are_exiting)))
     return NULL;
 
-  struct dnatted_table *newtable;
-  struct dnatted_table lookup_entry;
+	struct dnatted_table *newtable = NULL;
   static unsigned int entry_id = 0;
   u32 hash;
 
-  fill_entry_net_fields(&lookup_entry, skb, flow, resp, flags, dnat_rule);
-  hash = get_dnat_hash(lookup_entry.old_saddr, lookup_entry.old_sport,
-                       lookup_entry.new_daddr, lookup_entry.new_dport,
-                       lookup_entry.protocol);
-
-  if ((newtable = lookup_dnatted_table_n_update_timer(&lookup_entry, skb, flow,
-                                                      resp, flags)) != NULL) {
-    return newtable;
-  }
+	// hash = get_dnat_hash(lookup_entry.old_saddr, lookup_entry.old_sport,
+	//                      lookup_entry.new_daddr, lookup_entry.new_dport,
+	//                      lookup_entry.protocol);
 
   if (dnatted_entry_counter == fwopts.max_nat_entries) {
     struct info_flags warn_flags = *flags;
@@ -237,8 +229,11 @@ struct dnatted_table *add_dnatted_entry(const struct sk_buff *skb,
   if (newtable == NULL)
     return NULL;
 
-  *newtable = lookup_entry;
+	fill_entry_net_fields(newtable, skb, flow, resp, flags, dnat_rule);
   newtable->state = state_machine(skb, newtable->state, 0);
+
+	refcount_set(&newtable->refcnt, 1);   // initial refcount
+
   spin_lock_bh(&dnat_list_lock);
   if (unlikely(we_are_exiting)) {
     spin_unlock_bh(&dnat_list_lock);
@@ -246,13 +241,13 @@ struct dnatted_table *add_dnatted_entry(const struct sk_buff *skb,
     return NULL;
   }
   fill_timer_dnat_entry(newtable);
-  newtable->rule_id = entry_id++;
-  add_timer(&newtable->timer_dnattedlist);
+	newtable->rule_id = entry_id++;
   /* TODO: restore hash
   hash_add_rcu(dnat_hashtable, &newtable->hnode, hash);
   */
   list_add_rcu(&newtable->lnode, &dnat_list);
   dnatted_entry_counter++;
   spin_unlock_bh(&dnat_list_lock);
+	add_timer(&newtable->timer_dnattedlist);
   return newtable;
 }

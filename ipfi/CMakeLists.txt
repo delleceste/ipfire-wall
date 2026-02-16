@@ -1,11 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 project(ipfire C)
 
-set(CMAKE_C_STANDARD 99)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O2 -g")
-
-add_definitions(-DENABLE_RULENAME)
-
 # Include directories
 include_directories(
     src/includes

@@ -212,11 +212,7 @@ QString RuleStringifier::Proto()
 	
 QString RuleStringifier::Name()
 {
-#ifdef ENABLE_RULENAME
 	return QString(r->rulename);
-#else
-	return QString("Names not avail.");
-#endif
 }
 	
 QString RuleStringifier::Dir()

@@ -459,9 +459,7 @@ typedef struct {
   __u8 notify : 1, natural : 1, other : 6;
   uint32_t rule_id; /* 32-bit hash or unique ID */
 
-#ifdef ENABLE_RULENAME
   char rulename[RULENAMELEN];
-#endif
   struct list_head list;
   struct rcu_head rule_rcuh;
   uid_t owner;

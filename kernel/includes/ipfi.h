@@ -163,11 +163,9 @@ inline void build_igmph_usermess(const struct igmphdr *igmph,
 struct response iph_in_get_response(struct sk_buff *skb, ipfi_flow *flow,
                                     struct info_flags *flags);
 
-#ifdef ENABLE_RULENAME
 /* if rulename in src is specified, copy it to dest rulename */
 inline void copy_rulename(ipfire_info_t *iit_dest,
                           const ipfire_info_t *iit_src);
-#endif
 
 /* if *cnt reaches ULONG MAX, it must be reset to 0 */
 inline void check_packet_num(unsigned long long *cnt);

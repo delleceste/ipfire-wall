@@ -161,9 +161,7 @@ int parse_rulefile_and_fill(FILE *fp, ipfire_rule *ipfr, int whichfile) {
   char key[MAXLINELEN];
   short next_policy_is_blacksite = 0;
 
-#ifdef ENABLE_RULENAME
   char rulename[RULENAMELEN];
-#endif
   struct in_addr address;
   ipfire_rule arule;
   short protocol;
@@ -393,16 +391,8 @@ int parse_rulefile_and_fill(FILE *fp, ipfire_rule *ipfr, int whichfile) {
         printf(
             TR("MSS_VALUE mangle option is only available for TCP protocol"));
     } else if (strncmp(line, "NAME=", 5) == 0) {
-#ifdef ENABLE_RULENAME
       get_rule_name(line, rulename);
       strncpy(arule.rulename, rulename, RULENAMELEN);
-#else /* warn user */
-      printf(VIOLET "WARNING" CLR ": option \"NAME\" is disabled.\n"
-                    "If you want to enable it, you must compile IPFIRE with\n"
-                    "option \"ENABLE_RULENAME\", " UNDERL RED "both" NL
-                    "in userspace program and in kernel modules. See manual\n"
-                    "for further explanation." NL);
-#endif
     }
     /* Start parsing lines which might indicate multiple values */
     /* ============================================== */
