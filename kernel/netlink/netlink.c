@@ -107,9 +107,9 @@ static int create_gui_notifier_socket(void) {
   sknl_ipfi_gui_notifier =
       netlink_kernel_create(&init_net, NETLINK_IPFI_GUI_NOTIFIER, &netlink_cfg);
 #endif
-  userspace_data_pid = 0;
   if (sknl_ipfi_gui_notifier == NULL) {
-    IPFI_PRINTK("IPFIRE: create_socket(): failed to create netlink gui notifier socket\n");
+    IPFI_PRINTK("IPFIRE: create_socket(): failed to create netlink gui "
+                "notifier socket\n");
     return -1;
   }
   return 0;
@@ -216,6 +216,7 @@ void fini_netl(void) {
 #else
     netlink_kernel_release(sknl_ipfi_control);
 #endif
+    sknl_ipfi_control = NULL;
   } else
     IPFI_PRINTK("IPFIRE: NULL control netlink socket!\n");
 
@@ -227,6 +228,7 @@ void fini_netl(void) {
 #else
     netlink_kernel_release(sknl_ipfi_data);
 #endif
+    sknl_ipfi_data = NULL;
   } else
     IPFI_PRINTK("IPFIRE: NULL data netlink socket!\n");
 
@@ -238,6 +240,7 @@ void fini_netl(void) {
 #else
     netlink_kernel_release(sknl_ipfi_gui_notifier);
 #endif
+    sknl_ipfi_gui_notifier = NULL;
   } else
     IPFI_PRINTK(
         "IPFIRE: the gui notifier socket is already NULL (disabled)!\n");

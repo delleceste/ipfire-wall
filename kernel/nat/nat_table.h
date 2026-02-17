@@ -30,7 +30,7 @@ struct nat_table {
 
 	__u32 our_ifaddr;   /* DNAT dynamic SNAT reverse, 0 for SNAT */
 
-	__u8 direction : 4, external : 4;
+	__u8 direction : 4, external : 3, nolog : 1;
 	__u8 protocol;
 	__u8 state;
 	enum nat_type type;

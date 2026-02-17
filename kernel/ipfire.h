@@ -16,24 +16,18 @@
 #include <linux/netfilter.h>      /* for hook registering */
 #include <linux/netfilter_ipv4.h> /* for hook registering */
 #include <linux/rcupdate.h>
-#include <linux/sched.h> /* for getting uid from pid */
-#include <linux/skbuff.h>
-#include <linux/spinlock.h>
-#include <linux/stddef.h>
-#include <linux/types.h>
 #include <linux/version.h>
-#include <net/protocol.h>
-
-#include <net/sock.h>
-#include <net/tcp.h> /* for checksumming */
+extern pid_t userspace_control_pid;
+extern pid_t userspace_data_pid;
+extern uid_t userspace_uid;
+extern struct sock *sknl_ipfi_control;
+extern struct sock *sknl_ipfi_data;
+extern struct sock *sknl_ipfi_gui_notifier;
 
 #include "filter/header_check.h"
 
-
-#include "logging/log.h"
-
-
-
+extern struct nf_hook_ops nfh_pre, nfh_in, nfh_out, nfh_fwd, nfh_post, nfh_defrag_pre,
+    nfh_defrag_out;
 
 #define NOLOCK 0
 #define ACQUIRE_LOCK 1

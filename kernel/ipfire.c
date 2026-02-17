@@ -506,6 +506,7 @@ inline int send_packet_to_userspace_and_update_counters(
     const struct response *resp, const struct info_flags *flags) {
   int err = 0;
   struct sk_buff *skb_to_user = NULL;
+
   skb_to_user = build_info_t_nlmsg(skb, flow, resp, flags, &err);
   if (skb_to_user != NULL) {
     IPFI_STAT_INC(sent_tou);

@@ -12,6 +12,7 @@
 #include <linux/module.h>
 #include <linux/rtnetlink.h>
 #include <linux/skbuff.h>
+#include <net/route.h>
 
 int masquerade_translation(struct sk_buff *skb, const ipfi_flow *flow,
                            struct response *resp, struct info_flags *flags) {

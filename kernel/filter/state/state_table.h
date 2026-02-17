@@ -15,6 +15,7 @@ struct state_table {
   __u16 dport;
   __u8 direction : 3, ftp : 3, /* passive ftp support */
       notify : 1, admin : 1;
+  __u8 nolog : 1;
   __u32 rule_id; /* ID of the rule that originated this state */
   __u8 protocol;
   char in_devname[IFNAMSIZ];

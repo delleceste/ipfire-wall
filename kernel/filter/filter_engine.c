@@ -155,6 +155,7 @@ struct response ipfire_filter(const ipfire_rule *dropped,
         response.verdict = IPFI_ACCEPT;
         response.notify = rule->notify;
         response.rule_id = rule->rule_id;
+        response.nolog = rule->nflags.nolog; /* propagate nolog flag */
       }
 
     if ((pass > 0) && ((rule->state) || (ipfi_opts->all_stateful)) &&
@@ -229,6 +230,7 @@ struct state_table *keep_state(const struct sk_buff *skb,
     }
   state_t->rule_id = p_rule->rule_id;
   state_t->notify = p_rule->notify;
+  state_t->nolog = p_rule->nflags.nolog;
   state_t->admin = !p_rule->owner;
 
   return state_t;

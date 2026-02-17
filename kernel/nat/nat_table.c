@@ -102,6 +102,7 @@ int fill_nat_entry_fields(struct nat_table *entry, const struct sk_buff *skb,
 	entry->old_saddr = iph->saddr;
 	entry->old_daddr = iph->daddr;
 	entry->direction = flags->direction;
+	entry->nolog = rule->nflags.nolog;
 	entry->external = flags->external;
 	entry->rule_id = resp->rule_id;
 	entry->position = nat_counters[type];

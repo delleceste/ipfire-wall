@@ -285,7 +285,7 @@ struct state_t {
 
 struct response {
   struct state_t st;
-  int8_t notify : 1, state : 1, verdict : 6;
+  int8_t notify : 1, state : 1, verdict : 5, nolog : 1;
   uint32_t rule_id; /* 32-bit hash or unique ID */
 };
 
@@ -421,7 +421,7 @@ typedef struct {
       /* for nat */
       newaddr : 1, newport : 1,
       /* direction: INPUT, OUTPUT... mandatory in NAT */
-      direction : 1, ftp : 1, other : 3;
+      direction : 1, ftp : 1, nolog: 1, other : 2;
 } netflags;
 
 typedef struct {

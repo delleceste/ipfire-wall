@@ -366,6 +366,8 @@ int parse_rulefile_and_fill(FILE *fp, ipfire_rule *ipfr, int whichfile) {
       arule.notify = 1;
     else if (strncmp(line, "NATURAL_LANGUAGE=YES", 20) == 0)
       arule.natural = 1;
+    else if (strncmp(line, "LOG=DISABLED", 12) == 0)
+      arule.nflags.nolog = 1;
     else if (strncmp(line, "NEWADDR=", 8) == 0) {
       if (get_address(&address, line) > 0) {
         arule.nflags.newaddr = 1;

@@ -57,8 +57,9 @@ struct response check_state(struct sk_buff *skb, const ipfi_flow *flow,
         table_entry->sport = th->source;
       }
       update_timer_of_state_entry(table_entry);
-
+    
       ret.rule_id = table_entry->rule_id;
+      ret.nolog = table_entry->nolog; /* propagate nolog flag */
       if (ftp_state)
         *ftp_state = table_entry->ftp;
       rcu_read_unlock_bh();

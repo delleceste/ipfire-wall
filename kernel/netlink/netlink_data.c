@@ -35,6 +35,9 @@ int process_data_received(struct sk_buff *skb) {
 int is_to_send(const struct sk_buff *skb, const struct ipfire_options *fwopts,
                const struct response *res, const ipfi_flow *flow,
                const struct info_flags *flags) {
+  if (res->nolog)
+    return 0;
+
   if (smartlog_func != NULL)
     return smartlog_func(skb, res, flow, flags);
   else {
