@@ -1673,6 +1673,8 @@ int write_rule(FILE *fp, const ipfire_rule arule, int index) {
     fprintf(fp, "MASQUERADE=YES\n");
   if (arule.nflags.ftp)
     fprintf(fp, "FTP_SUPPORT=YES\n");
+  if (arule.nflags.nolog)
+    fprintf(fp, "LOG=DISABLED\n");
 
   if (arule.nat) {
     if (arule.nflags.newaddr)

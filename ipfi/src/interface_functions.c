@@ -1382,9 +1382,10 @@ int print_rules(const ipfire_rule *v_rules, int numrules,
         printf("ICMP ECHO SEQ: %d | ", v_rules[i].icmp_p.echo_seq);
       if (v_rules[i].nflags.ftp)
         PVIO, printf(TR("PASSIVE FTP SUPPORT ")), printf(CLR "| ");
-      /* state */
       if (v_rules[i].state)
         printf("[" BLUE), printf(TR("STATE")), printf(CLR "] ");
+      if (v_rules[i].nflags.nolog)
+        printf("[" VIOLET), printf(TR("NOLOG")), printf(CLR "] ");
 
       if (v_rules[i].nat) {
         printf(NL YELLOW "NAT" CLR ": " CLR);
@@ -2115,6 +2116,14 @@ get_nat:
       r->state = 0;
       printf(TR(" no.")), PNL;
     }
+  }
+  printf(NL), printf(TR("DO YOU WANT TO DISABLE LOGGING FOR THIS RULE [y|n]? "));
+  if (char_translation(g_getchar()) == 'y') {
+    printf(TR(" yes.")), PNL;
+    r->nflags.nolog = 1;
+  } else {
+    printf(TR(" no.")), PNL;
+    r->nflags.nolog = 0;
   }
 get_name:
   PNL;
