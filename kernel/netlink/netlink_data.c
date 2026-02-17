@@ -11,6 +11,9 @@
 #include "globals.h"
 
 int process_data_received(struct sk_buff *skb) {
+  struct net *net = sock_net(skb->sk);
+  struct ipfire_net *ipfire_net = ipfire_pernet(net);
+
   if (nlmsg_len(nlmsg_hdr(skb)) < sizeof(listener_message)) {
     IPFI_PRINTK("IPFIRE: process_data_received(): netlink message too small "
                 "for listener_message (%d < %lu)\n",
@@ -23,10 +26,11 @@ int process_data_received(struct sk_buff *skb) {
     return -1;
 
   if (listener_mess->message == STARTING) {
-    printk("IPFIRE: userspace listener son started. PID: %d.\n", userspace_data_pid);
+    printk("IPFIRE: userspace listener son started for net %px. PID: %d.\n", net,
+           ipfire_net->userspace_data_pid);
     return 0;
   } else if (listener_mess->message == EXITING) {
-    IPFI_PRINTK("IPFIRE: userspace listener son exiting.\n");
+    IPFI_PRINTK("IPFIRE: userspace listener son exiting for net %px.\n", net);
     return 0;
   }
   return 0;
@@ -79,19 +83,20 @@ unsigned long long update_sent_counter(int direction) {
   return sent;
 }
 
-int skb_send_to_user(struct sk_buff *skb, int type_of_message) {
+int skb_send_to_user(struct net *net, struct sk_buff *skb, int type_of_message) {
+  struct ipfire_net *ipfire_net = ipfire_pernet(net);
   struct sock *socket = NULL;
   pid_t pid = 0;
   int ret;
   if (type_of_message == CONTROL_DATA) {
-    socket = sknl_ipfi_control;
-    pid = userspace_control_pid;
+    socket = ipfire_net->sknl_ipfi_control;
+    pid = ipfire_net->userspace_control_pid;
   } else if (type_of_message == LISTENER_DATA) {
-    socket = sknl_ipfi_data;
-    pid = userspace_data_pid;
+    socket = ipfire_net->sknl_ipfi_data;
+    pid = ipfire_net->userspace_data_pid;
   } else if (type_of_message == GUI_NOTIF_DATA) {
-    socket = sknl_ipfi_gui_notifier;
-    pid = userspace_control_pid;
+    socket = ipfire_net->sknl_ipfi_gui_notifier;
+    pid = ipfire_net->userspace_control_pid;
   }
   if (socket == NULL || pid == 0) {
     if (skb)

@@ -5,10 +5,10 @@
 
 /* ---- DNAT-specific logic (dnat.c) ---- */
 
-int dnat_translation(struct sk_buff *skb, const ipfi_flow *flow,
+int dnat_translation(struct net *net, struct sk_buff *skb, const ipfi_flow *flow,
                      struct response *resp, struct info_flags *flags);
 
-struct nat_table *add_dnatted_entry(const struct sk_buff *skb,
+struct nat_table *add_dnatted_entry(struct net *net, const struct sk_buff *skb,
                                     const ipfi_flow *flow,
                                     struct response *resp,
                                     struct info_flags *flags,
@@ -19,13 +19,13 @@ int dest_translate(struct sk_buff *skb, const struct nat_table *dnt);
 int de_dnat(struct sk_buff *skb, const struct nat_table *dnatt);
 int de_dnat_table_match(const struct nat_table *dnt,
                         const struct sk_buff *skb);
-int de_dnat_translation(struct sk_buff *skb, const ipfi_flow *flow,
+int de_dnat_translation(struct net *net, struct sk_buff *skb, const ipfi_flow *flow,
                         struct response *resp, struct info_flags *flags);
 
 int pre_de_dnat_translate(struct sk_buff *skb, const struct nat_table *dnt);
 int pre_denat_table_match(const struct nat_table *dnt,
                           const struct sk_buff *skb);
-int pre_de_dnat(struct sk_buff *skb, const ipfi_flow *flow,
+int pre_de_dnat(struct net *net, struct sk_buff *skb, const ipfi_flow *flow,
                 struct response *resp, struct info_flags *flags);
 
 int get_orig_from_dnat_entry(const struct nat_table *dnt,

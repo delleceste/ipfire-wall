@@ -19,11 +19,12 @@ struct state_table;
 #include "state/state_machine.h"
 #include "netlink/message_builder.h"
 
-struct response ipfire_filter(const ipfire_rule *dropped,
-               const ipfire_rule *allowed,
-               const struct ipfire_options *ipfi_opts,
-               struct sk_buff *skb, const ipfi_flow *flow,
-               struct info_flags *flags) {
+struct response ipfire_filter(struct net *net,
+                              const ipfire_rule *denied,
+                              const ipfire_rule *allowed,
+                              const struct ipfire_options *ipfi_opts,
+                              struct sk_buff *skb, const ipfi_flow *flow,
+                              struct info_flags *flags) {
   struct response response = {
     .verdict = IPFI_IMPLICIT,
   };
@@ -49,7 +50,7 @@ struct response ipfire_filter(const ipfire_rule *dropped,
     }
 
   rcu_read_lock();
-  list_for_each_entry_rcu(rule, &dropped->list, list) {
+  list_for_each_entry_rcu(rule, &denied->list, list) {
     if ((res = direction_filter(flow->direction, rule)) < 0)
       goto next_drop_rule;
     else if (res > 0)
@@ -162,8 +163,12 @@ struct response ipfire_filter(const ipfire_rule *dropped,
         (ipfi_opts->state)) {
         if (flow->direction == IPFI_INPUT || flow->direction == IPFI_OUTPUT ||
             flow->direction == IPFI_FWD) {
-            newtable = keep_state(skb, rule, flow);
-            response.state = 1U;
+            if (rule->state) {
+                newtable = keep_state(net, skb, rule, flow);
+                if (newtable != NULL) {
+                    response.state = 1U;
+                }
+            }
           }
       }
     if (pass > 0) {
@@ -183,7 +188,8 @@ struct response ipfire_filter(const ipfire_rule *dropped,
   return response;
 }
 
-struct state_table *keep_state(const struct sk_buff *skb,
+struct state_table *keep_state(struct net *net,
+            const struct sk_buff *skb,
             const ipfire_rule *p_rule,
             const ipfi_flow *flow) {
   ipfire_info_t *ipfi_info_warn;
@@ -197,9 +203,9 @@ struct state_table *keep_state(const struct sk_buff *skb,
           memset(ipfi_info_warn, 0, sizeof(ipfire_info_t));
           ipfi_info_warn->flags.state_max_entries = 1;
           struct sk_buff *skbi = build_info_t_packet(ipfi_info_warn);
-          if (skbi != NULL && skb_send_to_user(skbi, LISTENER_DATA) < 0)
+          if (skbi != NULL && skb_send_to_user(net, skbi, LISTENER_DATA) < 0)
             IPFI_PRINTK("IPFIRE: error notifying maximum number of state entries "
-                         "to user\n");
+                         "to user for net %px\n", net);
           else if (skbi == NULL)
             IPFI_PRINTK(
                 "IPFIRE: failed to allocate socket buffer space in keep_state()\n");

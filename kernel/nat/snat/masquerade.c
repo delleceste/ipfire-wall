@@ -14,7 +14,7 @@
 #include <linux/skbuff.h>
 #include <net/route.h>
 
-int masquerade_translation(struct sk_buff *skb, const ipfi_flow *flow,
+int masquerade_translation(struct net *net, struct sk_buff *skb, const ipfi_flow *flow,
                            struct response *resp, struct info_flags *flags) {
   ipfire_rule *transrule;
   __u32 masq_addr;
@@ -26,7 +26,7 @@ int masquerade_translation(struct sk_buff *skb, const ipfi_flow *flow,
       struct nat_table *snt;
       masq_addr = get_ifaddr(skb);
       fill_masquerade_rule_fields(transrule, masq_addr);
-      if ((snt = add_snatted_entry(skb, flow, resp, flags, transrule)) !=
+      if ((snt = add_snatted_entry(net, skb, flow, resp, flags, transrule)) !=
           NULL) {
         status = masquerade_packet(skb, snt);
       }

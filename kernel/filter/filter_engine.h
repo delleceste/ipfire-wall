@@ -10,7 +10,8 @@
    For now assuming it's available via ipfi.h inclusion.
 */
 
-struct response ipfire_filter(const ipfire_rule *denied,
+struct response ipfire_filter(struct net *net,
+                              const ipfire_rule *denied,
                               const ipfire_rule *allowed,
                               const struct ipfire_options *ipfi_opts,
                               struct sk_buff *skb, const ipfi_flow *flow,

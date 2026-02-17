@@ -84,7 +84,7 @@ char *policy = "drop";
 module_param(policy, charp, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 MODULE_PARM_DESC(default_policy, "\"accept\" or \"drop\" policy as default.\n");
 
-static int per_net = 0;
+static int per_net = 1;
 module_param(per_net, int, S_IRUGO);
 MODULE_PARM_DESC(
     per_net, "Enable per-network namespace hook registration (default: 0)\n");
@@ -103,17 +103,17 @@ time64_t module_load_time;
 /* bad checksum counter for packets received */
 unsigned badcsum_cnt_rcv = 0;
 
-struct response iph_in_get_response(struct sk_buff *skb, ipfi_flow *flow,
+struct response iph_in_get_response(struct net *net, struct sk_buff *skb, ipfi_flow *flow,
                                     struct info_flags *flags) {
   struct response response = {};
   flags->direction = flow->direction;
   /* invoke engine function passing the appropriate rule lists */
   if (flow->direction == IPFI_INPUT)
-    response = ipfire_filter(&in_drop, &in_acc, &fwopts, skb, flow, flags);
+    response = ipfire_filter(net, &in_drop, &in_acc, &fwopts, skb, flow, flags);
   else if (flow->direction == IPFI_OUTPUT)
-    response = ipfire_filter(&out_drop, &out_acc, &fwopts, skb, flow, flags);
+    response = ipfire_filter(net, &out_drop, &out_acc, &fwopts, skb, flow, flags);
   else if (flow->direction == IPFI_FWD)
-    response = ipfire_filter(&fwd_drop, &fwd_acc, &fwopts, skb, flow, flags);
+    response = ipfire_filter(net, &fwd_drop, &fwd_acc, &fwopts, skb, flow, flags);
   else
     IPFI_PRINTK("IPFIRE: iph_in_get_response(): invalid direction!\n");
   return response;
@@ -125,9 +125,17 @@ struct nf_hook_ops nfh_pre, nfh_in, nfh_out, nfh_fwd, nfh_post, nfh_defrag_pre,
 static int register_ipfire_net(struct net *net);
 static void unregister_ipfire_net(struct net *net);
 
-static int ipfire_net_init(struct net *net) { return register_ipfire_net(net); }
+static int ipfire_net_init(struct net *net) {
+  IPFI_PRINTK("IPFIRE: Initializing for network namespace %px\n", net);
+  init_netl(net);
+  return register_ipfire_net(net);
+}
 
-static void ipfire_net_exit(struct net *net) { unregister_ipfire_net(net); }
+static void ipfire_net_exit(struct net *net) {
+  IPFI_PRINTK("IPFIRE: Cleaning up for network namespace %px\n", net);
+  unregister_ipfire_net(net);
+  fini_netl(net);
+}
 
 static struct pernet_operations ipfire_net_ops = {
     .init = ipfire_net_init,
@@ -175,24 +183,22 @@ int welcome(void) {
   if (init_procentry(PROCENT, policy) < 0)
     return -1;
   set_procentry_values();
-  userspace_control_pid = 0;
-  userspace_data_pid = 0;
 
   /* Initialize ruleset lists before any potential notifier event */
   init_ruleset_heads();
 
   init_translation();
   init_log();
-  if (init_netl() == 0) {
-    init_machine(); /* registers netdevice notifier */
-    if (per_net) {
-      if (register_pernet_subsys(&ipfire_net_ops) < 0) {
-        IPFI_PRINTK("IPFIRE: failed to register pernet subsystem\n");
-        return -1;
-      }
-    } else {
-      register_ipfire_net(&init_net);
+
+  init_machine(); /* registers netdevice notifier */
+  if (per_net) {
+    if (register_pernet_subsys(&ipfire_net_ops) < 0) {
+      IPFI_PRINTK("IPFIRE: failed to register pernet subsystem\n");
+      return -1;
     }
+  } else {
+    init_netl(&init_net);
+    register_ipfire_net(&init_net);
   }
   return 0;
 }
@@ -227,7 +233,8 @@ static void __exit fini(void) {
   fini_translation();
 
   /* fini_netl(): just calls sock_release on the netlink socket */
-  fini_netl();
+  if (!per_net)
+    fini_netl(&init_net);
   clean_proc();
 
   if (ipfire_wq) {
@@ -462,7 +469,7 @@ unsigned int process(void *priv, struct sk_buff *skb,
 
     daddr = ip_hdr(skb)->daddr; /* save original destination address */
     flow.direction = IPFI_INPUT_PRE;
-    ret = ipfi_pre_process(skb, &flow);
+    ret = ipfi_pre_process(state->net, skb, &flow);
     if (ret != NF_DROP && ret != NF_STOLEN && daddr != ip_hdr(skb)->daddr) {
       // destination nat applied and destination address changed in pre routing
       dst_release(skb_dst(skb));
@@ -487,7 +494,7 @@ unsigned int process(void *priv, struct sk_buff *skb,
       return NF_ACCEPT;
 
     flow.direction = IPFI_OUTPUT_POST;
-    return ipfi_post_process(skb, &flow);
+    return ipfi_post_process(state->net, skb, &flow);
   default:
     return NF_DROP;
   }
@@ -502,7 +509,7 @@ void init_kernel_stats(struct kernel_stats *nl_kstats) {
  * update_kernel_stats()
  */
 inline int send_packet_to_userspace_and_update_counters(
-    const struct sk_buff *skb, const ipfi_flow *flow,
+    struct net *net, const struct sk_buff *skb, const ipfi_flow *flow,
     const struct response *resp, const struct info_flags *flags) {
   int err = 0;
   struct sk_buff *skb_to_user = NULL;
@@ -510,7 +517,7 @@ inline int send_packet_to_userspace_and_update_counters(
   skb_to_user = build_info_t_nlmsg(skb, flow, resp, flags, &err);
   if (skb_to_user != NULL) {
     IPFI_STAT_INC(sent_tou);
-    if (skb_send_to_user(skb_to_user, LISTENER_DATA) < 0) {
+    if (skb_send_to_user(net, skb_to_user, LISTENER_DATA) < 0) {
       printk("send_packet_to_userspace_and_update_counters skb_send failed\n");
       update_kernel_stats(IPFI_FAILED_NETLINK_USPACE, resp->verdict);
       return -1;
@@ -523,11 +530,12 @@ inline int send_packet_to_userspace_and_update_counters(
   return 0;
 }
 
-int ipfi_pre_process(struct sk_buff *skb, const ipfi_flow *flow) {
+int ipfi_pre_process(struct net *net, struct sk_buff *skb, const ipfi_flow *flow) {
   int ret = -1;
   int verdict;
   struct response resp = {};
   struct info_flags flags = {};
+  struct ipfire_net *ipfire_net = ipfire_pernet(net);
   flags.direction = flow->direction;
   /* in pre routing we do not do any filtering. In normal cases we will return
    * IPFI_ACCEPT as verdict in this hook. In case of errors instead, we'll
@@ -557,14 +565,14 @@ int ipfi_pre_process(struct sk_buff *skb, const ipfi_flow *flow) {
    * rules are checked in this case.
    */
   if (READ_ONCE(dnatted_entry_counter) > 0) {
-    ret = pre_de_dnat(skb, flow, &resp, &flags);
+    ret = pre_de_dnat(net, skb, flow, &resp, &flags);
 
     /* implements pre processing of the packets: DNAT.
      * check if we already have a translation for this session
      * (early lookup consolidated here)
      */
     if (ret < 0) {
-      struct nat_table *dnt = lookup_nat_forward(skb, NAT_DNAT);
+      struct nat_table *dnt = lookup_nat_forward(net, skb, NAT_DNAT);
       if (dnt != NULL) {
         ret = dest_translate(skb, dnt);
         nat_put(dnt);
@@ -575,12 +583,12 @@ int ipfi_pre_process(struct sk_buff *skb, const ipfi_flow *flow) {
   /* dnat_translation() requires direct match with DNAT rules inserted by user.
    */
   if (ret < 0) /* no pre_de_dnat, maybe dnat_translation */
-    ret = dnat_translation(skb, flow, &resp, &flags);
+    ret = dnat_translation(net, skb, flow, &resp, &flags);
 
   /* now let's de-snat, or de-masquerade, if no match has previously succeeded
    */
   if (ret < 0 && READ_ONCE(snatted_entry_counter) > 0)
-    ret = pre_de_snat(skb, flow, &resp, &flags);
+    ret = pre_de_snat(net, skb, flow, &resp, &flags);
 
   /* checksum is calculated inside set_pairs_in_skb(), ipfi_translation.c */
   if (ret >= 0) {
@@ -589,9 +597,9 @@ int ipfi_pre_process(struct sk_buff *skb, const ipfi_flow *flow) {
 
     /* we send to userspace old packet, to let see how translation changed it,
      * if loguser is greater than 5 */
-    if ((userspace_data_pid) && (loguser_enabled) &&
+    if ((ipfire_net->userspace_data_pid) && (loguser_enabled) &&
         (is_to_send(skb, &fwopts, &resp, flow, &flags)))
-      send_packet_to_userspace_and_update_counters(skb, flow, &resp, &flags);
+      send_packet_to_userspace_and_update_counters(net, skb, flow, &resp, &flags);
     else /* not sent because of log level */
       IPFI_STAT_INC(not_sent);
   } else if (ret == BAD_CHECKSUM) {
@@ -606,16 +614,17 @@ int ipfi_pre_process(struct sk_buff *skb, const ipfi_flow *flow) {
         this_cpu_read(ipfi_counters->bad_checksum_in),
         this_cpu_read(ipfi_counters->pre_rcv));
     /* send a packet signaling an error */
-    send_packet_to_userspace_and_update_counters(skb, flow, &resp, &flags);
+    send_packet_to_userspace_and_update_counters(net, skb, flow, &resp, &flags);
     verdict = NF_DROP;
   }
   /* No more kfree(packet) needed */
   return verdict;
 }
 
-int ipfi_post_process(struct sk_buff *skb, const ipfi_flow *flow) {
+int ipfi_post_process(struct net *net, struct sk_buff *skb, const ipfi_flow *flow) {
   struct response resp = {.verdict = IPFI_ACCEPT};
   struct info_flags flags = {};
+  struct ipfire_net *ipfire_net = ipfire_pernet(net);
   flags.direction = flow->direction;
   /* do post routing tasks. Checksumming is performed in set_pairs_in_skb(),
    * the manipulation function inside ipfi_translation.c
@@ -638,7 +647,7 @@ int ipfi_post_process(struct sk_buff *skb, const ipfi_flow *flow) {
    * build_ipfire_info_from_skb needed here. */
 
   if (READ_ONCE(dnatted_entry_counter) > 0) {
-    if ((snat_done = post_snat_dynamic(skb, flow, &resp, &flags)) >= 0)
+    if ((snat_done = post_snat_dynamic(net, skb, flow, &resp, &flags)) >= 0)
       goto send_touser;
 
     /* If NAT is enabled, there might be packets that have been destination
@@ -649,14 +658,14 @@ int ipfi_post_process(struct sk_buff *skb, const ipfi_flow *flow) {
      * in the opposite flow with respect to the one that originated
      * communication.
      */
-    de_dnat_done = de_dnat_translation(skb, flow, &resp, &flags);
+    de_dnat_done = de_dnat_translation(net, skb, flow, &resp, &flags);
   }
 
   /* check if we already have a translation for this session
    * (early lookup consolidated here, covers both SNAT and Masquerade)
    */
   if (READ_ONCE(snatted_entry_counter) > 0) {
-    struct nat_table *snt = lookup_nat_forward(skb, NAT_SNAT);
+    struct nat_table *snt = lookup_nat_forward(net, skb, NAT_SNAT);
     if (snt != NULL) {
       snat_done = snat_packet(skb, snt);
       nat_put(snt);
@@ -665,11 +674,11 @@ int ipfi_post_process(struct sk_buff *skb, const ipfi_flow *flow) {
   }
 
   /* masquerade_translation() scans masquerade_post list */
-  if ((snat_done = masquerade_translation(skb, flow, &resp, &flags)) >= 0)
+  if ((snat_done = masquerade_translation(net, skb, flow, &resp, &flags)) >= 0)
     goto send_touser;
 
   /* snat_translation scans translation_post list */
-  snat_done = snat_translation(skb, flow, &resp, &flags);
+  snat_done = snat_translation(net, skb, flow, &resp, &flags);
 
 send_touser:
 
@@ -683,9 +692,9 @@ send_touser:
       flags.snat = 1U;
     // post_packet->flags.snat = 1;
 
-    if ((userspace_data_pid) && (loguser_enabled) &&
+    if ((ipfire_net->userspace_data_pid) && (loguser_enabled) &&
         (is_to_send(skb, &fwopts, &resp, flow, &flags)))
-      send_packet_to_userspace_and_update_counters(skb, flow, &resp, &flags);
+      send_packet_to_userspace_and_update_counters(net, skb, flow, &resp, &flags);
     else /* not sent because of log level */
       kstats.not_sent++;
   }
@@ -758,18 +767,12 @@ inline int copy_headers(const struct sk_buff *skb, ipfire_info_t *fireinfo) {
 
 int ipfi_response(const struct nf_hook_state *state, struct sk_buff *skb,
                   ipfi_flow *flow) {
-  /* 0.98.4: When we have to DNAT in output direction, we have to
-   * check if the original destination is allowed by the
-   * filter rules. Imagine we have setup a proxy web and the
-   * user wants to block connections to www.badsite.com.
-   * If the output connections are redirected to the proxy
-   * by means of an OUTPUT DNAT rule, the connection will
-   * pass through also if it is not desired.
-   */
   struct info_flags flags = {};
-  struct response res = iph_in_get_response(skb, flow, &flags);
+  struct net *net = state->net;
+  struct ipfire_net *ipfire_net = ipfire_pernet(net);
+  struct response res = iph_in_get_response(net, skb, flow, &flags);
   /* decide according to loguser if to send or not feedback */
-  if ((userspace_data_pid) && (loguser_enabled)) {
+  if ((ipfire_net->userspace_data_pid) && (loguser_enabled)) {
     if ((is_to_send(skb, &fwopts, &res, flow, &flags) > 0)) {
       int err;
       struct sk_buff *skb_touser =
@@ -777,7 +780,7 @@ int ipfi_response(const struct nf_hook_state *state, struct sk_buff *skb,
       if (skb_touser == NULL) /* shouldn't happen :r */
         IPFI_PRINTK("IPFIRE: failed to allocate memory for socket buffer in "
                     "iph_in_get_response()\n");
-      else if (skb_send_to_user(skb_touser, LISTENER_DATA) < 0)
+      else if (skb_send_to_user(net, skb_touser, LISTENER_DATA) < 0)
         update_kernel_stats(IPFI_FAILED_NETLINK_USPACE, res.verdict);
     }
 
@@ -799,9 +802,9 @@ int ipfi_response(const struct nf_hook_state *state, struct sk_buff *skb,
       struct sk_buff *skb_touser =
           build_info_t_nlmsg(skb, flow, &res, &flags, &err);
       if (skb_touser != NULL &&
-          skb_send_to_user(skb_touser, GUI_NOTIF_DATA) < 0) {
-        IPFI_PRINTK("failed to send message to userspace via netlink: %d\n",
-                    err);
+          skb_send_to_user(net, skb_touser, GUI_NOTIF_DATA) < 0) {
+        IPFI_PRINTK("failed to send message to userspace via netlink for net %px: %d\n",
+                    net, err);
         update_kernel_stats(IPFI_FAILED_NETLINK_USPACE, res.verdict);
       }
     }
@@ -822,7 +825,7 @@ int ipfi_response(const struct nf_hook_state *state, struct sk_buff *skb,
     if (fwopts.nat != 0 && flow->direction == IPFI_OUTPUT) {
       struct nat_table *dnt =
           READ_ONCE(nat_counters[NAT_DNAT]) > 0
-              ? lookup_nat_forward(skb, NAT_DNAT)
+              ? lookup_nat_forward(net, skb, NAT_DNAT)
               : NULL;
       int dnat_ret = -1;
       if (dnt != NULL) {
@@ -835,7 +838,7 @@ int ipfi_response(const struct nf_hook_state *state, struct sk_buff *skb,
         dnat_ret = dest_translate(skb, dnt);
         nat_put(dnt);
       } else {
-        dnat_ret = dnat_translation(skb, flow, &res, &flags);
+        dnat_ret = dnat_translation(net, skb, flow, &res, &flags);
       }
 
       if (dnat_ret >= 0) {
@@ -890,16 +893,16 @@ int ipfi_response(const struct nf_hook_state *state, struct sk_buff *skb,
          * 2. skb_send_to_user(): Dispatches the constructed message to the
          *    registered userspace listener.
          */
-        if ((userspace_data_pid) && (loguser_enabled) &&
+        if ((ipfire_net->userspace_data_pid) && (loguser_enabled) &&
             (is_to_send(skb, &fwopts, &res, flow, &flags) > 0)) {
           int err;
           struct sk_buff *skb_touser =
               build_info_t_nlmsg(skb, flow, &res, &flags, &err);
           if (skb_touser != NULL) {
-            skb_send_to_user(skb_touser, LISTENER_DATA);
+            skb_send_to_user(net, skb_touser, LISTENER_DATA);
           } else {
             IPFI_PRINTK(
-                "IPFIRE: failed to build log message after OUTPUT DNAT\n");
+                "IPFIRE: failed to build log message after OUTPUT DNAT for net %px\n", net);
           }
         }
       } // dnat_ret >= 0

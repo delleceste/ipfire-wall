@@ -17,12 +17,29 @@
 #include <linux/netfilter_ipv4.h> /* for hook registering */
 #include <linux/rcupdate.h>
 #include <linux/version.h>
+#include <net/net_namespace.h>
+#include <net/netns/generic.h>
 extern pid_t userspace_control_pid;
 extern pid_t userspace_data_pid;
 extern uid_t userspace_uid;
 extern struct sock *sknl_ipfi_control;
 extern struct sock *sknl_ipfi_data;
 extern struct sock *sknl_ipfi_gui_notifier;
+
+struct ipfire_net {
+  struct sock *sknl_ipfi_control;
+  struct sock *sknl_ipfi_data;
+  struct sock *sknl_ipfi_gui_notifier;
+  pid_t userspace_control_pid;
+  pid_t userspace_data_pid;
+  uid_t userspace_uid;
+};
+
+extern unsigned int ipfire_net_id;
+
+static inline struct ipfire_net *ipfire_pernet(struct net *net) {
+  return net_generic(net, ipfire_net_id);
+}
 
 #include "filter/header_check.h"
 
@@ -160,7 +177,7 @@ inline void build_icmph_usermess(const struct icmphdr *icmph,
 inline void build_igmph_usermess(const struct igmphdr *igmph,
                                  ipfire_info_t *ipfi_info);
 
-struct response iph_in_get_response(struct sk_buff *skb, ipfi_flow *flow,
+struct response iph_in_get_response(struct net *net, struct sk_buff *skb, ipfi_flow *flow,
                                     struct info_flags *flags);
 
 /* if rulename in src is specified, copy it to dest rulename */
@@ -173,8 +190,8 @@ inline void check_packet_num(unsigned long long *cnt);
 int ipfi_response(const struct nf_hook_state *state, struct sk_buff *skb,
                   ipfi_flow *_flow);
 
-int ipfi_pre_process(struct sk_buff *skb, const ipfi_flow *flow);
-int ipfi_post_process(struct sk_buff *skb, const ipfi_flow *flow);
+int ipfi_pre_process(struct net *net, struct sk_buff *skb, const ipfi_flow *flow);
+int ipfi_post_process(struct net *net, struct sk_buff *skb, const ipfi_flow *flow);
 
 int recalculate_ip_checksum(struct sk_buff *skb, int direction);
 
@@ -182,7 +199,7 @@ int recalculate_ip_checksum(struct sk_buff *skb, int direction);
  * update_kernel_stats()
  */
 inline int send_packet_to_userspace_and_update_counters(
-    const struct sk_buff *skb, const ipfi_flow *flow,
+    struct net *net, const struct sk_buff *skb, const ipfi_flow *flow,
     const struct response *resp, const struct info_flags *flags);
 
 /* prints just tcp checksum, for debug. To remove */

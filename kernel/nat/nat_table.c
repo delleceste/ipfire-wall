@@ -190,7 +190,7 @@ static int forward_nat_match(const struct nat_table *nt,
 
 /* ---- Lookup: by forward 5-tuple (for existing session reuse) ---- */
 
-struct nat_table *lookup_nat_forward(const struct sk_buff *skb,
+struct nat_table *lookup_nat_forward(struct net *net, const struct sk_buff *skb,
 				     enum nat_type type)
 {
 	struct nat_table *tmp;

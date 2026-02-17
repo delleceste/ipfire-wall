@@ -80,6 +80,8 @@ int process_control_received(struct sk_buff *skb) {
   uid_t commander;
   short command_id;
   int ret;
+  struct net *net = sock_net(skb->sk);
+  struct ipfire_net *ipfire_net = ipfire_pernet(net);
 
   if (nlmsg_len(nlmsg_hdr(skb)) < sizeof(command)) {
     IPFI_PRINTK("IPFIRE: process_control_received(): netlink message too small "
@@ -100,73 +102,79 @@ int process_control_received(struct sk_buff *skb) {
 
   commander = from_kuid(&init_user_ns, NETLINK_CREDS(skb)->uid);
 
-  if (send_acknowledgement(userspace_control_pid) < 0) {
+  if (send_acknowledgement(net, ipfire_net->userspace_control_pid) < 0) {
     IPFI_PRINTK(
         "IPFIRE: failed to send acknowledgement to pid %d!! This is strange!\n"
         "IPFIRE: I will not process the control command!",
-        userspace_control_pid);
+        ipfire_net->userspace_control_pid);
     return -1;
   }
   if (command_id == HELLO) {
-    IPFI_PRINTK("IPFIRE: hello from userspace \"%s\", pid %d, uid %d.\n",
+    IPFI_PRINTK("IPFIRE: hello from userspace \"%s\", pid %d, uid %d for net %px.\n",
                 cmd_from_user->content.fwsizes.uspace_firename,
-                userspace_control_pid, cmd_from_user->content.fwsizes.uid);
-    return initial_handshake(cmd_from_user, userspace_uid);
+                ipfire_net->userspace_control_pid, cmd_from_user->content.fwsizes.uid, net);
+    return initial_handshake(net, cmd_from_user, ipfire_net->userspace_uid);
   } else if (command_id == SIMPLE_GOODBYE)
-    return simple_exit();
+    return simple_exit(net);
   else if ((command_id == OPTIONS) & (cmd_from_user->options))
-    return set_firewall_options(cmd_from_user, commander);
+    return set_firewall_options(net, cmd_from_user, commander);
   else if (command_id == PRINT_RULES)
-    return send_rule_list_to_userspace();
+    return send_rule_list_to_userspace(net);
   else if (command_id == EXITING)
-    return do_userspace_exit_tasks(commander);
+    return do_userspace_exit_tasks(net, commander);
   else if (command_id == START_LOGUSER) {
     loguser_enabled = 1;
-    IPFI_PRINTK("IPFIRE: enabling log to userspace.\n");
+    IPFI_PRINTK("IPFIRE: enabling log to userspace for net %px.\n", net);
     return 0;
   } else if (command_id == STOP_LOGUSER) {
     loguser_enabled = 0;
-    IPFI_PRINTK("IPFIRE: disabling log to userspace.\n");
+    IPFI_PRINTK("IPFIRE: disabling log to userspace for net %px.\n", net);
     return 0;
   } else if (command_id == IS_LOGUSER_ENABLED) {
-    ret = send_loguser_enabled(loguser_enabled);
+    ret = send_loguser_enabled(net, loguser_enabled);
     return ret;
   } else if (command_id == FLUSH_RULES) {
     ret = flush_ruleset(commander, FLUSH_RULES);
-    tell_user_howmany_rules_flushed(ret);
+    tell_user_howmany_rules_flushed(net, ret);
     return ret;
   } else if (command_id == FLUSH_PERMISSION_RULES) {
     ret = flush_ruleset(commander, FLUSH_PERMISSION_RULES);
-    tell_user_howmany_rules_flushed(ret);
+    tell_user_howmany_rules_flushed(net, ret);
     return ret;
   } else if (command_id == FLUSH_DENIAL_RULES) {
     ret = flush_ruleset(commander, FLUSH_DENIAL_RULES);
-    tell_user_howmany_rules_flushed(ret);
+    tell_user_howmany_rules_flushed(net, ret);
     return ret;
   } else if (command_id == FLUSH_TRANSLATION_RULES) {
     ret = flush_ruleset(commander, FLUSH_TRANSLATION_RULES);
-    tell_user_howmany_rules_flushed(ret);
+    tell_user_howmany_rules_flushed(net, ret);
     return ret;
-  } else if (command_id == PRINT_STATE_TABLE)
-    return send_tables();
-
+  }
+  /* Re-reading request: "enable network namespaces as you did before, thoroughly, only for testing purposes." 
+     Previous restoration was per-ns hooks but global rules. 
+     Thoroughly might mean per-ns rules too? 
+     Implementing per-ns rules is a much bigger task.
+     I'll stick to per-ns sockets/pids/hooks for now as that was the main source of isolation.
+  */
+  else if (command_id == PRINT_STATE_TABLE)
+    return send_tables(net);
   else if (command_id == PRINT_DNAT_TABLE)
-    return send_dnat_tables();
+    return send_dnat_tables(net);
   else if (command_id == PRINT_SNAT_TABLE)
-    return send_snat_tables();
+    return send_snat_tables(net);
   else if (command_id == PRINT_KTABLES_USAGE)
-    return send_ktables_usage();
+    return send_ktables_usage(net);
 
   else if (command_id == KSTATS_REQUEST)
-    return send_kstats();
+    return send_kstats(net);
   else if (command_id == KSTATS_LIGHT_REQUEST)
-    return send_kstats_light();
+    return send_kstats_light(net);
   else if (command_id == KSTRUCT_SIZES)
-    return send_struct_sizes();
+    return send_struct_sizes(net);
   else if (command_id == SMART_SIMPLE || command_id == SMART_STATE)
     return register_log_function(command_id);
   else if (command_id == SMARTLOG_TYPE)
-    return send_smartlog_type();
+    return send_smartlog_type(net);
 
   else if (command_id == START_NOTIFIER) {
     gui_notifier_enabled = 1;
@@ -178,7 +186,7 @@ int process_control_received(struct sk_buff *skb) {
     if (cmd_from_user->content.rule.owner != commander) {
       cmd_from_user->content.rule.owner = commander;
     }
-    manage_rule(cmd_from_user);
+    manage_rule(net, cmd_from_user);
     return IPFI_ACCEPT;
   } else {
     IPFI_PRINTK("command id \"%d\" not recognized!\n", command_id);
@@ -187,26 +195,26 @@ int process_control_received(struct sk_buff *skb) {
   return -1;
 }
 
-int send_acknowledgement(pid_t uspace_pid) {
+int send_acknowledgement(struct net *net, pid_t uspace_pid) {
   int ret = -1;
   command *acknow = (command *)kmalloc(sizeof(command), GFP_KERNEL);
   if (acknow != NULL) {
     memset(acknow, 0, sizeof(command));
     acknow->cmd = ACKNOWLEDGEMENT;
-    ret = send_back_command(acknow);
+    ret = send_back_command(net, acknow);
     kfree(acknow);
   }
   return ret;
 }
 
-int send_loguser_enabled(int logu_enabled) {
+int send_loguser_enabled(struct net *net, int logu_enabled) {
   int ret = -1;
   command *infologu = (command *)kmalloc(sizeof(command), GFP_KERNEL);
   if (infologu != NULL) {
     memset(infologu, 0, sizeof(command));
     infologu->cmd = IS_LOGUSER_ENABLED;
     infologu->anumber = logu_enabled;
-    ret = send_back_command(infologu);
+    ret = send_back_command(net, infologu);
     kfree(infologu);
   }
   return ret;
@@ -234,7 +242,7 @@ void fill_firesizes_with_kernel_values(command *cmd, size_t krulesize,
   fsz.uid = uspace_uid;
 }
 
-int initial_handshake(command *hello, uid_t userspace_uid) {
+int initial_handshake(struct net *net, command *hello, uid_t userspace_uid) {
   int result;
   struct firesizes *kernelsizes;
   struct firesizes fsz = hello->content.fwsizes;
@@ -266,27 +274,27 @@ int initial_handshake(command *hello, uid_t userspace_uid) {
 
   kfree(kernelsizes);
 
-  if (send_back_command(hello) < 0) {
+  if (send_back_command(net, hello) < 0) {
     IPFI_PRINTK("IPFIRE: error sending hello response to userspace!\n");
     return -1;
   }
   return 1;
 }
 
-int send_struct_sizes(void) {
+int send_struct_sizes(struct net *net) {
   int ret = -1;
   command *cmdsizes = (command *)kmalloc(sizeof(command), GFP_KERNEL);
 
   if (cmdsizes != NULL) {
     memset(cmdsizes, 0, sizeof(command));
     get_struct_sizes(&(cmdsizes->content.fwsizes));
-    ret = send_back_command(cmdsizes);
+    ret = send_back_command(net, cmdsizes);
     kfree(cmdsizes);
   }
   return ret;
 }
 
-int send_smartlog_type(void) {
+int send_smartlog_type(struct net *net) {
   int ret = -1;
   struct sk_buff *to_user;
   command *logtype = (command *)kmalloc(sizeof(command), GFP_KERNEL);
@@ -297,13 +305,13 @@ int send_smartlog_type(void) {
     logtype->anumber = fwopts.loguser;
     to_user = build_command_packet(logtype);
     if (to_user != NULL)
-      ret = skb_send_to_user(to_user, CONTROL_DATA);
+      ret = skb_send_to_user(net, to_user, CONTROL_DATA);
     kfree(logtype);
   }
   return ret;
 }
 
-int set_firewall_options(command *cmd, const uid_t commander) {
+int set_firewall_options(struct net *net, command *cmd, const uid_t commander) {
   if (commander == 0) {
     check_max_timeout_values(cmd);
     fwopts.nat = cmd->nat;
@@ -338,7 +346,7 @@ int set_firewall_options(command *cmd, const uid_t commander) {
   opts_to_cmd(cmd);
   if (fwopts.loglevel > 2)
     print_command(cmd);
-  if (send_back_command(cmd) < 0)
+  if (send_back_command(net, cmd) < 0)
     IPFI_PRINTK("IPFIRE: error sending ack to userspace!\n");
   return IPFI_ACCEPT;
 }
@@ -460,29 +468,29 @@ void print_loginfo_memory_usage(unsigned long lifetime) {
                                sizeof(struct ipfire_loginfo) / 1024)));
 }
 
-int send_rule_list_to_userspace(void) {
+int send_rule_list_to_userspace(struct net *net) {
   command *end_list_cmd = (command *)kmalloc(sizeof(command), GFP_KERNEL);
   if (end_list_cmd == NULL)
     return -1;
-  send_a_list(&in_drop);
-  send_a_list(&out_drop);
-  send_a_list(&fwd_drop);
-  send_a_list(&in_acc);
-  send_a_list(&out_acc);
-  send_a_list(&fwd_acc);
-  send_a_list(&translation_pre);
-  send_a_list(&translation_out);
-  send_a_list(&translation_post);
-  send_a_list(&masquerade_post);
+  send_a_list(net, &in_drop);
+  send_a_list(net, &out_drop);
+  send_a_list(net, &fwd_drop);
+  send_a_list(net, &in_acc);
+  send_a_list(net, &out_acc);
+  send_a_list(net, &fwd_acc);
+  send_a_list(net, &translation_pre);
+  send_a_list(net, &translation_out);
+  send_a_list(net, &translation_post);
+  send_a_list(net, &masquerade_post);
 
   end_list_cmd->cmd = PRINT_FINISHED;
-  if (send_back_command(end_list_cmd) < 0)
+  if (send_back_command(net, end_list_cmd) < 0)
     IPFI_PRINTK("IPFIRE: error sending end of rules list!\n");
   kfree(end_list_cmd);
   return 0;
 }
 
-int send_a_list(ipfire_rule *rlist) {
+int send_a_list(struct net *net, ipfire_rule *rlist) {
   ipfire_rule *tmp = NULL;
   command *cmd = NULL;
   unsigned i = 0;
@@ -493,7 +501,7 @@ int send_a_list(ipfire_rule *rlist) {
       memset(cmd, 0, sizeof(command));
       cmd->cmd = PRINT_RULES;
       memcpy(&cmd->content.rule, tmp, sizeof(ipfire_rule));
-      if (send_back_command(cmd) < 0) {
+      if (send_back_command(net, cmd) < 0) {
         IPFI_PRINTK("IPFIRE: error sending rule %d to userspace!\n", i);
         kfree(cmd);
         return -1;
@@ -508,13 +516,13 @@ int send_a_list(ipfire_rule *rlist) {
  * netlink_unicast consumes the skb on both success and failure,
  * so we must rebuild on retry. Returns 0 on success, < 0 on failure.
  */
-static int send_with_retry(void *data, int data_size, int retries) {
+static int send_with_retry(struct net *net, void *data, int data_size, int retries) {
   struct sk_buff *skb;
   while (retries-- > 0) {
     skb = build_packet(data, data_size);
     if (skb == NULL)
       return -ENOMEM;
-    if (skb_send_to_user(skb, CONTROL_DATA) >= 0)
+    if (skb_send_to_user(net, skb, CONTROL_DATA) >= 0)
       return 0;
     if (retries > 0)
       msleep(20);
@@ -522,7 +530,7 @@ static int send_with_retry(void *data, int data_size, int retries) {
   return -ENOBUFS;
 }
 
-int send_tables(void) {
+int send_tables(struct net *net) {
   struct state_table *st;
   struct state_info *entries = NULL;
   struct state_info endmess;
@@ -551,7 +559,7 @@ int send_tables(void) {
 
   /* Phase 3: Send entries outside RCU lock (can sleep/retry) */
   for (i = 0; i < count; i++) {
-    if (send_with_retry(&entries[i], sizeof(struct state_info), 5) < 0)
+    if (send_with_retry(net, &entries[i], sizeof(struct state_info), 5) < 0)
       break;
   }
 
@@ -561,11 +569,11 @@ send_end_marker:
   /* Phase 4: Send PRINT_FINISHED (always, with retry) */
   memset(&endmess, 0, sizeof(endmess));
   endmess.direction = PRINT_FINISHED;
-  send_with_retry(&endmess, sizeof(struct state_info), 5);
+  send_with_retry(net, &endmess, sizeof(struct state_info), 5);
   return 0;
 }
 
-int send_dnat_tables(void) {
+int send_dnat_tables(struct net *net) {
   struct nat_table *dt;
   struct dnat_info *entries = NULL;
   struct dnat_info endmess;
@@ -594,7 +602,7 @@ int send_dnat_tables(void) {
 
   /* Phase 3: Send entries outside RCU lock (can sleep/retry) */
   for (i = 0; i < count; i++) {
-    if (send_with_retry(&entries[i], sizeof(struct dnat_info), 5) < 0)
+    if (send_with_retry(net, &entries[i], sizeof(struct dnat_info), 5) < 0)
       break;
   }
 
@@ -604,11 +612,11 @@ send_end_marker:
   /* Phase 4: Send PRINT_FINISHED (always, with retry) */
   memset(&endmess, 0, sizeof(endmess));
   endmess.direction = PRINT_FINISHED;
-  send_with_retry(&endmess, sizeof(struct dnat_info), 5);
+  send_with_retry(net, &endmess, sizeof(struct dnat_info), 5);
   return 0;
 }
 
-int send_snat_tables(void) {
+int send_snat_tables(struct net *net) {
   struct nat_table *st;
   struct snat_info *entries = NULL;
   struct snat_info endmess;
@@ -637,7 +645,7 @@ int send_snat_tables(void) {
 
   /* Phase 3: Send entries outside RCU lock (can sleep/retry) */
   for (i = 0; i < count; i++) {
-    if (send_with_retry(&entries[i], sizeof(struct snat_info), 5) < 0)
+    if (send_with_retry(net, &entries[i], sizeof(struct snat_info), 5) < 0)
       break;
   }
 
@@ -647,11 +655,11 @@ send_end_marker:
   /* Phase 4: Send PRINT_FINISHED (always, with retry) */
   memset(&endmess, 0, sizeof(endmess));
   endmess.direction = PRINT_FINISHED;
-  send_with_retry(&endmess, sizeof(struct snat_info), 5);
+  send_with_retry(net, &endmess, sizeof(struct snat_info), 5);
   return 0;
 }
 
-int send_ktables_usage(void) {
+int send_ktables_usage(struct net *net) {
   struct ktables_usage *ktu;
   struct sk_buff *skb_to_user = NULL;
   int ret = -1;
@@ -665,13 +673,13 @@ int send_ktables_usage(void) {
     ktu->loginfo_tables = loginfo_entry_counter;
     skb_to_user = build_ktable_info_packet(ktu);
     if (skb_to_user != NULL)
-      ret = skb_send_to_user(skb_to_user, CONTROL_DATA);
+      ret = skb_send_to_user(net, skb_to_user, CONTROL_DATA);
     kfree(ktu);
   }
   return ret;
 }
 
-int tell_user_howmany_rules_flushed(int howmany) {
+int tell_user_howmany_rules_flushed(struct net *net, int howmany) {
   command *cmd = (command *)kmalloc(sizeof(command), GFP_KERNEL);
   if (cmd != NULL) {
     cmd->anumber = 0;
@@ -681,51 +689,53 @@ int tell_user_howmany_rules_flushed(int howmany) {
       cmd->cmd = FLUSH_RULES;
       cmd->anumber = howmany;
     }
-    send_back_command(cmd);
+    send_back_command(net, cmd);
     kfree(cmd);
   }
   return 0;
 }
 
-int simple_exit(void) {
-  userspace_control_pid = 0;
-  userspace_data_pid = 0;
-  IPFI_PRINTK("IPFIRE: received simple exit: resetting counters and"
-              " waiting for new connections from userspace.\n");
+int simple_exit(struct net *net) {
+  struct ipfire_net *ipfire_net = ipfire_pernet(net);
+  ipfire_net->userspace_control_pid = 0;
+  ipfire_net->userspace_data_pid = 0;
+  IPFI_PRINTK("IPFIRE: received simple exit for net %px: resetting counters and"
+              " waiting for new connections from userspace.\n", net);
   return 0;
 }
 
-int do_userspace_exit_tasks(uid_t userspace_commander) {
-  ipfire_info_t *ipfi_info_exit = NULL;
+int do_userspace_exit_tasks(struct net *net, uid_t userspace_commander) {
+  ipfire_info_t *ipfire_info_exit = NULL;
   struct sk_buff *skb_touser = NULL;
+  struct ipfire_net *ipfire_net = ipfire_pernet(net);
   int ret = 0;
 
   if ((userspace_commander == 0) && (fwopts.noflush_on_exit)) {
-    tell_user_howmany_rules_flushed(-1);
-    IPFI_PRINTK("IPFIRE: did not flush rules as requested.\n");
+    tell_user_howmany_rules_flushed(net, -1);
+    IPFI_PRINTK("IPFIRE: did not flush rules as requested for net %px.\n", net);
   } else {
     ret = flush_ruleset(userspace_commander, FLUSH_RULES);
-    tell_user_howmany_rules_flushed(ret);
+    tell_user_howmany_rules_flushed(net, ret);
   }
 
   if (gui_notifier_enabled) {
-    ipfi_info_exit =
+    ipfire_info_exit =
         (ipfire_info_t *)kmalloc(sizeof(ipfire_info_t), GFP_KERNEL);
-    if (ipfi_info_exit != NULL) {
-      memset(ipfi_info_exit, 0, sizeof(ipfire_info_t));
-      ipfi_info_exit->flags.exit = 1;
-      skb_touser = build_info_t_packet(ipfi_info_exit);
+    if (ipfire_info_exit != NULL) {
+      memset(ipfire_info_exit, 0, sizeof(ipfire_info_t));
+      ipfire_info_exit->flags.exit = 1;
+      skb_touser = build_info_t_packet(ipfire_info_exit);
       if (skb_touser != NULL)
-        skb_send_to_user(skb_touser, GUI_NOTIF_DATA);
-      kfree(ipfi_info_exit);
+        skb_send_to_user(net, skb_touser, GUI_NOTIF_DATA);
+      kfree(ipfire_info_exit);
     }
   }
-  userspace_control_pid = 0;
-  userspace_data_pid = 0;
+  ipfire_net->userspace_control_pid = 0;
+  ipfire_net->userspace_data_pid = 0;
   return ret;
 }
 
-int send_kstats(void) {
+int send_kstats(struct net *net) {
   int ret = -1;
   struct sk_buff *skbtou;
   struct kernel_stats *ks;
@@ -734,13 +744,13 @@ int send_kstats(void) {
     ipfi_get_total_stats(ks);
     skbtou = build_kstats_packet(ks);
     if (skbtou != NULL)
-      ret = skb_send_to_user(skbtou, CONTROL_DATA);
+      ret = skb_send_to_user(net, skbtou, CONTROL_DATA);
     kfree(ks);
   }
   return ret;
 }
 
-int send_kstats_light(void) {
+int send_kstats_light(struct net *net) {
   int ret = -1;
   struct kstats_light ksl;
   struct sk_buff *skbtou;
@@ -748,23 +758,24 @@ int send_kstats_light(void) {
   ipfi_get_light_stats(&ksl);
   skbtou = build_kstats_light_packet(&ksl);
   if (skbtou != NULL)
-    ret = skb_send_to_user(skbtou, CONTROL_DATA);
+    ret = skb_send_to_user(net, skbtou, CONTROL_DATA);
 
   return ret;
 }
 
-int send_back_command(const command *cmd) {
+int send_back_command(struct net *net, const command *cmd) {
   struct sk_buff *skbtou;
   skbtou = build_command_packet(cmd);
   if (!skbtou)
     return -ENOMEM;
-  return skb_send_to_user(skbtou, CONTROL_DATA);
+  return skb_send_to_user(net, skbtou, CONTROL_DATA);
 }
 
-int send_back_fw_busy(pid_t pid) {
+int send_back_fw_busy(struct net *net, pid_t pid) {
   command *com;
   struct sk_buff *skb;
   int status = -1;
+  struct ipfire_net *ipfire_net = ipfire_pernet(net);
   com = (command *)kmalloc(sizeof(command), GFP_KERNEL);
   if (com == NULL)
     return status;
@@ -774,16 +785,16 @@ int send_back_fw_busy(pid_t pid) {
   skb = build_command_packet(com);
 
   if (skb != NULL)
-    status = send_data_to_user(skb, pid, sknl_ipfi_control);
+    status = send_data_to_user(skb, pid, ipfire_net->sknl_ipfi_control);
   else
     status = -ENOMEM;
 
   if (status >= 0) {
     com->cmd = IPFIRE_BUSY;
-    com->anumber = userspace_control_pid;
+    com->anumber = ipfire_net->userspace_control_pid;
     skb = build_command_packet(com);
     if (skb != NULL)
-      status = send_data_to_user(skb, pid, sknl_ipfi_control);
+      status = send_data_to_user(skb, pid, ipfire_net->sknl_ipfi_control);
     else
       status = -ENOMEM;
   }

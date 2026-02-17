@@ -71,7 +71,7 @@ u32 get_dnat_hash(__u32 old_saddr, __u16 old_sport, __u32 new_daddr,
 
 /* Lookup */
 
-struct nat_table *lookup_nat_forward(const struct sk_buff *skb,
+struct nat_table *lookup_nat_forward(struct net *net, const struct sk_buff *skb,
 				     enum nat_type type);
 
 /* Fill fields */

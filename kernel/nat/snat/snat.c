@@ -20,7 +20,7 @@
 #include <linux/timer.h>
 #include <linux/udp.h>
 
-int snat_translation(struct sk_buff *skb, const ipfi_flow *flow,
+int snat_translation(struct net *net, struct sk_buff *skb, const ipfi_flow *flow,
                      struct response *resp, struct info_flags *flags) {
   ipfire_rule *snatrule;
   struct nat_table *snt;
@@ -28,7 +28,7 @@ int snat_translation(struct sk_buff *skb, const ipfi_flow *flow,
   rcu_read_lock_bh();
   list_for_each_entry_rcu(snatrule, &translation_post.list, list) {
     if (translation_rule_match(skb, flow, flags, snatrule) > 0) {
-      if ((snt = add_snatted_entry(skb, flow, resp, flags, snatrule)) != NULL) {
+      if ((snt = add_snatted_entry(net, skb, flow, resp, flags, snatrule)) != NULL) {
         int status = snat_packet(skb, snt);
         nat_put(snt);
         rcu_read_unlock_bh();
@@ -40,7 +40,7 @@ int snat_translation(struct sk_buff *skb, const ipfi_flow *flow,
   return -1;
 }
 
-struct nat_table *add_snatted_entry(const struct sk_buff *skb,
+struct nat_table *add_snatted_entry(struct net *net, const struct sk_buff *skb,
                                     const ipfi_flow *flow,
                                     struct response *resp,
                                     struct info_flags *flags,
@@ -52,14 +52,14 @@ struct nat_table *add_snatted_entry(const struct sk_buff *skb,
     return NULL;
 
   if (nat_counters[NAT_SNAT] == fwopts.max_nat_entries) {
-    int err;
-    struct response warn_resp = *resp;
     struct info_flags warn_flags = *flags;
     warn_flags.nat_max_entries = 1;
+    struct response warn_resp = *resp;
+    int err;
     struct sk_buff *skb_to_user =
         build_info_t_nlmsg(skb, flow, &warn_resp, &warn_flags, &err);
     if (skb_to_user)
-      skb_send_to_user(skb_to_user, LISTENER_DATA);
+      skb_send_to_user(net, skb_to_user, LISTENER_DATA);
     return NULL;
   }
 
@@ -117,7 +117,7 @@ int de_snat_table_match(struct nat_table *snt, struct sk_buff *skb) {
   return -1;
 }
 
-int pre_de_snat(struct sk_buff *skb, const ipfi_flow *flow,
+int pre_de_snat(struct net *net, struct sk_buff *skb, const ipfi_flow *flow,
                 struct response *resp, struct info_flags *flags) {
   struct nat_table *sntmp;
 
@@ -135,7 +135,7 @@ int pre_de_snat(struct sk_buff *skb, const ipfi_flow *flow,
   return -1;
 }
 
-int post_snat_dynamic(struct sk_buff *skb, const ipfi_flow *flow,
+int post_snat_dynamic(struct net *net, struct sk_buff *skb, const ipfi_flow *flow,
                       struct response *resp, struct info_flags *flags) {
   struct nat_table *dntmp;
 
@@ -144,7 +144,7 @@ int post_snat_dynamic(struct sk_buff *skb, const ipfi_flow *flow,
     if (snat_dynamic_table_match(dntmp, skb) > 0) {
       dntmp->state = state_machine(skb, dntmp->state, 0);
       ipfi_entry_update_timer(&dntmp->h, dntmp->protocol, dntmp->state);
-      int ret = snat_dynamic_translate(skb, dntmp);
+      int ret = snat_dynamic_translate(net, skb, dntmp);
       rcu_read_unlock_bh();
       return ret;
     }
@@ -153,7 +153,7 @@ int post_snat_dynamic(struct sk_buff *skb, const ipfi_flow *flow,
   return -1;
 }
 
-int snat_dynamic_translate(struct sk_buff *skb, struct nat_table *dnt) {
+int snat_dynamic_translate(struct net *net, struct sk_buff *skb, struct nat_table *dnt) {
   struct pkt_manip_info mi;
   memset(&mi, 0, sizeof(mi));
   mi.sa = 1;

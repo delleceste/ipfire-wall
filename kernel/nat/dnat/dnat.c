@@ -17,7 +17,7 @@
 #include <linux/udp.h>
 #include <linux/stddef.h>
 
-int dnat_translation(struct sk_buff *skb, const ipfi_flow *flow,
+int dnat_translation(struct net *net, struct sk_buff *skb, const ipfi_flow *flow,
                      struct response *resp, struct info_flags *flags) {
   ipfire_rule *transrule;
   ipfire_rule *dnat_rules = NULL;
@@ -42,7 +42,7 @@ int dnat_translation(struct sk_buff *skb, const ipfi_flow *flow,
       if (public_to_private_address(skb, transrule))
         flags->external = 1;
 
-      if ((dnt = add_dnatted_entry(skb, flow, resp, flags, transrule)) != NULL) {
+      if ((dnt = add_dnatted_entry(net, skb, flow, resp, flags, transrule)) != NULL) {
         dest_translate(skb, dnt);
         nat_put(dnt);
         rcu_read_unlock_bh();
@@ -70,7 +70,7 @@ int de_dnat(struct sk_buff *skb, const struct nat_table *dnatt) {
                    dnatt->old_sport, mi);
 }
 
-int de_dnat_translation(struct sk_buff *skb, const ipfi_flow *flow,
+int de_dnat_translation(struct net *net, struct sk_buff *skb, const ipfi_flow *flow,
                         struct response *resp, struct info_flags *flags) {
   struct nat_table *dntmp;
   net_quadruplet netq;
@@ -117,7 +117,7 @@ int de_dnat_table_match(const struct nat_table *dnt,
   return -1;
 }
 
-int pre_de_dnat(struct sk_buff *skb, const ipfi_flow *flow,
+int pre_de_dnat(struct net *net, struct sk_buff *skb, const ipfi_flow *flow,
                 struct response *resp, struct info_flags *flags) {
   struct nat_table *dntmp;
   rcu_read_lock_bh();
@@ -190,7 +190,7 @@ int pre_de_dnat_translate(struct sk_buff *skb,
   }
 }
 
-struct nat_table *add_dnatted_entry(const struct sk_buff *skb,
+struct nat_table *add_dnatted_entry(struct net *net, const struct sk_buff *skb,
                                     const ipfi_flow *flow,
                                     struct response *resp,
                                     struct info_flags *flags,
@@ -209,7 +209,7 @@ struct nat_table *add_dnatted_entry(const struct sk_buff *skb,
     struct sk_buff *skb_to_user =
         build_info_t_nlmsg(skb, flow, &warn_resp, &warn_flags, &err);
     if (skb_to_user)
-      skb_send_to_user(skb_to_user, LISTENER_DATA);
+      skb_send_to_user(net, skb_to_user, LISTENER_DATA);
     return NULL;
   }
 

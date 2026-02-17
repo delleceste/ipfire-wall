@@ -10,6 +10,10 @@ struct sock *sknl_ipfi_control = NULL;
 struct sock *sknl_ipfi_data = NULL;
 struct sock *sknl_ipfi_gui_notifier = NULL;
 
+#include "ipfire.h"
+
+unsigned int ipfire_net_id;
+
 /* Firewall options and status */
 struct ipfire_options fwopts;
 short default_policy = IPFIRE_DEFAULT_POLICY;

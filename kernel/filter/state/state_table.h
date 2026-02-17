@@ -49,7 +49,7 @@ int init_machine(void);
 void fini_machine(void);
 
 /* Prototypes for functions in filter_engine.c related to state setup */
-struct state_table *keep_state(const struct sk_buff *skb, const ipfire_rule *p_rule, const ipfi_flow *flow);
+struct state_table *keep_state(struct net *net, const struct sk_buff *skb, const ipfire_rule *p_rule, const ipfi_flow *flow);
 void fill_state_info(struct state_info *stinfo, const struct state_table *stt);
 int add_ftp_dynamic_rule(struct state_table *ftpt);
 

@@ -48,13 +48,13 @@ enum smartlog_type
  */
 int process_control_received(struct sk_buff *skb);
 void *extract_data(struct sk_buff *skb);
-int send_back_fw_busy(pid_t pid);
+int send_back_fw_busy(struct net *net, pid_t pid);
 
 
 /** Handshake with userspace program: checks if structure sizes
   * are correct
   */
-int initial_handshake(command* hello, uid_t userspace_uid);
+int initial_handshake(struct net *net, command* hello, uid_t userspace_uid);
 
 /* Fills in the firesizes structure with the size of the 
  * structures.
@@ -65,19 +65,19 @@ void get_struct_sizes(struct firesizes* fsz);
  * back to userspace. */
 void fill_firesizes_with_kernel_values(command* cmd, size_t krulesize, size_t kinfosize,  size_t kcmdsize, uid_t uspace_uid);
 
-int init_netl(void);
-void fini_netl(void);
+int init_netl(struct net *net);
+void fini_netl(struct net *net);
 
 void fill_dnat_info(struct dnat_info *dninfo, const struct nat_table *dntt);
 void fill_snat_info(struct snat_info *sninfo, const struct nat_table *sntt);
 
 /* Sends in userspace the struct sizes */
-int send_struct_sizes(void);
+int send_struct_sizes(struct net *net);
 
 /* Sends in userspace the type of logging to userspace in use.
  * Reads fwopts.
  */
-int send_smartlog_type(void);
+int send_smartlog_type(struct net *net);
 
 /* depending on loguser, this function decides if
  * firewall has to send packet skb to userspace
@@ -102,7 +102,7 @@ int nl_receive_outcome(struct sock* sknl_ipfi_data_rec);
 
 /* sends an acknowledgement to userspace program 
  * before actuating a command */
-inline int send_acknowledgement(pid_t uspace_pid);
+inline int send_acknowledgement(struct net *net, pid_t uspace_pid);
 
 /* given a direction or a constant identifying the counter
  * which has to be incremented, this function increments
@@ -125,7 +125,7 @@ void check_max_timeout_values(command* cmd);
 /* sets various options related to firewall behaviour, as specified by
  * command received from userspace.
  */
-int set_firewall_options(command* cmd, const uid_t commander);
+int set_firewall_options(struct net *net, command* cmd, const uid_t commander);
 
 void opts_to_cmd(command* cmd);
 
@@ -144,22 +144,22 @@ void print_state_entries_memory_usage(void);
 
 void print_nat_entries_memory_usage(void);
 
-int send_rule_list_to_userspace(void);
-int send_a_list(ipfire_rule* rlist);
-int send_tables(void);
-int send_dnat_tables(void);
-int send_snat_tables(void);
-int send_ktables_usage(void);
-int do_userspace_exit_tasks(uid_t userspace_commander);
+int send_rule_list_to_userspace(struct net *net);
+int send_a_list(struct net *net, ipfire_rule* rlist);
+int send_tables(struct net *net);
+int send_dnat_tables(struct net *net);
+int send_snat_tables(struct net *net);
+int send_ktables_usage(struct net *net);
+int do_userspace_exit_tasks(struct net *net, uid_t userspace_commander);
 int flush_ruleset(uid_t userspace_commander, int flush_command);
 int free_rules(ipfire_rule*, uid_t user);
 int free_dynamic_tables(void);
 /* NAT tables freed via free_nat_tables() in nat_table.h */
-int tell_user_howmany_rules_flushed(int howmany);
-int send_loguser_enabled(int logu_enabled);
-int initial_handshake(command *hello, uid_t userspace_uid);
+int tell_user_howmany_rules_flushed(struct net *net, int howmany);
+int send_loguser_enabled(struct net *net, int logu_enabled);
+int initial_handshake(struct net *net, command *hello, uid_t userspace_uid);
 int register_log_function(int loglevel);
-int send_back_command(const command *cmd);
+int send_back_command(struct net *net, const command *cmd);
 int process_data_received(struct sk_buff *skb);
 void fill_state_info(struct state_info *stinfo, const struct state_table *stt);
 
@@ -174,10 +174,10 @@ void fill_state_info(struct state_info *stinfo, const struct state_table *stt);
  *  If that pointer is not NULL, the command is ready to be sent to userspace via the
  *  netlink CONTROL socket.
  */
-int manage_rule(command* rule_from_user);
+int manage_rule(struct net *net, command* rule_from_user);
 
 
-int skb_send_to_user(struct sk_buff* skb, int type_of_message);
+int skb_send_to_user(struct net *net, struct sk_buff* skb, int type_of_message);
 int get_input_response(void);
 int get_output_response(void);
 int get_forward_response(void);
@@ -186,7 +186,7 @@ int get_forward_response(void);
  * sends a simple exit command. It resets counters and
  * pid values for accepting new registrations for right
  * userspace firewalls */
-int simple_exit(void);
+int simple_exit(struct net *net);
 
 void init_options(struct ipfire_options* opts);
 
@@ -201,12 +201,12 @@ int find_rules(const ipfire_rule* rlist, const ipfire_rule* rule);
 void init_kernel_stats(struct kernel_stats* nl_kstats);
 
 /* sends to userspace the passed kernel_stats structure */
-int send_kstats(void );
+int send_kstats(struct net *net);
 
 /* Sends to userspace the passed kernel_stats light structure.
  * This is for the GUI which has a SystemTray that indicates the
  * traffic being filtered.
  */
-int send_kstats_light(void );
+int send_kstats_light(struct net *net);
 
 #endif

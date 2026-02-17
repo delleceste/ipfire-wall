@@ -16,55 +16,56 @@ static void nl_receive_control(struct sock *sk, int len);
 static void nl_receive_data(struct sock *sk, int len);
 #endif
 
-static int create_control_socket(void) {
+static int create_control_socket(struct net *net) {
+  struct sock *sk;
+  struct ipfire_net *ipfire_net = ipfire_pernet(net);
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 14)
-  sknl_ipfi_control =
-      netlink_kernel_create(NETLINK_IPFI_CONTROL, nl_receive_control);
+  sk = netlink_kernel_create(NETLINK_IPFI_CONTROL, nl_receive_control);
 
 #elif LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 22)
-  sknl_ipfi_control = netlink_kernel_create(NETLINK_IPFI_CONTROL, 0,
+  sk = netlink_kernel_create(NETLINK_IPFI_CONTROL, 0,
                                             nl_receive_control, THIS_MODULE);
 
 #elif LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 24)
-  sknl_ipfi_control = netlink_kernel_create(
+  sk = netlink_kernel_create(
       NETLINK_IPFI_CONTROL, 0, nl_receive_control, NULL, THIS_MODULE);
 #elif LINUX_VERSION_CODE < KERNEL_VERSION(3, 6, 0)
-  sknl_ipfi_control =
-      netlink_kernel_create(&init_net, NETLINK_IPFI_CONTROL, 0,
-                            nl_receive_control, NULL, THIS_MODULE);
+  sk = netlink_kernel_create(net, NETLINK_IPFI_CONTROL, 0,
+                             nl_receive_control, NULL, THIS_MODULE);
 #else
   struct netlink_kernel_cfg netlink_cfg;
   netlink_cfg.groups = 0;
   netlink_cfg.flags = 0;
   netlink_cfg.input = nl_receive_control;
   netlink_cfg.bind = NULL;
-  sknl_ipfi_control =
-      netlink_kernel_create(&init_net, NETLINK_IPFI_CONTROL, &netlink_cfg);
+  sk = netlink_kernel_create(net, NETLINK_IPFI_CONTROL, &netlink_cfg);
 
 #endif
 
-  userspace_control_pid = 0;
-  if (sknl_ipfi_control == NULL) {
+  ipfire_net->userspace_control_pid = 0;
+  if (sk == NULL) {
     IPFI_PRINTK(
         "IPFIRE: create_socket(): failed to create netlink control socket\n");
     return -1;
   }
+  ipfire_net->sknl_ipfi_control = sk;
   return 0;
 }
 
-static int create_data_socket(void) {
+static int create_data_socket(struct net *net) {
+  struct sock *sk;
+  struct ipfire_net *ipfire_net = ipfire_pernet(net);
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 14)
-  sknl_ipfi_data = netlink_kernel_create(NETLINK_IPFI_DATA, nl_receive_data);
+  sk = netlink_kernel_create(NETLINK_IPFI_DATA, nl_receive_data);
 #elif LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 22)
-  sknl_ipfi_data =
-      netlink_kernel_create(NETLINK_IPFI_DATA, 0, nl_receive_data, THIS_MODULE);
+  sk = netlink_kernel_create(NETLINK_IPFI_DATA, 0, nl_receive_data, THIS_MODULE);
 
 #elif LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 24)
 
-  sknl_ipfi_data = netlink_kernel_create(NETLINK_IPFI_DATA, 0, nl_receive_data,
+  sk = netlink_kernel_create(NETLINK_IPFI_DATA, 0, nl_receive_data,
                                          NULL, THIS_MODULE);
 #elif LINUX_VERSION_CODE < KERNEL_VERSION(3, 6, 0)
-  sknl_ipfi_data = netlink_kernel_create(&init_net, NETLINK_IPFI_DATA, 0,
+  sk = netlink_kernel_create(net, NETLINK_IPFI_DATA, 0,
                                          nl_receive_data, NULL, THIS_MODULE);
 #else
   struct netlink_kernel_cfg netlink_cfg;
@@ -72,46 +73,46 @@ static int create_data_socket(void) {
   netlink_cfg.flags = 0;
   netlink_cfg.input = nl_receive_data;
   netlink_cfg.bind = NULL;
-  sknl_ipfi_data =
-      netlink_kernel_create(&init_net, NETLINK_IPFI_DATA, &netlink_cfg);
+  sk = netlink_kernel_create(net, NETLINK_IPFI_DATA, &netlink_cfg);
 #endif
 
-  userspace_data_pid = 0;
-  if (sknl_ipfi_data == NULL) {
+  ipfire_net->userspace_data_pid = 0;
+  if (sk == NULL) {
     printk("IPFIRE: create_socket(): failed to create netlink data socket\n");
     return -1;
   }
+  ipfire_net->sknl_ipfi_data = sk;
   return 0;
 }
 
-static int create_gui_notifier_socket(void) {
+static int create_gui_notifier_socket(struct net *net) {
+  struct sock *sk;
+  struct ipfire_net *ipfire_net = ipfire_pernet(net);
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 14)
-  sknl_ipfi_gui_notifier =
-      netlink_kernel_create(NETLINK_IPFI_GUI_NOTIFIER, NULL);
+  sk = netlink_kernel_create(NETLINK_IPFI_GUI_NOTIFIER, NULL);
 #elif LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 22)
-  sknl_ipfi_gui_notifier =
-      netlink_kernel_create(NETLINK_IPFI_GUI_NOTIFIER, 0, NULL, THIS_MODULE);
+  sk = netlink_kernel_create(NETLINK_IPFI_GUI_NOTIFIER, 0, NULL, THIS_MODULE);
 #elif LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 24)
 
-  sknl_ipfi_gui_notifier = netlink_kernel_create(NETLINK_IPFI_GUI_NOTIFIER, 0,
+  sk = netlink_kernel_create(NETLINK_IPFI_GUI_NOTIFIER, 0,
                                                  NULL, NULL, THIS_MODULE);
 #elif LINUX_VERSION_CODE < KERNEL_VERSION(3, 6, 0)
-  sknl_ipfi_gui_notifier = netlink_kernel_create(
-      &init_net, NETLINK_IPFI_GUI_NOTIFIER, 0, NULL, NULL, THIS_MODULE);
+  sk = netlink_kernel_create(
+      net, NETLINK_IPFI_GUI_NOTIFIER, 0, NULL, NULL, THIS_MODULE);
 #else
   struct netlink_kernel_cfg netlink_cfg;
   netlink_cfg.groups = 0;
   netlink_cfg.flags = 0;
   netlink_cfg.input = NULL;
   netlink_cfg.bind = NULL;
-  sknl_ipfi_gui_notifier =
-      netlink_kernel_create(&init_net, NETLINK_IPFI_GUI_NOTIFIER, &netlink_cfg);
+  sk = netlink_kernel_create(net, NETLINK_IPFI_GUI_NOTIFIER, &netlink_cfg);
 #endif
-  if (sknl_ipfi_gui_notifier == NULL) {
+  if (sk == NULL) {
     IPFI_PRINTK("IPFIRE: create_socket(): failed to create netlink gui "
                 "notifier socket\n");
     return -1;
   }
+  ipfire_net->sknl_ipfi_gui_notifier = sk;
   return 0;
 }
 
@@ -160,19 +161,23 @@ pid_t get_sender_pid(const struct sk_buff *skbff) {
 
 static void nl_receive_control(struct sk_buff *skb) {
   pid_t pid;
+  struct net *net = sock_net(skb->sk);
+  struct ipfire_net *ipfire_net = ipfire_pernet(net);
 
   pid = get_sender_pid(skb);
-  userspace_uid = from_kuid(&init_user_ns, NETLINK_CREDS(skb)->uid);
-  if ((userspace_control_pid != 0) && (pid != userspace_control_pid))
-    send_back_fw_busy(pid);
+  ipfire_net->userspace_uid = from_kuid(&init_user_ns, NETLINK_CREDS(skb)->uid);
+  if ((ipfire_net->userspace_control_pid != 0) && (pid != ipfire_net->userspace_control_pid))
+    send_back_fw_busy(net, pid);
   else {
-    userspace_control_pid = pid;
+    ipfire_net->userspace_control_pid = pid;
     process_control_received(skb);
   }
 }
 
 static void nl_receive_data(struct sk_buff *skb) {
-  userspace_data_pid = get_sender_pid(skb);
+  struct net *net = sock_net(skb->sk);
+  struct ipfire_net *ipfire_net = ipfire_pernet(net);
+  ipfire_net->userspace_data_pid = get_sender_pid(skb);
   process_data_received(skb);
 }
 
@@ -190,12 +195,12 @@ void init_ruleset_heads(void) {
   INIT_LIST_HEAD(&masquerade_post.list);
 }
 
-int init_netl(void) {
+int init_netl(struct net *net) {
   int ctrl_so, data_so, gui_so;
   data_so = 0, ctrl_so = 0, gui_so = 0;
-  ctrl_so = create_control_socket();
-  data_so = create_data_socket();
-  gui_so = create_gui_notifier_socket();
+  ctrl_so = create_control_socket(net);
+  data_so = create_data_socket(net);
+  gui_so = create_gui_notifier_socket(net);
 
   memset(moderate_print, 0, sizeof(unsigned int) * MAXMODERATE_ARGS);
   memset(moderate_print_limit, 0, sizeof(unsigned int) * MAXMODERATE_ARGS);
@@ -208,39 +213,40 @@ int init_netl(void) {
     return -1;
 }
 
-void fini_netl(void) {
-  IPFI_PRINTK("IPFIRE: Closing netlink sockets: control... ");
-  if (sknl_ipfi_control != NULL) {
+void fini_netl(struct net *net) {
+  struct ipfire_net *ipfire_net = ipfire_pernet(net);
+  IPFI_PRINTK("IPFIRE: Closing netlink sockets for net %px: control... ", net);
+  if (ipfire_net->sknl_ipfi_control != NULL) {
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 24)
-    sock_release(sknl_ipfi_control->sk_socket);
+    sock_release(ipfire_net->sknl_ipfi_control->sk_socket);
 #else
-    netlink_kernel_release(sknl_ipfi_control);
+    netlink_kernel_release(ipfire_net->sknl_ipfi_control);
 #endif
-    sknl_ipfi_control = NULL;
+    ipfire_net->sknl_ipfi_control = NULL;
   } else
     IPFI_PRINTK("IPFIRE: NULL control netlink socket!\n");
 
   IPFI_PRINTK("data... ");
 
-  if (sknl_ipfi_data != NULL) {
+  if (ipfire_net->sknl_ipfi_data != NULL) {
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 24)
-    sock_release(sknl_ipfi_data->sk_socket);
+    sock_release(ipfire_net->sknl_ipfi_data->sk_socket);
 #else
-    netlink_kernel_release(sknl_ipfi_data);
+    netlink_kernel_release(ipfire_net->sknl_ipfi_data);
 #endif
-    sknl_ipfi_data = NULL;
+    ipfire_net->sknl_ipfi_data = NULL;
   } else
     IPFI_PRINTK("IPFIRE: NULL data netlink socket!\n");
 
   IPFI_PRINTK("GUI notifier.\n");
 
-  if (sknl_ipfi_gui_notifier != NULL) {
+  if (ipfire_net->sknl_ipfi_gui_notifier != NULL) {
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 24)
-    sock_release(sknl_ipfi_gui_notifier->sk_socket);
+    sock_release(ipfire_net->sknl_ipfi_gui_notifier->sk_socket);
 #else
-    netlink_kernel_release(sknl_ipfi_gui_notifier);
+    netlink_kernel_release(ipfire_net->sknl_ipfi_gui_notifier);
 #endif
-    sknl_ipfi_gui_notifier = NULL;
+    ipfire_net->sknl_ipfi_gui_notifier = NULL;
   } else
     IPFI_PRINTK(
         "IPFIRE: the gui notifier socket is already NULL (disabled)!\n");

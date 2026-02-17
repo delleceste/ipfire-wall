@@ -126,8 +126,7 @@ int find_rules(const ipfire_rule *rlist, const ipfire_rule * rule)
     return -1;
 }
 
-int manage_rule(command * rule_from_user)
-{
+int manage_rule(struct net *net, command *rule_from_user) {
     short add = 0;
     uid_t rule_owner;
     if(rule_from_user == NULL)
@@ -141,8 +140,9 @@ int manage_rule(command * rule_from_user)
     else
         rule_from_user->cmd = RULE_ALREADY_PRESENT;
 
-    if (send_back_command(rule_from_user) < 0)
-        return -1;
+    if (send_back_command(net, rule_from_user) < 0)
+      IPFI_PRINTK("IPFIRE: error sending response to rule deletion to "
+                  "userspace!\n");
 
     if (add > 0)
         add_rule_to_list_by_command(rule_from_user);
