@@ -83,8 +83,8 @@ int wait_acknowledgement(void) {
   if (cmdack.cmd == ACKNOWLEDGEMENT) {
     return 1;
   } else {
-    PRED, printf(TR("Bad ACKNOWLEDGEMENT value (%d) (Should be 50)!"),
-                 cmdack.cmd);
+    PRED, printf(TR("Bad ACKNOWLEDGEMENT value (%d) (Should be %d)!"),
+                 cmdack.cmd, ACKNOWLEDGEMENT);
     PNL;
     PNL;
     return -1;

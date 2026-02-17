@@ -35,7 +35,8 @@ $(MODULE_NAME)-objs += netlink/netlink.o \
 
 # NAT components
 $(MODULE_NAME)-objs += nat/nat_engine.o \
-                       nat/nat_table.o \
+                       nat/dnat/dnat_table.o \
+                       nat/snat/snat_table.o \
                        nat/dnat/dnat.o \
                        nat/snat/snat.o \
                        nat/snat/masquerade.o
@@ -63,7 +64,7 @@ all:
 	@for dir in $(SUBDIRS); do mkdir -p $(BUILD_DIR)/$$dir; done
 	@printf "/* Compilation system and compilation date.\n * Written by Makefile */\n#define _BUILD_DATE \"%%s\"\n#define _BUILD_SYS \"%%s\"\n\n" "`date`" "`uname -sro`" > includes/build.h
 	@# Create symlinks for all .c files in build dir to allow out-of-tree build
-	@find . -name "*.c" -not -path "./$(BUILD_DIR)/*" | while read f; do \
+	@find . -name "*.[ch]" -not -path "./$(BUILD_DIR)/*" | while read f; do \
 		dest=$(BUILD_DIR)/$${f#./}; \
 		mkdir -p $$(dirname $$dest); \
 		ln -sf $(PWD)/$${f#./} $$dest; \

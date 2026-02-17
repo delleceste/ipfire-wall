@@ -40,6 +40,8 @@ char *libnetl_err_string(void);
 void libnetl_perror(const char *s);
 /* drain the netlink socket buffer */
 int netl_flush_socket(const struct netl_handle *h);
+/* set a receive timeout on the socket (seconds) */
+int netl_set_recv_timeout(struct netl_handle *h, int seconds);
 
 /* creation of the packet to send to kernel space */
 /* allocates the netlink packet and fills in header fields */

@@ -1,4 +1,4 @@
-#include "ipfi_state_machine.h"
+#include "state_machine.h"
 
 int state_machine(const struct sk_buff *skb, int current_state, short reverse)
 {

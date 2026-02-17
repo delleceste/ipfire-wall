@@ -4,8 +4,9 @@
 #include "ipfi.h"
 #include "ipfi_machine.h"
 #include "ipfi_netl.h"
-#include "ipfi_state_machine.h"
-#include "ipfi_translation.h"
+#include "../../filter/state/state_machine.h"
+#include "nat.h"
+#include <linux/icmp.h>
 #include <linux/icmp.h>
 #include <linux/ip.h>
 #include <linux/module.h>

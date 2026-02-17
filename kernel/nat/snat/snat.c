@@ -4,8 +4,11 @@
 #include "ipfi.h"
 #include "ipfi_machine.h"
 #include "ipfi_netl.h"
-#include "ipfi_state_machine.h"
-#include "ipfi_translation.h"
+#include "../../filter/state/state_machine.h"
+#include "../nat.h"
+#include "snat.h"
+#include "../dnat/dnat.h"
+#include "message_builder.h"
 #include "message_builder.h"
 #include <linux/ip.h>
 #include <linux/module.h>
@@ -27,6 +30,7 @@ int snat_translation(struct sk_buff *skb, const ipfi_flow *flow,
     if (translation_rule_match(skb, flow, flags, snatrule) > 0) {
       if ((snt = add_snatted_entry(skb, flow, resp, flags, snatrule)) != NULL) {
         int status = snat_packet(skb, snt);
+        snatted_put(snt);
         rcu_read_unlock_bh();
         return status;
       }
@@ -78,6 +82,7 @@ struct snatted_table *add_snatted_entry(const struct sk_buff *skb,
                              snatted_entry->old_daddr, snatted_entry->old_dport,
                              snatted_entry->protocol));
   */
+  snatted_hold(snatted_entry);
   list_add_rcu(&snatted_entry->lnode, &snat_list);
   snatted_entry_counter++;
   spin_unlock_bh(&snat_list_lock);

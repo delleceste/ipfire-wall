@@ -1369,8 +1369,8 @@ int send_to_kernel(void *mess, const struct netl_handle *handle,
       netl_free_nlmess(messhead);
       return 1;
     } else {
-      PRED, printf(TR("Bad ACKNOWLEDGEMENT value (%d) (Should be 50)!"),
-                   cmdack.cmd);
+      PRED, printf(TR("Bad ACKNOWLEDGEMENT value (%d) (Should be %d)!"),
+                   cmdack.cmd, ACKNOWLEDGEMENT);
       netl_free_nlmess(messhead);
       return -1;
     }

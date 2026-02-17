@@ -16,11 +16,10 @@
 #include <net/sock.h>
 #include "ipfi.h"
 #include "ipfi_log.h"
-#include "ipfi_machine.h"
-#include "ipfi_translation.h"
+#include "../nat/snat/snat.h"
+#include "../nat/dnat/dnat.h"
+#include "../filter/state/state_table.h"
 #include <common/ipfi_structures.h>
-
-struct state_table;
 
 /* Smart logging */
 enum smartlog_type

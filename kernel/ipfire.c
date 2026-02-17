@@ -7,7 +7,8 @@
 #include "ipfi_netl.h"
 #include "ipfi_proc.h"
 #include "ipfi_tcpmss.h"
-#include "ipfi_translation.h"
+#include "ipfi_machine.h"
+#include <linux/init.h>
 #include "message_builder.h"
 #include "module_init.h"
 #include <linux/list.h>
@@ -32,7 +33,7 @@ MODULE_DESCRIPTION("IPv4 packet filter");
  * Filtro di pacchetti con funzionalita' di NAT.
  * Il software in kernel space consta di 6 moduli interdipendenti.
  * Per problemi potete scrivere a Giacomo S.
- * posta elettronica: jacum@libero.it
+ * posta elettronica: delleceste@gmail.com
  * Software libero :)
  * Si legga la documentazione per l'uso e l'installazione.
  * I commenti al codice e la documentazione sono in lingua inglese

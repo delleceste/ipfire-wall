@@ -2,8 +2,11 @@
 #include "ipfi.h"
 #include "ipfi_machine.h"
 #include "ipfi_netl.h"
-#include "ipfi_state_machine.h"
-#include "ipfi_translation.h"
+#include "../../filter/state/state_machine.h"
+#include "ipfi_netl.h"
+#include "../nat.h"
+#include "dnat.h"
+#include "message_builder.h"
 #include "message_builder.h"
 #include <linux/ip.h>
 #include <linux/module.h>
@@ -41,6 +44,7 @@ int dnat_translation(struct sk_buff *skb, const ipfi_flow *flow,
 
 			if ((dnt = add_dnatted_entry(skb, flow, resp, flags, transrule)) != NULL) {
         dest_translate(skb, dnt);
+        dnatted_put(dnt);
         rcu_read_unlock_bh();
         return 0;
       }
@@ -245,9 +249,10 @@ struct dnatted_table *add_dnatted_entry(const struct sk_buff *skb,
   /* TODO: restore hash
   hash_add_rcu(dnat_hashtable, &newtable->hnode, hash);
   */
+  dnatted_hold(newtable); // second ref: in the list
   list_add_rcu(&newtable->lnode, &dnat_list);
   dnatted_entry_counter++;
   spin_unlock_bh(&dnat_list_lock);
 	add_timer(&newtable->timer_dnattedlist);
-  return newtable;
+  return newtable; // first ref: returned to caller
 }

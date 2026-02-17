@@ -265,6 +265,22 @@ int read_from_kern(const struct netl_handle *h, unsigned char *buf,
   return netl_receive_from_kernel(h, buf, len);
 }
 
+/* Set a receive timeout on the netlink socket.
+ * Prevents indefinite blocking if a sentinel message is lost.
+ */
+int netl_set_recv_timeout(struct netl_handle *h, int seconds) {
+  struct timeval tv;
+  if (h == NULL || seconds < 0)
+    return -1;
+  tv.tv_sec = seconds;
+  tv.tv_usec = 0;
+  if (setsockopt(h->fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
+    perror("setsockopt(SO_RCVTIMEO) failed");
+    return -1;
+  }
+  return 0;
+}
+
 /* print errors */
 /* returns the string corresponding to the error code */
 char *libnetl_err_string(void) { return libnetl_strerror(netl_errno); }

@@ -229,6 +229,8 @@ int main(int argc, char *argv[]) {
   /* send to kernel options and rules */
   /* create netlink control socket */
   nh_control = alloc_netl_handle(NETLINK_IPFI_CONTROL);
+  if (nh_control)
+    netl_set_recv_timeout(nh_control, 10);
   /* send hello message to kernel */
   if (!nh_control || (hellocode = hello_handshake(&hellocmd)) < 0) {
     PNL, PRED, printf(TR("Error sending hello to firewall.")), PNL, PNL,

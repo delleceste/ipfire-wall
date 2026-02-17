@@ -127,6 +127,7 @@ struct state_table* get_params_and_alloc_newentry(const struct state_table* orig
 		}
 		/* to start, copy old table into new one */
 		memset(newt, 0, sizeof(struct state_table));
+		refcount_set(&newt->refcnt, 1);
         newt->saddr = orig->saddr;
         newt->sport = orig->sport;
         newt->direction = orig->direction;

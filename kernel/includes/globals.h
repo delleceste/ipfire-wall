@@ -4,7 +4,9 @@
 #include "ipfi.h"
 #include "ipfi_log.h"
 #include "ipfi_machine.h"
-#include "ipfi_translation.h"
+#include "../nat/nat.h"
+#include "../nat/dnat/dnat.h"
+#include "../nat/snat/snat.h"
 #include <linux/percpu.h>
 #include <linux/spinlock.h>
 #include <linux/types.h>

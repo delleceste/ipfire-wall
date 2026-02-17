@@ -8,7 +8,8 @@
 
 #include "ipfi_netl.h"
 #include "ipfi.h"
-#include "ipfi_translation.h"
+#include "ipfi_machine.h"
+#include "../nat/nat.h"
 #include "ipfi_machine.h" 
 
 typedef struct

@@ -3,7 +3,10 @@
 
 #include "ipfi.h"
 #include "ipfi_machine.h"
-#include "ipfi_translation.h"
+#include "ipfi.h"
+#include "../nat/nat.h"
+#include "../nat/snat/snat.h"
+#include "../nat/dnat/dnat.h"
 
 struct sk_buff *build_packet(void *buf, int numbytes);
 

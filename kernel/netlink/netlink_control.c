@@ -9,6 +9,7 @@
 #include <linux/netlink.h>
 #include <linux/skbuff.h>
 #include <linux/slab.h>
+#include <linux/delay.h>
 #include <linux/user_namespace.h>
 
 void fill_dnat_info(struct dnat_info *dninfo,
@@ -503,127 +504,150 @@ int send_a_list(ipfire_rule *rlist) {
   return 0;
 }
 
+/* Helper: send a single skb to userspace with retry on failure.
+ * netlink_unicast consumes the skb on both success and failure,
+ * so we must rebuild on retry. Returns 0 on success, < 0 on failure.
+ */
+static int send_with_retry(void *data, int data_size, int retries) {
+  struct sk_buff *skb;
+  while (retries-- > 0) {
+    skb = build_packet(data, data_size);
+    if (skb == NULL)
+      return -ENOMEM;
+    if (skb_send_to_user(skb, CONTROL_DATA) >= 0)
+      return 0;
+    if (retries > 0)
+      msleep(20);
+  }
+  return -ENOBUFS;
+}
+
 int send_tables(void) {
   struct state_table *st;
-  struct state_info *endmess;
-  struct state_info *st_info;
-  struct sk_buff *buf_touser = NULL, *buf_touser_endmess = NULL;
+  struct state_info *entries = NULL;
+  struct state_info endmess;
+  int count = 0, i, max_entries;
 
-  /* TODO: restore hash
-  int bkt;
-  */
+  /* Phase 1: Pre-allocate array outside RCU (can sleep) */
+  max_entries = READ_ONCE(state_tables_counter);
+  if (max_entries > 0) {
+    entries = kmalloc_array(max_entries, sizeof(struct state_info), GFP_KERNEL);
+    if (entries == NULL)
+      goto send_end_marker;
+  }
+
+  /* Phase 2: Collect entries under RCU lock */
   rcu_read_lock_bh();
   /* TODO: restore hash
   hash_for_each_rcu(state_hashtable, bkt, st, hnode) {
   */
   list_for_each_entry_rcu(st, &state_list, lnode) {
-    st_info =
-        (struct state_info *)kmalloc(sizeof(struct state_info), GFP_ATOMIC);
-    if (st_info != NULL) {
-      fill_state_info(st_info, st);
-      buf_touser = build_state_info_packet(st_info);
-      if (buf_touser != NULL) {
-        if (skb_send_to_user(buf_touser, CONTROL_DATA) < 0) {
-          kfree(st_info);
-          break;
-        }
-      }
-      kfree(st_info);
-    }
+    if (count >= max_entries)
+      break;
+    fill_state_info(&entries[count], st);
+    count++;
   }
   rcu_read_unlock_bh();
 
-  endmess = (struct state_info *)kmalloc(sizeof(struct state_info), GFP_KERNEL);
-  if (endmess != NULL) {
-    memset(endmess, 0, sizeof(struct state_info));
-    endmess->direction = PRINT_FINISHED;
-    buf_touser_endmess = build_state_info_packet(endmess);
-    if (buf_touser_endmess != NULL)
-      skb_send_to_user(buf_touser_endmess, CONTROL_DATA);
-    kfree(endmess);
+  /* Phase 3: Send entries outside RCU lock (can sleep/retry) */
+  for (i = 0; i < count; i++) {
+    if (send_with_retry(&entries[i], sizeof(struct state_info), 5) < 0)
+      break;
   }
+
+  kfree(entries);
+
+send_end_marker:
+  /* Phase 4: Send PRINT_FINISHED (always, with retry) */
+  memset(&endmess, 0, sizeof(endmess));
+  endmess.direction = PRINT_FINISHED;
+  send_with_retry(&endmess, sizeof(struct state_info), 5);
   return 0;
 }
 
 int send_dnat_tables(void) {
   struct dnatted_table *dt;
-  struct dnat_info *endmess;
-  struct dnat_info *dn_info;
-  struct sk_buff *skb_to_user = NULL;
+  struct dnat_info *entries = NULL;
+  struct dnat_info endmess;
+  int count = 0, i, max_entries;
 
-  /* TODO: restore hash
-  int bkt;
-  */
+  /* Phase 1: Pre-allocate array outside RCU (can sleep) */
+  max_entries = READ_ONCE(dnatted_entry_counter);
+  if (max_entries > 0) {
+    entries = kmalloc_array(max_entries, sizeof(struct dnat_info), GFP_KERNEL);
+    if (entries == NULL)
+      goto send_end_marker;
+  }
+
+  /* Phase 2: Collect entries under RCU lock */
   rcu_read_lock();
   /* TODO: restore hash
   hash_for_each_rcu(dnat_hashtable, bkt, dt, hnode) {
   */
   list_for_each_entry_rcu(dt, &dnat_list, lnode) {
-    dn_info = (struct dnat_info *)kmalloc(sizeof(struct dnat_info), GFP_ATOMIC);
-    if (dn_info != NULL) {
-      fill_dnat_info(dn_info, dt);
-      skb_to_user = build_dnat_info_packet(dn_info);
-      if (skb_to_user != NULL) {
-        if (skb_send_to_user(skb_to_user, CONTROL_DATA) < 0) {
-          kfree(dn_info);
-          break;
-        }
-      }
-      kfree(dn_info);
-    }
+    if (count >= max_entries)
+      break;
+    fill_dnat_info(&entries[count], dt);
+    count++;
   }
   rcu_read_unlock();
 
-  endmess = (struct dnat_info *)kmalloc(sizeof(struct dnat_info), GFP_KERNEL);
-  if (endmess != NULL) {
-    memset(endmess, 0, sizeof(struct dnat_info));
-    endmess->direction = PRINT_FINISHED;
-    skb_to_user = build_dnat_info_packet(endmess);
-    if (skb_to_user != NULL)
-      skb_send_to_user(skb_to_user, CONTROL_DATA);
-    kfree(endmess);
+  /* Phase 3: Send entries outside RCU lock (can sleep/retry) */
+  for (i = 0; i < count; i++) {
+    if (send_with_retry(&entries[i], sizeof(struct dnat_info), 5) < 0)
+      break;
   }
+
+  kfree(entries);
+
+send_end_marker:
+  /* Phase 4: Send PRINT_FINISHED (always, with retry) */
+  memset(&endmess, 0, sizeof(endmess));
+  endmess.direction = PRINT_FINISHED;
+  send_with_retry(&endmess, sizeof(struct dnat_info), 5);
   return 0;
 }
 
 int send_snat_tables(void) {
   struct snatted_table *st;
-  struct snat_info *endmess;
-  struct snat_info *sn_info;
-  struct sk_buff *skb_to_user = NULL;
+  struct snat_info *entries = NULL;
+  struct snat_info endmess;
+  int count = 0, i, max_entries;
 
-  /* TODO: restore hash
-  int bkt;
-  */
+  /* Phase 1: Pre-allocate array outside RCU (can sleep) */
+  max_entries = READ_ONCE(snatted_entry_counter);
+  if (max_entries > 0) {
+    entries = kmalloc_array(max_entries, sizeof(struct snat_info), GFP_KERNEL);
+    if (entries == NULL)
+      goto send_end_marker;
+  }
+
+  /* Phase 2: Collect entries under RCU lock */
   rcu_read_lock();
   /* TODO: restore hash
   hash_for_each_rcu(snat_hashtable, bkt, st, hnode) {
   */
   list_for_each_entry_rcu(st, &snat_list, lnode) {
-    sn_info = (struct snat_info *)kmalloc(sizeof(struct snat_info), GFP_ATOMIC);
-    if (sn_info != NULL) {
-      fill_snat_info(sn_info, st);
-      skb_to_user = build_snat_info_packet(sn_info);
-      if (skb_to_user != NULL) {
-        if (skb_send_to_user(skb_to_user, CONTROL_DATA) < 0) {
-          kfree(sn_info);
-          break;
-        }
-      }
-      kfree(sn_info);
-    }
+    if (count >= max_entries)
+      break;
+    fill_snat_info(&entries[count], st);
+    count++;
   }
   rcu_read_unlock();
 
-  endmess = (struct snat_info *)kmalloc(sizeof(struct snat_info), GFP_KERNEL);
-  if (endmess != NULL) {
-    memset(endmess, 0, sizeof(struct snat_info));
-    endmess->direction = PRINT_FINISHED;
-    skb_to_user = build_snat_info_packet(endmess);
-    if (skb_to_user != NULL)
-      skb_send_to_user(skb_to_user, CONTROL_DATA);
-    kfree(endmess);
+  /* Phase 3: Send entries outside RCU lock (can sleep/retry) */
+  for (i = 0; i < count; i++) {
+    if (send_with_retry(&entries[i], sizeof(struct snat_info), 5) < 0)
+      break;
   }
+
+  kfree(entries);
+
+send_end_marker:
+  /* Phase 4: Send PRINT_FINISHED (always, with retry) */
+  memset(&endmess, 0, sizeof(endmess));
+  endmess.direction = PRINT_FINISHED;
+  send_with_retry(&endmess, sizeof(struct snat_info), 5);
   return 0;
 }
 

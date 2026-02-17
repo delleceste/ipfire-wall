@@ -3,7 +3,7 @@
 #include "globals.h"
 #include "ipfi.h"
 #include "ipfi_machine.h"
-#include "ipfi_state_machine.h"
+#include "state_machine.h"
 #include <linux/bitops.h>
 #include <linux/jhash.h>
 #include <linux/list.h>
@@ -399,12 +399,6 @@ int add_state_table_to_list(struct state_table *newtable) {
     if (unlikely(READ_ONCE(we_are_exiting))) {
         return -EBUSY;
     }
-
-    /* TODO: restore hash
-  u32 key = get_state_hash(newtable->saddr, newtable->daddr, newtable->sport,
-                           newtable->dport, newtable->protocol);
-  */
-
     spin_lock_bh(&state_list_lock);
 
     if (unlikely(we_are_exiting)) {
@@ -426,27 +420,17 @@ int add_state_table_to_list(struct state_table *newtable) {
 
 static void free_state_work(struct work_struct *work) {
     struct state_table *st = container_of(work, struct state_table, cleanup_work);
-    /* Wait for any RCU readers that might still be in update_timer_of_state_entry()
-   * to finish. This guarantees no one can rearm the timer after we delete it.
-   */
-    synchronize_rcu();
+    
     /* Safe to synchronously delete the timer now; we are in process context. */
     timer_delete_sync(&st->timer_statelist);
-    /* Now free memory — no RCU readers can touch the object (we synchronized). */
-    kfree(st);
+    
+    /* Now free memory — no RCU readers can touch the object after grace period. */
+    call_rcu(&st->state_rcuh, free_state_entry_rcu_call);
 }
 
 void handle_keep_state_timeout(struct timer_list *t) {
     struct state_table *st = timer_container_of(st, t, timer_statelist);
-
     spin_lock_bh(&state_list_lock);
-    /* TODO: restore hash
-  if (hlist_unhashed(&st->hnode)) {
-    spin_unlock_bh(&state_list_lock);
-    return;
-  }
-  hash_del_rcu(&st->hnode);
-  */
     list_del_rcu(&st->lnode);
     set_bit(IPFI_ST_REMOVED, &st->status);
     state_tables_counter--;
@@ -483,19 +467,27 @@ void unregister_ipfire_netdev_notifier(void) {
 }
 
 int free_state_tables(void) {
-    struct state_table *tl;
-    struct state_table *tmp;
+    struct state_table *tl, *tmp;
+    LIST_HEAD(to_free);
     int counter = 0;
-    spin_lock_bh(&state_list_lock);
-    list_for_each_entry_safe(tl, tmp, &state_list, lnode) {
-        list_del_rcu(&tl->lnode);
-        set_bit(IPFI_ST_REMOVED, &tl->status);
-        state_tables_counter--;
-        counter++;
 
+    spin_lock_bh(&state_list_lock);
+    
+    /* Move whole list into temporary list in O(1) */
+    list_splice_init(&state_list, &to_free);
+    list_for_each_entry(tl, &to_free, lnode)
+        set_bit(IPFI_ST_REMOVED, &tl->status);
+    
+    counter = state_tables_counter;
+    state_tables_counter = 0;
+    
+    spin_unlock_bh(&state_list_lock);
+
+    /* Process in safe context */
+    list_for_each_entry_safe(tl, tmp, &to_free, lnode) {
+        list_del(&tl->lnode); // use lnode as per struct definition in state_table.h
         state_put(tl);
     }
-    spin_unlock_bh(&state_list_lock);
     return counter;
 }
 
@@ -516,9 +508,6 @@ inline void update_timer_of_state_entry(struct state_table *sttable) {
 }
 
 int init_machine(void) {
-    /* TODO: restore hash
-  hash_init(state_hashtable);
-  */
     register_ipfire_netdev_notifier();
     return 0;
 }

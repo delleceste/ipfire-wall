@@ -4,7 +4,7 @@
 #include "ipfi.h"
 #include "ipfi_ftp.h"
 #include "ipfi_machine.h"
-#include "ipfi_state_machine.h"
+#include "state_machine.h"
 #include <linux/ip.h>
 #include <linux/skbuff.h>
 #include <linux/tcp.h>
@@ -43,9 +43,13 @@ struct response check_state(struct sk_buff *skb, const ipfi_flow *flow,
         new_ftp_entry = ftp_support(table_entry, skb);
         if (new_ftp_entry != NULL) {
             if (lookup_state_table_n_update_timer(new_ftp_entry) == 0) {
-            add_ftp_dynamic_rule(new_ftp_entry);
-          }
-          state_put(new_ftp_entry);
+              if (add_ftp_dynamic_rule(new_ftp_entry) < 0) {
+                kfree(new_ftp_entry);
+                new_ftp_entry = NULL;
+              }
+            }
+            if (new_ftp_entry)
+              state_put(new_ftp_entry);
         }
       } else if (table_entry->ftp == FTP_DEFINED) {
         table_entry->ftp = FTP_ESTABLISHED;
