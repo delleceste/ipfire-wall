@@ -1,4 +1,4 @@
-#include "ipfi_proc.h"
+#include "proc/proc.h"
 #include <linux/module.h>
 #include <linux/version.h>
 #include <linux/proc_fs.h>

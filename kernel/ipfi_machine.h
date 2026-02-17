@@ -6,9 +6,9 @@
  * (C) 2005 Giacomo S.
  */
 
-#include "ipfi.h"
-#include "ipfi_ftp.h"
-#include "ipfi_netl.h"
+#include "ipfire.h"
+#include "helpers/ftp.h"
+#include "netlink/ipfi_netl.h"
 #include "globals.h"
 #include <common/ipfi_structures.h>
 #include <linux/hashtable.h>

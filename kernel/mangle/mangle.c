@@ -1,5 +1,5 @@
-#include "ipfi_mangle.h"
-#include "ipfi_tcpmss.h"
+#include "mangle/mangle.h"
+#include "mangle/tcpmss.h"
 
 /**
  * mangle_skb() - Apply packet manipulations based on firewall rule settings

@@ -1,9 +1,9 @@
 /* netlink/netlink_data.c: Netlink data channel for ipfire-wall */
 
 #include "globals.h"
-#include "ipfi.h"
-#include "ipfi_log.h"
-#include "ipfi_netl.h"
+#include "ipfire.h"
+#include "../logging/log.h"
+#include "netlink/ipfi_netl.h"
 #include <linux/module.h>
 #include <linux/netlink.h>
 #include <linux/skbuff.h>
@@ -23,8 +23,7 @@ int process_data_received(struct sk_buff *skb) {
     return -1;
 
   if (listener_mess->message == STARTING) {
-    printk("IPFIRE: userspace listener son started. PID: %d.\n",
-           userspace_data_pid);
+    printk("IPFIRE: userspace listener son started. PID: %d.\n", userspace_data_pid);
     return 0;
   } else if (listener_mess->message == EXITING) {
     IPFI_PRINTK("IPFIRE: userspace listener son exiting.\n");

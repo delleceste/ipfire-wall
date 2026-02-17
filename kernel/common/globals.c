@@ -97,14 +97,10 @@ ipfire_rule translation_post;
 ipfire_rule translation_out;
 ipfire_rule masquerade_post;
 
-/* State and NAT tables */
+/* State tables (NAT lists/locks/counters now in nat_table.c) */
 
 /* DEFINE_HASHTABLE(state_hashtable, STATE_HASH_BITS); TODO: restore hash */
 LIST_HEAD(state_list);
-/* DEFINE_HASHTABLE(dnat_hashtable, DNAT_HASH_BITS); TODO: restore hash */
-/* DEFINE_HASHTABLE(snat_hashtable, SNAT_HASH_BITS); TODO: restore hash */
-LIST_HEAD(dnat_list);
-LIST_HEAD(snat_list);
 
 /* Log info */
 LIST_HEAD(active_logi_list);
@@ -112,8 +108,7 @@ LIST_HEAD(active_logi_list);
 /* Counters */
 unsigned int table_id = 0;
 unsigned int state_tables_counter = 0;
-int dnatted_entry_counter = 0;
-int snatted_entry_counter = 0;
+/* NAT counters now in nat_table.c: nat_counters[] */
 int loginfo_entry_counter = 0;
 
 /* Timeouts and Limits */
@@ -140,8 +135,7 @@ unsigned int moderate_print_limit[MAXMODERATE_ARGS];
 DEFINE_SPINLOCK(rulelist_lock);
 DEFINE_SPINLOCK(state_list_lock);
 DEFINE_SPINLOCK(loginfo_list_lock);
-DEFINE_SPINLOCK(snat_list_lock);
-DEFINE_SPINLOCK(dnat_list_lock);
+/* NAT locks now in nat_table.c: nat_locks[] */
 struct workqueue_struct *ipfire_wq = NULL;
 
 bool we_are_exiting = false;

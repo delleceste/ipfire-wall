@@ -21,10 +21,10 @@
 
 #include <linux/module.h>
 #include <linux/list.h>
-#include "ipfi.h"
-#include "ipfi_netl.h"
+#include "ipfire.h"
+#include "netlink/ipfi_netl.h"
 #include "ipfi_machine.h"
-#include "ipfi_ftp.h"
+#include "helpers/ftp.h"
 
 #define FTPBUF 256
 #define CLEANEDBUF 128
@@ -127,14 +127,14 @@ struct state_table* get_params_and_alloc_newentry(const struct state_table* orig
 		}
 		/* to start, copy old table into new one */
 		memset(newt, 0, sizeof(struct state_table));
-		refcount_set(&newt->refcnt, 1);
+		refcount_set(&newt->h.refcnt, 1);
         newt->saddr = orig->saddr;
         newt->sport = orig->sport;
         newt->direction = orig->direction;
         newt->notify = orig->notify;
         newt->admin = orig->admin;
         newt->protocol = orig->protocol;
-        newt->status = orig->status;
+        newt->h.status = orig->h.status;
         if(orig->in_devname[0]) {
             strncpy(newt->in_devname, orig->in_devname, IFNAMSIZ - 1);
             newt->in_devname[IFNAMSIZ-1] = '\0';

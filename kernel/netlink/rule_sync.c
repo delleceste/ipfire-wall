@@ -4,8 +4,8 @@
 #include <linux/slab.h>
 #include <linux/list.h>
 #include <linux/netdevice.h>
-#include "ipfi.h"
-#include "ipfi_netl.h"
+#include "ipfire.h"
+#include "netlink/ipfi_netl.h"
 #include "ipfi_machine.h"
 #include "globals.h"
 

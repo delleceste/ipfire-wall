@@ -106,13 +106,13 @@ struct sk_buff *build_info_t_nlmsg(const struct sk_buff *skb,
   return nl_skb;
 }
 
-struct sk_buff *build_dnat_t_packet(const struct dnatted_table *dt) {
+struct sk_buff *build_dnat_t_packet(const struct nat_table *dt) {
   struct sk_buff *skb_to_user = NULL;
   skb_to_user = build_packet((void *)dt, sizeof(*dt));
   return skb_to_user;
 }
 
-struct sk_buff *build_snat_t_packet(const struct snatted_table *st) {
+struct sk_buff *build_snat_t_packet(const struct nat_table *st) {
   struct sk_buff *skb_to_user = NULL;
   skb_to_user = build_packet((void *)st, sizeof(*st));
   return skb_to_user;

@@ -1,9 +1,9 @@
 /* nat/nat_engine.c: NAT engine entry point for ipfire-wall */
 
 #include "globals.h"
-#include "ipfi.h"
+#include "ipfire.h"
 #include "ipfi_machine.h"
-#include "ipfi_netl.h"
+#include "netlink/ipfi_netl.h"
 #include "../../filter/state/state_machine.h"
 #include "nat.h"
 #include <linux/icmp.h>
@@ -240,13 +240,13 @@ int get_original_dest(struct sock *sk, int optval, void __user *user,
   return 0;
 }
 
-int get_orig_from_dnat_entry(const struct dnatted_table *dnt,
+int get_orig_from_dnat_entry(const struct nat_table *dnt,
                              const net_quadruplet *n4,
                              struct sockaddr_in *sin) {
   if (dnt->protocol != IPPROTO_TCP)
     return -1;
-  if ((dnt->old_saddr == n4->daddr) && (dnt->new_daddr == n4->saddr) &&
-      (dnt->old_sport == n4->dport) && (dnt->new_dport == n4->sport)) {
+  if ((dnt->old_saddr == n4->daddr) && (dnt->new_addr == n4->saddr) &&
+      (dnt->old_sport == n4->dport) && (dnt->new_port == n4->sport)) {
     sin->sin_addr.s_addr = dnt->old_daddr;
     sin->sin_port = dnt->old_dport;
     return 1;
@@ -256,7 +256,7 @@ int get_orig_from_dnat_entry(const struct dnatted_table *dnt,
 
 int lookup_dnat_table_and_getorigdst(const net_quadruplet *n4,
                                      struct sockaddr_in *sin) {
-  struct dnatted_table *dntmp;
+  struct nat_table *dntmp;
   /* TODO: restore hash
   int bkt;
   */
@@ -264,7 +264,7 @@ int lookup_dnat_table_and_getorigdst(const net_quadruplet *n4,
   /* TODO: restore hash
   hash_for_each_rcu(dnat_hashtable, bkt, dntmp, hnode) {
   */
-  list_for_each_entry_rcu(dntmp, &dnat_list, lnode) {
+  list_for_each_entry_rcu(dntmp, &nat_lists[NAT_DNAT], h.lnode) {
     if (get_orig_from_dnat_entry(dntmp, n4, sin) == 1) {
       rcu_read_unlock_bh();
       return 0;
@@ -347,6 +347,7 @@ static struct nf_sockopt_ops so_getoriginal_dst = {
 };
 
 int init_translation(void) {
+  init_nat_tables();
   /* TODO: restore hash
   hash_init(dnat_hashtable);
   hash_init(snat_hashtable);
@@ -358,8 +359,7 @@ int init_translation(void) {
 }
 
 void fini_translation(void) {
-  free_dnatted_table();
-  free_snatted_table();
+  fini_nat_tables();
   might_sleep();
   nf_unregister_sockopt(&so_getoriginal_dst);
   rcu_barrier();

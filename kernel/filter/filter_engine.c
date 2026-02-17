@@ -12,12 +12,12 @@
 
 struct state_table;
 #include "globals.h"
-#include "ipfi.h"
+#include "ipfire.h"
 #include "ipfi_machine.h"
-#include "ipfi_mangle.h"
-#include "ipfi_netl.h"
+#include "mangle/mangle.h"
+#include "netlink/ipfi_netl.h"
 #include "state/state_machine.h"
-#include "message_builder.h"
+#include "netlink/message_builder.h"
 
 struct response ipfire_filter(const ipfire_rule *dropped,
                const ipfire_rule *allowed,
@@ -214,7 +214,7 @@ struct state_table *keep_state(const struct sk_buff *skb,
   struct state_table *state_t =
       (struct state_table *)kmalloc(sizeof(struct state_table), GFP_ATOMIC);
   memset(state_t, 0, sizeof(struct state_table));
-  refcount_set(&state_t->refcnt, 1);   // initial refcount
+  refcount_set(&state_t->h.refcnt, 1);   // initial refcount
   if (fill_net_table_fields(state_t, skb, flow) < 0) {
       IPFI_PRINTK("IPFIRE: fill_net_table_fields failed, ipfi_machine.c\n");
       kfree(state_t);
@@ -246,8 +246,8 @@ void fill_state_info(struct state_info *stinfo, const struct state_table *stt) {
   stinfo->rule_id = stt->rule_id;
 
   /* Calculate remaining timeout from timer */
-  if (timer_pending(&stt->timer_statelist)) {
-      long remaining = stt->timer_statelist.expires - jiffies;
+  if (timer_pending(&stt->h.timer)) {
+      long remaining = stt->h.timer.expires - jiffies;
       stinfo->timeout = remaining > 0 ? (unsigned int)(remaining / HZ) : 0;
     } else {
       stinfo->timeout = 0;

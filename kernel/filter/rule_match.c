@@ -5,7 +5,7 @@
 #include <linux/udp.h>
 #include <linux/icmp.h>
 #include <linux/netdevice.h>
-#include "ipfi.h"
+#include "ipfire.h"
 #include "ipfi_machine.h"
 
 inline int direction_filter(int direction, const ipfire_rule * r)

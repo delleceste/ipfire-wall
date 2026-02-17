@@ -1,7 +1,7 @@
 #ifndef IPFI_TCPMSS_H
 #define IPFI_TCPMSS_H
 
-#include "ipfi.h"
+#include "ipfire.h"
 #include <linux/types.h>
 #include <linux/skbuff.h>
 

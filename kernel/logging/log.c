@@ -8,7 +8,7 @@
  ****************************************************************************/
 
 #include "globals.h"
-#include "ipfi_log.h"
+#include "logging/log.h"
 #include <linux/slab.h>
 #include <linux/workqueue.h>
 
@@ -329,8 +329,6 @@ inline int compare_loginfo_packets(const struct sk_buff *skb,
     return 1;
   return 0;
 }
-
-static unsigned int old_loginfo_counter = 0;
 
 inline int packet_not_seen(const struct sk_buff *skb,
                            const struct response *res, const ipfi_flow *flow,

@@ -1,8 +1,8 @@
 /* filter/state/state_check.c: State checking logic for ipfire-wall */
 
 #include "globals.h"
-#include "ipfi.h"
-#include "ipfi_ftp.h"
+#include "ipfire.h"
+#include "helpers/ftp.h"
 #include "ipfi_machine.h"
 #include "state_machine.h"
 #include <linux/ip.h>
@@ -29,7 +29,7 @@ struct response check_state(struct sk_buff *skb, const ipfi_flow *flow,
   /* TODO: restore hash
   hash_for_each_possible_rcu(state_hashtable, table_entry, hnode, key) {
   */
-  list_for_each_entry_rcu(table_entry, &state_list, lnode) {
+  list_for_each_entry_rcu(table_entry, &state_list, h.lnode) {
     if (skb_matches_state_table(skb, table_entry, &reverse, flow) > 0) {
       ret.verdict = IPFI_ACCEPT;
       ret.notify = table_entry->notify;

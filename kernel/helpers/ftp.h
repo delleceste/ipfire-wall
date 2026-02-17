@@ -6,8 +6,8 @@
  * (C) 2005 Giacomo S. 
  */
 
-#include "ipfi_netl.h"
-#include "ipfi.h"
+#include "netlink/ipfi_netl.h"
+#include "ipfire.h"
 #include "ipfi_machine.h"
 #include "../nat/nat.h"
 #include "ipfi_machine.h" 

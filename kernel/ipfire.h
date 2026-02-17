@@ -27,7 +27,13 @@
 #include <net/sock.h>
 #include <net/tcp.h> /* for checksumming */
 
-#include "ipfi_header_check.h"
+#include "filter/header_check.h"
+
+
+#include "logging/log.h"
+
+
+
 
 #define NOLOCK 0
 #define ACQUIRE_LOCK 1

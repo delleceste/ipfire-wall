@@ -1,4 +1,4 @@
-#include "ipfi_tcpmss.h"
+#include "mangle/tcpmss.h"
 #include <net/tcp.h> /* TCPOLEN_MSS... */
 #include <linux/version.h>
 

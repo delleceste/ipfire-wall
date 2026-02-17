@@ -8,8 +8,8 @@
 /// toglier
 #include <linux/tcp.h>
 
-#include "ipfi.h"
-#include "ipfi_defrag.h"
+#include "ipfire.h"
+#include "filter/defrag.h"
 
 /* Returns new sk_buff, or NULL */
 int ipfi_gather_frags(struct sk_buff *skb, u_int32_t user)

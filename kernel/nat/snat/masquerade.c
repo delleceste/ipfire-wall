@@ -1,13 +1,13 @@
 /* nat/snat/masquerade.c: Masquerade NAT logic for ipfire-wall */
 
 #include "globals.h"
-#include "ipfi.h"
+#include "ipfire.h"
 #include "ipfi_machine.h"
-#include "ipfi_netl.h"
+#include "../../netlink/ipfi_netl.h"
 #include "../../filter/state/state_machine.h"
 #include "../nat.h"
+#include "../nat_table.h"
 #include "snat.h"
-#include <linux/ip.h>
 #include <linux/ip.h>
 #include <linux/module.h>
 #include <linux/rtnetlink.h>
@@ -22,7 +22,7 @@ int masquerade_translation(struct sk_buff *skb, const ipfi_flow *flow,
   rcu_read_lock_bh();
   list_for_each_entry_rcu(transrule, &masquerade_post.list, list) {
     if (translation_rule_match(skb, flow, flags, transrule) > 0) {
-      struct snatted_table *snt;
+      struct nat_table *snt;
       masq_addr = get_ifaddr(skb);
       fill_masquerade_rule_fields(transrule, masq_addr);
       if ((snt = add_snatted_entry(skb, flow, resp, flags, transrule)) !=
@@ -66,6 +66,6 @@ void clear_masquerade_rule_fields(ipfire_rule *r) {
   r->newaddr = 0;
 }
 
-int masquerade_packet(struct sk_buff *skb, const struct snatted_table *snt) {
+int masquerade_packet(struct sk_buff *skb, const struct nat_table *snt) {
   return snat_packet(skb, snt);
 }

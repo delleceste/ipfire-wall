@@ -1,15 +1,15 @@
 /* ip firewall Giacomo S. */
 #include "build.h"
 #include "globals.h"
-#include "ipfi.h"
-#include "ipfi_defrag.h"
+#include "ipfire.h"
+#include "filter/defrag.h"
 #include "ipfi_machine.h"
-#include "ipfi_netl.h"
-#include "ipfi_proc.h"
-#include "ipfi_tcpmss.h"
+#include "netlink/ipfi_netl.h"
+#include "proc/proc.h"
+#include "mangle/tcpmss.h"
 #include "ipfi_machine.h"
 #include <linux/init.h>
-#include "message_builder.h"
+#include "netlink/message_builder.h"
 #include "module_init.h"
 #include <linux/list.h>
 #include <linux/module.h>
@@ -563,9 +563,10 @@ int ipfi_pre_process(struct sk_buff *skb, const ipfi_flow *flow) {
      * (early lookup consolidated here)
      */
     if (ret < 0) {
-      struct dnatted_table *dnt = lookup_dnat_forward(skb, flow, &resp, &flags);
+      struct nat_table *dnt = lookup_nat_forward(skb, NAT_DNAT);
       if (dnt != NULL) {
         ret = dest_translate(skb, dnt);
+        nat_put(dnt);
       }
     }
   }
@@ -654,9 +655,10 @@ int ipfi_post_process(struct sk_buff *skb, const ipfi_flow *flow) {
    * (early lookup consolidated here, covers both SNAT and Masquerade)
    */
   if (READ_ONCE(snatted_entry_counter) > 0) {
-    struct snatted_table *snt = lookup_snat_forward(skb, flow, &resp, &flags);
+    struct nat_table *snt = lookup_nat_forward(skb, NAT_SNAT);
     if (snt != NULL) {
       snat_done = snat_packet(skb, snt);
+      nat_put(snt);
       goto send_touser;
     }
   }
@@ -817,9 +819,9 @@ int ipfi_response(const struct nf_hook_state *state, struct sk_buff *skb,
      * ipfi_translation: set_pairs_in_skb().
      */
     if (fwopts.nat != 0 && flow->direction == IPFI_OUTPUT) {
-      struct dnatted_table *dnt =
-          READ_ONCE(dnatted_entry_counter) > 0
-              ? lookup_dnat_forward(skb, flow, &res, &flags)
+      struct nat_table *dnt =
+          READ_ONCE(nat_counters[NAT_DNAT]) > 0
+              ? lookup_nat_forward(skb, NAT_DNAT)
               : NULL;
       int dnat_ret = -1;
       if (dnt != NULL) {
@@ -830,6 +832,7 @@ int ipfi_response(const struct nf_hook_state *state, struct sk_buff *skb,
          */
         res.rule_id = dnt->rule_id;
         dnat_ret = dest_translate(skb, dnt);
+        nat_put(dnt);
       } else {
         dnat_ret = dnat_translation(skb, flow, &res, &flags);
       }

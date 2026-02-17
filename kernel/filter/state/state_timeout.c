@@ -1,6 +1,6 @@
 /* filter/state/state_timeout.c: Timeout and timer management for ipfire-wall */
 
-#include "ipfi.h"
+#include "ipfire.h"
 #include "ipfi_machine.h"
 #include <linux/bitops.h>
 #include <linux/ip.h>

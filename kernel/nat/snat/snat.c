@@ -1,36 +1,36 @@
 /* nat/snat/snat.c: Source NAT logic for ipfire-wall */
 
 #include "globals.h"
-#include "ipfi.h"
+#include "ipfire.h"
 #include "ipfi_machine.h"
-#include "ipfi_netl.h"
+#include "netlink/ipfi_netl.h"
 #include "../../filter/state/state_machine.h"
 #include "../nat.h"
+#include "../nat_table.h"
 #include "snat.h"
 #include "../dnat/dnat.h"
-#include "message_builder.h"
-#include "message_builder.h"
+#include "netlink/message_builder.h"
 #include <linux/ip.h>
 #include <linux/module.h>
-#include <linux/rcupdate.h> // Added
+#include <linux/rcupdate.h>
 #include <linux/skbuff.h>
-#include <linux/slab.h>   // Added
-#include <linux/string.h> // Added
+#include <linux/slab.h>
+#include <linux/string.h>
 #include <linux/tcp.h>
-#include <linux/timer.h> // Added
+#include <linux/timer.h>
 #include <linux/udp.h>
 
 int snat_translation(struct sk_buff *skb, const ipfi_flow *flow,
                      struct response *resp, struct info_flags *flags) {
   ipfire_rule *snatrule;
-  struct snatted_table *snt;
+  struct nat_table *snt;
 
   rcu_read_lock_bh();
   list_for_each_entry_rcu(snatrule, &translation_post.list, list) {
     if (translation_rule_match(skb, flow, flags, snatrule) > 0) {
       if ((snt = add_snatted_entry(skb, flow, resp, flags, snatrule)) != NULL) {
         int status = snat_packet(skb, snt);
-        snatted_put(snt);
+        nat_put(snt);
         rcu_read_unlock_bh();
         return status;
       }
@@ -40,17 +40,18 @@ int snat_translation(struct sk_buff *skb, const ipfi_flow *flow,
   return -1;
 }
 
-struct snatted_table *add_snatted_entry(const struct sk_buff *skb,
-                                        const ipfi_flow *flow,
-                                        struct response *resp,
-                                        struct info_flags *flags,
-                                        const ipfire_rule *snat_rule) {
-	struct snatted_table *snatted_entry = NULL;
+struct nat_table *add_snatted_entry(const struct sk_buff *skb,
+                                    const ipfi_flow *flow,
+                                    struct response *resp,
+                                    struct info_flags *flags,
+                                    const ipfire_rule *snat_rule) {
+  struct nat_table *entry;
+  unsigned int timeout;
+
   if (unlikely(READ_ONCE(we_are_exiting)))
     return NULL;
 
-
-  if (snatted_entry_counter == fwopts.max_nat_entries) {
+  if (nat_counters[NAT_SNAT] == fwopts.max_nat_entries) {
     int err;
     struct response warn_resp = *resp;
     struct info_flags warn_flags = *flags;
@@ -62,42 +63,40 @@ struct snatted_table *add_snatted_entry(const struct sk_buff *skb,
     return NULL;
   }
 
-  snatted_entry = kmalloc(sizeof(struct snatted_table), GFP_ATOMIC);
-  if (!snatted_entry)
+  entry = kmalloc(sizeof(struct nat_table), GFP_ATOMIC);
+  if (!entry)
     return NULL;
-	fill_snat_entry_net_fields(snatted_entry, skb, flow, resp, flags, snat_rule);
-  snatted_entry->state = state_machine(skb, snatted_entry->state, 0);
-	refcount_set(&snatted_entry->refcnt, 1);   // initial refcount
 
-  spin_lock_bh(&snat_list_lock);
+  fill_nat_entry_fields(entry, skb, flow, resp, flags, snat_rule, NAT_SNAT);
+  entry->state = state_machine(skb, entry->state, 0);
+
+  refcount_set(&entry->h.refcnt, 1);
+
+  spin_lock_bh(&nat_locks[NAT_SNAT]);
   if (unlikely(we_are_exiting)) {
-    spin_unlock_bh(&snat_list_lock);
-    kfree(snatted_entry);
+    spin_unlock_bh(&nat_locks[NAT_SNAT]);
+    kfree(entry);
     return NULL;
   }
-	fill_timer_snat_entry(snatted_entry);
-  /* TODO: restore hash
-  hash_add_rcu(snat_hashtable, &snatted_entry->hnode,
-               get_snat_hash(snatted_entry->new_saddr, snatted_entry->new_sport,
-                             snatted_entry->old_daddr, snatted_entry->old_dport,
-                             snatted_entry->protocol));
-  */
-  snatted_hold(snatted_entry);
-  list_add_rcu(&snatted_entry->lnode, &snat_list);
-  snatted_entry_counter++;
-  spin_unlock_bh(&snat_list_lock);
-	add_timer(&snatted_entry->timer_snattedlist);
-  return snatted_entry;
+  timeout = get_timeout_by_state(entry->protocol, entry->state);
+  ipfi_entry_init(&entry->h, timeout, handle_nat_entry_timeout);
+
+  ipfi_entry_hold(&entry->h);  /* list ref */
+  list_add_rcu(&entry->h.lnode, &nat_lists[NAT_SNAT]);
+  nat_counters[NAT_SNAT]++;
+  spin_unlock_bh(&nat_locks[NAT_SNAT]);
+  ipfi_entry_arm_timer(&entry->h);
+  return entry;
 }
 
-int de_snat(struct sk_buff *skb, struct snatted_table *snt) {
+int de_snat(struct sk_buff *skb, struct nat_table *snt) {
   struct pkt_manip_info mi;
   mi.sa = 0, mi.da = 1, mi.sp = 0, mi.dp = 1;
   mi.direction = IPFI_INPUT_PRE;
   return manip_skb(skb, 0, 0, snt->old_saddr, snt->old_sport, mi);
 }
 
-int de_snat_table_match(struct snatted_table *snt, struct sk_buff *skb) {
+int de_snat_table_match(struct nat_table *snt, struct sk_buff *skb) {
   net_quadruplet nquad;
   struct iphdr *iphead = ip_hdr(skb);
   if (iphead == NULL)
@@ -108,11 +107,11 @@ int de_snat_table_match(struct snatted_table *snt, struct sk_buff *skb) {
   if (iphead->protocol != snt->protocol)
     return -1;
   if (snt->protocol != IPPROTO_TCP && snt->protocol != IPPROTO_UDP) {
-    if ((nquad.saddr == snt->old_daddr) && (nquad.daddr == snt->new_saddr))
+    if ((nquad.saddr == snt->old_daddr) && (nquad.daddr == snt->new_addr))
       return 1;
   } else {
     if ((nquad.saddr == snt->old_daddr) && (nquad.sport == snt->old_dport) &&
-        (nquad.daddr == snt->new_saddr) && (nquad.dport == snt->old_sport))
+        (nquad.daddr == snt->new_addr) && (nquad.dport == snt->old_sport))
       return 1;
   }
   return -1;
@@ -120,18 +119,13 @@ int de_snat_table_match(struct snatted_table *snt, struct sk_buff *skb) {
 
 int pre_de_snat(struct sk_buff *skb, const ipfi_flow *flow,
                 struct response *resp, struct info_flags *flags) {
-  struct snatted_table *sntmp;
-  /* TODO: restore hash
-  int bkt;
-  */
+  struct nat_table *sntmp;
+
   rcu_read_lock_bh();
-  /* TODO: restore hash
-  hash_for_each_rcu(snat_hashtable, bkt, sntmp, hnode) {
-  */
-  list_for_each_entry_rcu(sntmp, &snat_list, lnode) {
+  list_for_each_entry_rcu(sntmp, &nat_lists[NAT_SNAT], h.lnode) {
     if (de_snat_table_match(sntmp, skb) > 0) {
       sntmp->state = state_machine(skb, sntmp->state, 1);
-      update_snat_timer(sntmp);
+      ipfi_entry_update_timer(&sntmp->h, sntmp->protocol, sntmp->state);
       int ret = de_snat(skb, sntmp);
       rcu_read_unlock_bh();
       return ret;
@@ -143,18 +137,13 @@ int pre_de_snat(struct sk_buff *skb, const ipfi_flow *flow,
 
 int post_snat_dynamic(struct sk_buff *skb, const ipfi_flow *flow,
                       struct response *resp, struct info_flags *flags) {
-  struct dnatted_table *dntmp;
-  /* TODO: restore hash
-  int bkt;
-  */
+  struct nat_table *dntmp;
+
   rcu_read_lock_bh();
-  /* TODO: restore hash
-  hash_for_each_rcu(dnat_hashtable, bkt, dntmp, hnode) {
-  */
-  list_for_each_entry_rcu(dntmp, &dnat_list, lnode) {
+  list_for_each_entry_rcu(dntmp, &nat_lists[NAT_DNAT], h.lnode) {
     if (snat_dynamic_table_match(dntmp, skb) > 0) {
       dntmp->state = state_machine(skb, dntmp->state, 0);
-      update_dnat_timer(dntmp);
+      ipfi_entry_update_timer(&dntmp->h, dntmp->protocol, dntmp->state);
       int ret = snat_dynamic_translate(skb, dntmp);
       rcu_read_unlock_bh();
       return ret;
@@ -164,7 +153,7 @@ int post_snat_dynamic(struct sk_buff *skb, const ipfi_flow *flow,
   return -1;
 }
 
-int snat_dynamic_translate(struct sk_buff *skb, struct dnatted_table *dnt) {
+int snat_dynamic_translate(struct sk_buff *skb, struct nat_table *dnt) {
   struct pkt_manip_info mi;
   memset(&mi, 0, sizeof(mi));
   mi.sa = 1;
@@ -173,7 +162,7 @@ int snat_dynamic_translate(struct sk_buff *skb, struct dnatted_table *dnt) {
   return manip_skb(skb, dnt->our_ifaddr, 0, 0, 0, mi);
 }
 
-int snat_dynamic_table_match(const struct dnatted_table *dnt,
+int snat_dynamic_table_match(const struct nat_table *dnt,
                              const struct sk_buff *skb) {
   if (dnt->external || dnt->direction == IPFI_OUTPUT)
     return -1;
@@ -181,19 +170,19 @@ int snat_dynamic_table_match(const struct dnatted_table *dnt,
   if (!netq.valid)
     return -1;
   if (dnt->protocol != IPPROTO_TCP && dnt->protocol != IPPROTO_UDP) {
-    if ((netq.saddr == dnt->old_saddr) && (netq.daddr == dnt->new_daddr))
+    if ((netq.saddr == dnt->old_saddr) && (netq.daddr == dnt->new_addr))
       return 1;
   } else {
     if ((netq.saddr == dnt->old_saddr) && (netq.sport == dnt->old_sport) &&
-        (netq.daddr == dnt->new_daddr) && (netq.dport == dnt->new_dport))
+        (netq.daddr == dnt->new_addr) && (netq.dport == dnt->new_port))
       return 1;
   }
   return -1;
 }
 
-int snat_packet(struct sk_buff *skb, const struct snatted_table *snt) {
+int snat_packet(struct sk_buff *skb, const struct nat_table *snt) {
   struct pkt_manip_info mi;
-  mi.sa = 1, mi.da = 0, mi.sp = (snt->new_sport != snt->old_sport), mi.dp = 0;
+  mi.sa = 1, mi.da = 0, mi.sp = (snt->new_port != snt->old_sport), mi.dp = 0;
   mi.direction = snt->direction;
-  return manip_skb(skb, snt->new_saddr, snt->new_sport, 0, 0, mi);
+  return manip_skb(skb, snt->new_addr, snt->new_port, 0, 0, mi);
 }

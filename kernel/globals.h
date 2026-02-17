@@ -1,8 +1,8 @@
 #ifndef IPFI_GLOBALS_H
 #define IPFI_GLOBALS_H
 
-#include "ipfi.h"
-#include "ipfi_log.h"
+#include "ipfire.h"
+#include "logging/log.h"
 #include "ipfi_machine.h"
 #include "../nat/nat.h"
 #include "../nat/dnat/dnat.h"
@@ -58,12 +58,11 @@ extern ipfire_rule masquerade_post;
  * hash
  */
 extern struct list_head state_list;
-/* extern DECLARE_HASHTABLE(dnat_hashtable, DNAT_HASH_BITS); TODO: restore hash
- */
-/* extern DECLARE_HASHTABLE(snat_hashtable, SNAT_HASH_BITS); TODO: restore hash
- */
-extern struct list_head dnat_list;
-extern struct list_head snat_list;
+
+/* NAT tables now use arrays indexed by nat_type in nat_table.h.
+ * Compatibility macros for existing callers: */
+#define dnat_list       nat_lists[NAT_DNAT]
+#define snat_list       nat_lists[NAT_SNAT]
 
 /* Log info */
 /* extern DECLARE_HASHTABLE(loginfo_hashtable, LOGINFO_HASH_BITS); TODO: restore
@@ -74,8 +73,8 @@ extern struct list_head active_logi_list;
 /* Counters */
 extern unsigned int table_id;
 extern unsigned int state_tables_counter;
-extern int dnatted_entry_counter;
-extern int snatted_entry_counter;
+#define dnatted_entry_counter  nat_counters[NAT_DNAT]
+#define snatted_entry_counter  nat_counters[NAT_SNAT]
 extern int loginfo_entry_counter;
 
 /* Timeouts and Limits */
@@ -96,8 +95,8 @@ extern unsigned int moderate_print_limit[MAXMODERATE_ARGS];
 extern spinlock_t rulelist_lock;
 extern spinlock_t state_list_lock;
 extern spinlock_t loginfo_list_lock;
-extern spinlock_t snat_list_lock;
-extern spinlock_t dnat_list_lock;
+#define snat_list_lock  nat_locks[NAT_SNAT]
+#define dnat_list_lock  nat_locks[NAT_DNAT]
 extern struct workqueue_struct *ipfire_wq;
 
 /* Other */

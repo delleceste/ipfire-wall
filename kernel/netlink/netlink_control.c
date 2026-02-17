@@ -1,9 +1,9 @@
 /* netlink/netlink_control.c: Netlink control channel for ipfire-wall */
 
 #include "globals.h"
-#include "ipfi.h"
-#include "ipfi_log.h"
-#include "ipfi_netl.h"
+#include "ipfire.h"
+#include "logging/log.h"
+#include "netlink/ipfi_netl.h"
 #include "message_builder.h"
 #include <linux/module.h>
 #include <linux/netlink.h>
@@ -13,16 +13,16 @@
 #include <linux/user_namespace.h>
 
 void fill_dnat_info(struct dnat_info *dninfo,
-                    const struct dnatted_table *dntt) {
+                    const struct nat_table *dntt) {
   dninfo->saddr = dntt->old_saddr;
   dninfo->daddr = dntt->old_daddr;
   dninfo->sport = dntt->old_sport;
   dninfo->dport = dntt->old_dport;
-  dninfo->newdport = dntt->new_dport;
-  dninfo->newdaddr = dntt->new_daddr;
+  dninfo->newdport = dntt->new_port;
+  dninfo->newdaddr = dntt->new_addr;
 
   dninfo->id = dntt->rule_id;
-  dninfo->timeout = (dntt->timer_dnattedlist.expires - jiffies) / HZ;
+  dninfo->timeout = (dntt->h.timer.expires - jiffies) / HZ;
   dninfo->direction = dntt->direction;
   dninfo->state.state = dntt->state;
   strncpy(dninfo->in_devname, dntt->in_devname, IFNAMSIZ);
@@ -31,16 +31,16 @@ void fill_dnat_info(struct dnat_info *dninfo,
 }
 
 void fill_snat_info(struct snat_info *sninfo,
-                    const struct snatted_table *sntt) {
+                    const struct nat_table *sntt) {
   sninfo->saddr = sntt->old_saddr;
   sninfo->daddr = sntt->old_daddr;
   sninfo->sport = sntt->old_sport;
   sninfo->dport = sntt->old_dport;
-  sninfo->newsport = sntt->new_sport;
-  sninfo->newsaddr = sntt->new_saddr;
+  sninfo->newsport = sntt->new_port;
+  sninfo->newsaddr = sntt->new_addr;
 
   sninfo->id = sntt->rule_id;
-  sninfo->timeout = (sntt->timer_snattedlist.expires - jiffies) / HZ;
+  sninfo->timeout = (sntt->h.timer.expires - jiffies) / HZ;
   sninfo->direction = sntt->direction;
   sninfo->state.state = sntt->state;
   strncpy(sninfo->in_devname, sntt->in_devname, IFNAMSIZ);
@@ -219,8 +219,8 @@ void get_struct_sizes(struct firesizes *fsz) {
   fsz->infosize = sizeof(ipfire_info_t);
   fsz->cmdsize = sizeof(command);
   fsz->statesize = sizeof(struct state_table);
-  fsz->snatsize = sizeof(struct snatted_table);
-  fsz->dnatsize = sizeof(struct dnatted_table);
+  fsz->snatsize = sizeof(struct nat_table);
+  fsz->dnatsize = sizeof(struct nat_table);
   fsz->loginfosize = sizeof(struct ipfire_loginfo);
 }
 
@@ -434,8 +434,8 @@ void print_nat_entries_memory_usage(void) {
   IPFI_PRINTK(
       "IPFIRE: size of a source nat table is %zu bytes.\nIPFIRE:"
       " total memory occupied by snat entries is %lu KB.\n",
-      sizeof(struct snatted_table),
-      (unsigned long)((fwopts.max_nat_entries * sizeof(struct snatted_table)) /
+      sizeof(struct nat_table),
+      (unsigned long)((fwopts.max_nat_entries * sizeof(struct nat_table)) /
                       1024));
 
   IPFI_PRINTK("IPFIRE: destination nat entries lifetime is %lu seconds.\n",
@@ -445,8 +445,8 @@ void print_nat_entries_memory_usage(void) {
   IPFI_PRINTK(
       "IPFIRE: size of a dest nat table is %zu bytes.\nIPFIRE:"
       " total memory occupied by dnat entries is about %lu KB.\n",
-      sizeof(struct dnatted_table),
-      (unsigned long)((fwopts.max_nat_entries * sizeof(struct dnatted_table)) /
+      sizeof(struct nat_table),
+      (unsigned long)((fwopts.max_nat_entries * sizeof(struct nat_table)) /
                       1024));
 }
 
@@ -541,7 +541,7 @@ int send_tables(void) {
   /* TODO: restore hash
   hash_for_each_rcu(state_hashtable, bkt, st, hnode) {
   */
-  list_for_each_entry_rcu(st, &state_list, lnode) {
+  list_for_each_entry_rcu(st, &state_list, h.lnode) {
     if (count >= max_entries)
       break;
     fill_state_info(&entries[count], st);
@@ -566,13 +566,13 @@ send_end_marker:
 }
 
 int send_dnat_tables(void) {
-  struct dnatted_table *dt;
+  struct nat_table *dt;
   struct dnat_info *entries = NULL;
   struct dnat_info endmess;
   int count = 0, i, max_entries;
 
   /* Phase 1: Pre-allocate array outside RCU (can sleep) */
-  max_entries = READ_ONCE(dnatted_entry_counter);
+  max_entries = READ_ONCE(nat_counters[NAT_DNAT]);
   if (max_entries > 0) {
     entries = kmalloc_array(max_entries, sizeof(struct dnat_info), GFP_KERNEL);
     if (entries == NULL)
@@ -584,7 +584,7 @@ int send_dnat_tables(void) {
   /* TODO: restore hash
   hash_for_each_rcu(dnat_hashtable, bkt, dt, hnode) {
   */
-  list_for_each_entry_rcu(dt, &dnat_list, lnode) {
+  list_for_each_entry_rcu(dt, &nat_lists[NAT_DNAT], h.lnode) {
     if (count >= max_entries)
       break;
     fill_dnat_info(&entries[count], dt);
@@ -609,13 +609,13 @@ send_end_marker:
 }
 
 int send_snat_tables(void) {
-  struct snatted_table *st;
+  struct nat_table *st;
   struct snat_info *entries = NULL;
   struct snat_info endmess;
   int count = 0, i, max_entries;
 
   /* Phase 1: Pre-allocate array outside RCU (can sleep) */
-  max_entries = READ_ONCE(snatted_entry_counter);
+  max_entries = READ_ONCE(nat_counters[NAT_SNAT]);
   if (max_entries > 0) {
     entries = kmalloc_array(max_entries, sizeof(struct snat_info), GFP_KERNEL);
     if (entries == NULL)
@@ -627,7 +627,7 @@ int send_snat_tables(void) {
   /* TODO: restore hash
   hash_for_each_rcu(snat_hashtable, bkt, st, hnode) {
   */
-  list_for_each_entry_rcu(st, &snat_list, lnode) {
+  list_for_each_entry_rcu(st, &nat_lists[NAT_SNAT], h.lnode) {
     if (count >= max_entries)
       break;
     fill_snat_info(&entries[count], st);

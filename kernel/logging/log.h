@@ -1,7 +1,7 @@
 #ifndef IPFI_LOG_H
 #define IPFI_LOG_H
 
-#include "ipfi.h"
+#include "ipfire.h"
 #include <linux/list.h>
 #include <linux/skbuff.h>
 #include <linux/spinlock.h>

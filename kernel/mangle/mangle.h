@@ -1,7 +1,7 @@
 #ifndef IPFI_MANGLE_H
 #define IPFI_MANGLE_H
 
-#include "ipfi.h"
+#include "ipfire.h"
 
 /**
  * mangle_skb() - Apply packet manipulations based on firewall rule settings

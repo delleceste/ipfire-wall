@@ -1,7 +1,7 @@
 /* filter/state/state_table.c: State table management for ipfire-wall */
 
 #include "globals.h"
-#include "ipfi.h"
+#include "ipfire.h"
 #include "ipfi_machine.h"
 #include "state_machine.h"
 #include <linux/bitops.h>
@@ -11,14 +11,6 @@
 #include <linux/skbuff.h>
 #include <linux/slab.h>
 
-void update_timer_of_state_entry(struct state_table *sttable);
-
-/*jhash_3words is an optimized implementation of Bob Jenkins' lookup3 hash
- algorithm, specifically designed to hash exactly three 32-bit words into a
- single 32-bit hash value. In the Linux kernel, it is defined in <linux/jhash.h>
- and is the standard way to hash network flow identifiers (like IP addresses and
- ports) because it is extremely fast and provides excellent bit distribution.
-*/
 /* TODO: restore hash
 __u32 get_state_hash(__u32 saddr, __u32 daddr, __u16 sport, __u16 dport,
                      __u8 proto) {
@@ -64,19 +56,17 @@ int direct_state_match(const struct sk_buff *skb,
     /* ICMP and IGMP treated in l2l3match() */
 
     /* Lenient check: Only mismatch if flow has interface AND entry has specific
-   * interface AND they differ */
-    /* Lenient check: Only mismatch if flow has interface AND entry has specific
-   * interface AND they differ */
+     * interface AND they differ */
     /*
-  if (flow->in && entry->in_devname[0] &&
-      strncmp(flow->in->name, entry->in_devname, IFNAMSIZ) != 0) {
-    return -1;
-  }
-  if (flow->out && entry->out_devname[0] &&
-      strncmp(flow->out->name, entry->out_devname, IFNAMSIZ) != 0) {
-    return -1;
-  }
-  */
+    if (flow->in && entry->in_devname[0] &&
+        strncmp(flow->in->name, entry->in_devname, IFNAMSIZ) != 0) {
+        return -1;
+    }
+    if (flow->out && entry->out_devname[0] &&
+        strncmp(flow->out->name, entry->out_devname, IFNAMSIZ) != 0) {
+        return -1;
+    }
+    */
     return 1;
 }
 
@@ -101,17 +91,6 @@ int reverse_state_match(const struct sk_buff *skb,
             return -1;
     } break;
     }
-    /* Lenient check: Reverse direction swaps in/out */
-    /*
-  if (flow->in && entry->out_devname[0] &&
-      strncmp(flow->in->name, entry->out_devname, IFNAMSIZ) != 0) {
-    return -1;
-  }
-  if (flow->out && entry->in_devname[0] &&
-      strncmp(flow->out->name, entry->in_devname, IFNAMSIZ) != 0) {
-    return -1;
-  }
-  */
     return 1;
 }
 
@@ -119,36 +98,18 @@ inline int l2l3match(const struct sk_buff *skb, const struct state_table *entry,
                      short *reverse, const ipfi_flow *flow) {
     const struct iphdr *iph = ip_hdr(skb);
 
-    /* Protocol safety: Ensure packet protocol matches entry protocol */
     if (iph->protocol != entry->protocol)
         return -1;
     /* Direct Match */
     if (iph->saddr == entry->saddr && iph->daddr == entry->daddr) {
-        /* Lenient interface check */
-        /*
-    if ((!flow->in || strncmp(flow->in->name, entry->in_devname, IFNAMSIZ) == 0
-    || entry->in_devname[0] == '\0') &&
-        (!flow->out || strncmp(flow->out->name, entry->out_devname, IFNAMSIZ) ==
-    0 || entry->out_devname[0] == '\0')) {
-    */
         *reverse = 0;
         return 1;
-        // }
     }
 
     /* Reverse Match */
     if (iph->saddr == entry->daddr && iph->daddr == entry->saddr) {
-        /* Cross-check interfaces: incoming response should match outgoing request
-     * interface (and vice-versa) */
-        /*
-    if ((!flow->in || strncmp(flow->in->name, entry->out_devname, IFNAMSIZ) == 0
-    || entry->out_devname[0] == '\0') &&
-        (!flow->out || strncmp(flow->out->name, entry->in_devname, IFNAMSIZ) ==
-    0 || entry->in_devname[0] == '\0')) {
-    */
         *reverse = 1;
         return 1;
-        // }
     }
     return -1;
 }
@@ -197,9 +158,8 @@ int skb_matches_state_table(const struct sk_buff *skb,
     const struct iphdr *iph = ip_hdr(skb);
     short tr_match = 0;
 
-    *reverse = -1; /* default: no match */
+    *reverse = -1;
 
-    /* Protocol must match */
     if (iph->protocol != entry->protocol)
         return -1;
 
@@ -217,27 +177,15 @@ int skb_matches_state_table(const struct sk_buff *skb,
     else if ((tr_match = reverse_state_match(skb, entry, flow)) > 0) {
         *reverse = 1;
     } else {
-        return -1; /* no tuple match at all */
+        return -1;
     }
-
-    /* ----------------------------
-   * Direction validation
-   * ---------------------------- */
 
     /* FWD flows: only match FWD entries */
-    if (entry->direction == IPFI_FWD && flow->direction == IPFI_FWD) {
+    if (entry->direction == IPFI_FWD && flow->direction == IPFI_FWD)
         return tr_match;
-    }
 
-    /* ----------------------------
-   * DIRECT MATCH HANDLING
-   * ---------------------------- */
+    /* DIRECT MATCH HANDLING */
     if (*reverse == 0) {
-
-        /*
-     * Standard direct match:
-     * same direction as state creation.
-     */
         if (flow->direction == entry->direction)
             return tr_match;
 
@@ -257,7 +205,6 @@ int skb_matches_state_table(const struct sk_buff *skb,
             *reverse = 2; /* mark special namespace reverse */
             return tr_match;
         }
-
         return -1;
     }
 
@@ -267,14 +214,14 @@ int skb_matches_state_table(const struct sk_buff *skb,
     if (*reverse == 1) {
 
         /*
-     * Legitimate reply case:
+     * First of two legitimate and natural reply case:
      * OUTPUT entry -> INPUT reply
      */
         if (entry->direction == IPFI_OUTPUT && flow->direction == IPFI_INPUT)
             return tr_match;
 
         /*
-     * Legitimate reply case:
+     * Second of two legitimate and natural reply case:
      * INPUT entry -> OUTPUT reply
      */
         if (entry->direction == IPFI_INPUT && flow->direction == IPFI_OUTPUT)
@@ -306,18 +253,6 @@ int skb_matches_state_table(const struct sk_buff *skb,
     return -1;
 }
 
-void free_state_entry_rcu_call(struct rcu_head *head) {
-    struct state_table *ipst = NULL;
-    if (head == NULL) {
-        IPFI_PRINTK("Callback: head is null.\n");
-        return;
-    }
-    ipst = container_of(head, struct state_table, state_rcuh);
-    if (ipst != NULL) {
-        kfree(ipst);
-    }
-}
-
 int fill_net_table_fields(struct state_table *state_t,
                           const struct sk_buff *skb, const ipfi_flow *flow) {
     struct iphdr *iph = ip_hdr(skb);
@@ -338,11 +273,7 @@ int fill_net_table_fields(struct state_table *state_t,
             state_t->dport = uh->dest;
             break;
         }
-        case IPPROTO_ICMP: {
-            state_t->sport = 0;
-            state_t->dport = 0;
-            break;
-        }
+        case IPPROTO_ICMP:
         case IPPROTO_IGMP:
         case IPPROTO_GRE:
         case IPPROTO_PIM:
@@ -354,10 +285,8 @@ int fill_net_table_fields(struct state_table *state_t,
                    "protocol %d!\n",
                    iph->protocol);
             return -1;
-            break;
         }
         state_t->direction = flow->direction;
-        state_t->protocol = iph->protocol;
         if (flow->in) {
             strncpy(state_t->in_devname, flow->in->name, IFNAMSIZ);
             state_t->in_devname[IFNAMSIZ - 1] = '\0';
@@ -376,17 +305,12 @@ int compare_state_entries(const struct state_table *s1,
     return (s1->saddr == s2->saddr) && (s1->daddr == s2->daddr) &&
             (s1->sport == s2->sport) && (s1->dport == s2->dport) &&
             (s1->direction == s2->direction) && (s1->protocol == s2->protocol);
-    /* ifindex comparison removed */
-    // (s1->in_ifindex == s2->in_ifindex) &&
-    // (s1->out_ifindex == s2->out_ifindex);
 }
 
-/* IMPORTANT: Must be called under rcu_read_lock_bh()
- *
- */
+/* IMPORTANT: Must be called under rcu_read_lock_bh() */
 int lookup_state_table_n_update_timer(const struct state_table *stt) {
     struct state_table *statet;
-    list_for_each_entry_rcu(statet, &state_list, lnode) {
+    list_for_each_entry_rcu(statet, &state_list, h.lnode) {
         if (compare_state_entries(statet, stt) == 1) {
             update_timer_of_state_entry(statet);
             return 1;
@@ -396,9 +320,11 @@ int lookup_state_table_n_update_timer(const struct state_table *stt) {
 }
 
 int add_state_table_to_list(struct state_table *newtable) {
-    if (unlikely(READ_ONCE(we_are_exiting))) {
+    unsigned int timeout;
+
+    if (unlikely(READ_ONCE(we_are_exiting)))
         return -EBUSY;
-    }
+
     spin_lock_bh(&state_list_lock);
 
     if (unlikely(we_are_exiting)) {
@@ -406,114 +332,50 @@ int add_state_table_to_list(struct state_table *newtable) {
         return -EBUSY;
     }
 
-    fill_timer_table_fields(newtable);
-    state_hold(newtable);
-    list_add_rcu(&newtable->lnode, &state_list);
+    timeout = get_timeout_by_state(newtable->protocol, newtable->state.state);
+    ipfi_entry_init(&newtable->h, timeout, handle_keep_state_timeout);
+
+    state_hold(newtable);   /* list ref */
+    list_add_rcu(&newtable->h.lnode, &state_list);
     state_tables_counter++;
     table_id++;
     spin_unlock_bh(&state_list_lock);
 
     /* arm timer after releasing lock to reduce lock hold time */
-    add_timer(&newtable->timer_statelist);
+    ipfi_entry_arm_timer(&newtable->h);
     return 0;
 }
 
-static void free_state_work(struct work_struct *work) {
-    struct state_table *st = container_of(work, struct state_table, cleanup_work);
-    
-    /* Safe to synchronously delete the timer now; we are in process context. */
-    timer_delete_sync(&st->timer_statelist);
-    
-    /* Now free memory — no RCU readers can touch the object after grace period. */
-    call_rcu(&st->state_rcuh, free_state_entry_rcu_call);
-}
-
 void handle_keep_state_timeout(struct timer_list *t) {
-    struct state_table *st = timer_container_of(st, t, timer_statelist);
+    struct state_table *st = timer_container_of(st, t, h.timer);
+    struct ipfi_entry_head *h = &st->h;
+
     spin_lock_bh(&state_list_lock);
-    list_del_rcu(&st->lnode);
-    set_bit(IPFI_ST_REMOVED, &st->status);
-    state_tables_counter--;
+    // list_del_rcu, set_bit(IPFI_ENTRY_REMOVED, &h->status), counter--
+    ipfi_entry_remove(h, &state_tables_counter);
     spin_unlock_bh(&state_list_lock);
 
     state_put(st);
 }
 
-void fill_timer_table_fields(struct state_table *state_t) {
-    long int expi;
-    expi = get_timeout_by_state(state_t->protocol, state_t->state.state);
 
-    INIT_WORK(&state_t->cleanup_work, free_state_work);
-    timer_setup(&state_t->timer_statelist, handle_keep_state_timeout, 0);
-    state_t->timer_statelist.expires = jiffies + expi * HZ;
-    state_t->status = 0;
-    state_t->last_timer_update = jiffies;
-}
 
-/* update_ifindex_in_state_tables removed */
 
-/* ipfire_netdev_event removed */
-
-/* ipfire_netdev_notifier removed */
-
-void register_ipfire_netdev_notifier(void) {
-    /* No-op */
-    // register_netdevice_notifier(&ipfire_netdev_notifier);
-}
-
-void unregister_ipfire_netdev_notifier(void) {
-    /* No-op */
-    // unregister_netdevice_notifier(&ipfire_netdev_notifier);
-}
 
 int free_state_tables(void) {
-    struct state_table *tl, *tmp;
-    LIST_HEAD(to_free);
-    int counter = 0;
-
-    spin_lock_bh(&state_list_lock);
-    
-    /* Move whole list into temporary list in O(1) */
-    list_splice_init(&state_list, &to_free);
-    list_for_each_entry(tl, &to_free, lnode)
-        set_bit(IPFI_ST_REMOVED, &tl->status);
-    
-    counter = state_tables_counter;
-    state_tables_counter = 0;
-    
-    spin_unlock_bh(&state_list_lock);
-
-    /* Process in safe context */
-    list_for_each_entry_safe(tl, tmp, &to_free, lnode) {
-        list_del(&tl->lnode); // use lnode as per struct definition in state_table.h
-        state_put(tl);
-    }
-    return counter;
+    return ipfi_table_flush_all(&state_list, &state_list_lock, &state_tables_counter);
 }
 
 inline void update_timer_of_state_entry(struct state_table *sttable) {
-    unsigned int timeout;
-    if (unlikely(test_bit(IPFI_ST_REMOVED, &sttable->status)))
-        return;
-    timeout = get_timeout_by_state(sttable->protocol, sttable->state.state);
-    /* Use READ_ONCE/WRITE_ONCE for last_timer_update to avoid tearing */
-    if (time_after(jiffies, READ_ONCE(sttable->last_timer_update) + (5 * HZ))) {
-        /* Double-check REMOVED after computing condition to avoid TOCTOU as much as possible */
-        if (unlikely(test_bit(IPFI_ST_REMOVED, &sttable->status)))
-            return;
-
-        mod_timer(&sttable->timer_statelist, jiffies + HZ * timeout);
-        WRITE_ONCE(sttable->last_timer_update, jiffies);
-    }
+    ipfi_entry_update_timer(&sttable->h, sttable->protocol,
+                            sttable->state.state);
 }
 
 int init_machine(void) {
-    register_ipfire_netdev_notifier();
     return 0;
 }
 
 void fini_machine(void) {
-    unregister_ipfire_netdev_notifier();
     int ret;
     ret = free_state_tables();
     IPFI_PRINTK("IPFIRE: state tables freed: %d.\n", ret);

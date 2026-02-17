@@ -1,8 +1,8 @@
 /* netlink/netlink.c: Netlink socket management for ipfire-wall */
 
 #include "globals.h"
-#include "ipfi.h"
-#include "ipfi_netl.h"
+#include "ipfire.h"
+#include "netlink/ipfi_netl.h"
 #include <linux/module.h>
 #include <linux/netlink.h>
 #include <linux/version.h>
@@ -109,8 +109,7 @@ static int create_gui_notifier_socket(void) {
 #endif
   userspace_data_pid = 0;
   if (sknl_ipfi_gui_notifier == NULL) {
-    IPFI_PRINTK("IPFIRE: create_socket(): failed to create netlink gui "
-                "notifier socket\n");
+    IPFI_PRINTK("IPFIRE: create_socket(): failed to create netlink gui notifier socket\n");
     return -1;
   }
   return 0;
@@ -123,12 +122,11 @@ int send_data_to_user(struct sk_buff *skb, pid_t destination_pid,
     NETLINK_CB(skb).portid = 0; /* kernel sending */
     NETLINK_CB(skb).dst_group = 0;
     ret = netlink_unicast(socket, skb, destination_pid, MSG_DONTWAIT);
-    if (ret < 0)
-      ; // too many messages under heavy load
-    //   IPFI_PRINTK("IPFIRE: netlink_unicast() to pid %d failed with error %d.
-    //   "
-    //               "Errnos in asm-generic/errno-base.h\n",
-    //               destination_pid, ret);
+    if (ret < 0) {
+      IPFI_PRINTK("IPFIRE: netlink_unicast() to pid %d failed with error %d. "
+                  "Errnos in asm-generic/errno-base.h\n",
+                  destination_pid, ret);
+      }
   } else
     IPFI_PRINTK("socket or sk_buff null in send_data_to_user(): socket: 0x%p "
                 "skb: 0x%p\n",

@@ -12,7 +12,7 @@ ifneq ($(KERNELRELEASE),)
 
 
 # Main Source
-$(MODULE_NAME)-objs += ipfire.o common/globals.o common/stats.o
+$(MODULE_NAME)-objs += ipfire.o common/globals.o common/stats.o table_lifecycle.o
 
 # Filter components
 $(MODULE_NAME)-objs += filter/filter_engine.o \
@@ -35,8 +35,7 @@ $(MODULE_NAME)-objs += netlink/netlink.o \
 
 # NAT components
 $(MODULE_NAME)-objs += nat/nat_engine.o \
-                       nat/dnat/dnat_table.o \
-                       nat/snat/snat_table.o \
+                       nat/nat_table.o \
                        nat/dnat/dnat.o \
                        nat/snat/snat.o \
                        nat/snat/masquerade.o
@@ -52,7 +51,7 @@ $(MODULE_NAME)-objs += logging/log.o \
 
 obj-m += $(MODULE_NAME).o
 
-ccflags-y += -I$(src)/includes -I$(src) -I$(src)/../..
+ccflags-y += -I$(src) -I$(src)/../..
 
 else
 KDIR	:= /lib/modules/$(shell uname -r)/build
@@ -62,21 +61,19 @@ BUILD_DIR_ABS := $(PWD)/$(BUILD_DIR)
 all:
 	@mkdir -p $(BUILD_DIR)
 	@for dir in $(SUBDIRS); do mkdir -p $(BUILD_DIR)/$$dir; done
-	@printf "/* Compilation system and compilation date.\n * Written by Makefile */\n#define _BUILD_DATE \"%%s\"\n#define _BUILD_SYS \"%%s\"\n\n" "`date`" "`uname -sro`" > includes/build.h
+	@printf "/* Compilation system and compilation date.\n * Written by Makefile */\n#define _BUILD_DATE \"%%s\"\n#define _BUILD_SYS \"%%s\"\n\n" "`date`" "`uname -sro`" > build.h
 	@# Create symlinks for all .c files in build dir to allow out-of-tree build
 	@find . -name "*.[ch]" -not -path "./$(BUILD_DIR)/*" | while read f; do \
 		dest=$(BUILD_DIR)/$${f#./}; \
 		mkdir -p $$(dirname $$dest); \
 		ln -sf $(PWD)/$${f#./} $$dest; \
 	done
-	@# Symlink includes directory
-	@ln -sfn $(PWD)/includes $(BUILD_DIR)/includes
 	@# Create Kbuild redirection
 	@echo "include $(PWD)/Makefile" > $(BUILD_DIR)/Kbuild
 	@$(MAKE) -C $(KDIR) M=$(BUILD_DIR_ABS) modules
 
 clean:
-	@echo "" > includes/build.h
+	@echo "" > build.h
 	@if [ -d $(BUILD_DIR) ]; then \
 		$(MAKE) -C $(KDIR) M=$(BUILD_DIR_ABS) clean; \
 	fi

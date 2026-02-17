@@ -3,7 +3,7 @@
 
 #include <linux/skbuff.h>
 #include <common/ipfi_structures.h>
-#include "ipfi.h" /* for ipfire_options if needed, or forward declare */
+#include "ipfire.h" /* for ipfire_options if needed, or forward declare */
 
 /* struct ipfire_options is defined in ipfi.h usually or ipfi_structures? 
    It's in ipfi.h based on typical usage. Let's check ipfi.h content if needed.
