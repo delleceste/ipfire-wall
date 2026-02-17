@@ -105,7 +105,7 @@ int compare_dnat_entries(const struct dnatted_table *dne1,
 /* Looks up dnatted table, comparing each entry with the entry
  * passed as argument.
  */
-struct dnatted_table *lookup_dnatted_table_n_update_timer(
+int lookup_dnatted_table_n_update_timer(
     const struct dnatted_table *dne, const struct sk_buff *skb,
     const ipfi_flow *flow, struct response *resp, struct info_flags *flags);
 

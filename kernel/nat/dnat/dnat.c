@@ -210,7 +210,6 @@ struct dnatted_table *add_dnatted_entry(const struct sk_buff *skb,
     return NULL;
 
 	struct dnatted_table *newtable = NULL;
-  static unsigned int entry_id = 0;
   u32 hash;
 
 	// hash = get_dnat_hash(lookup_entry.old_saddr, lookup_entry.old_sport,
@@ -245,10 +244,6 @@ struct dnatted_table *add_dnatted_entry(const struct sk_buff *skb,
     return NULL;
   }
   fill_timer_dnat_entry(newtable);
-	newtable->rule_id = entry_id++;
-  /* TODO: restore hash
-  hash_add_rcu(dnat_hashtable, &newtable->hnode, hash);
-  */
   dnatted_hold(newtable); // second ref: in the list
   list_add_rcu(&newtable->lnode, &dnat_list);
   dnatted_entry_counter++;

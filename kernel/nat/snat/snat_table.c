@@ -27,7 +27,7 @@ u32 get_snat_hash(__u32 new_saddr, __u16 new_sport, __u32 old_daddr,
   return jhash_3words(a1, a2, ((u32)p1 << 16) | p2, proto);
 }
 
-struct snatted_table *lookup_snatted_table_n_update_timer(
+int lookup_snatted_table_n_update_timer(
     const struct snatted_table *sne, const struct sk_buff *skb,
     const ipfi_flow *flow, struct response *resp, struct info_flags *flags) {
   struct snatted_table *sntmp;
@@ -183,6 +183,7 @@ void fill_timer_snat_entry(struct snatted_table *snt) {
   INIT_WORK(&snt->cleanup_work, free_snat_work);
   timer_setup(&snt->timer_snattedlist, handle_snatted_entry_timeout, 0);
   snt->timer_snattedlist.expires = jiffies + HZ * timeo;
+  snt->status = 0;
   snt->last_timer_update = jiffies;
 }
 

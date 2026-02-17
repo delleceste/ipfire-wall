@@ -63,7 +63,7 @@ int fill_entry_net_fields(struct dnatted_table *dnentry,
   return 0;
 }
 
-struct dnatted_table *lookup_dnatted_table_n_update_timer(
+int lookup_dnatted_table_n_update_timer(
     const struct dnatted_table *dne, const struct sk_buff *skb,
     const ipfi_flow *flow, struct response *resp, struct info_flags *flags) {
   struct dnatted_table *dntmp;
@@ -80,11 +80,11 @@ struct dnatted_table *lookup_dnatted_table_n_update_timer(
       dntmp->state = state_machine(skb, dntmp->state, 0);
       update_dnat_timer(dntmp);
       rcu_read_unlock_bh();
-      return dntmp;
+      return 1;
     }
   }
   rcu_read_unlock_bh();
-  return NULL;
+  return 0;
 }
 
 static int forward_dnat_match(const struct dnatted_table *dnt,
@@ -189,6 +189,7 @@ void fill_timer_dnat_entry(struct dnatted_table *dnt) {
   INIT_WORK(&dnt->cleanup_work, free_dnat_work);
   timer_setup(&dnt->timer_dnattedlist, handle_dnatted_entry_timeout, 0);
   dnt->timer_dnattedlist.expires = jiffies + HZ * timeo;
+  dnt->status = 0;
   dnt->last_timer_update = jiffies;
 }
 

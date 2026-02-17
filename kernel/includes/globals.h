@@ -74,9 +74,9 @@ extern struct list_head active_logi_list;
 /* Counters */
 extern unsigned int table_id;
 extern unsigned int state_tables_counter;
-extern int dnatted_entry_counter;
-extern int snatted_entry_counter;
-extern int loginfo_entry_counter;
+extern unsigned int dnatted_entry_counter;
+extern unsigned int snatted_entry_counter;
+extern unsigned int loginfo_entry_counter;
 
 /* Timeouts and Limits */
 extern unsigned int state_lifetime;
