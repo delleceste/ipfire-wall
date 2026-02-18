@@ -458,8 +458,22 @@ unsigned int process(void *priv, struct sk_buff *skb,
   // malformed packet or unsupported protocol
   if (check_headers(skb) < 0)
     return NF_DROP;
+
+  if (ip_hdr(skb)->saddr == 0x0202000a || ip_hdr(skb)->daddr == 0x0202000a) {
+      IPFI_PRINTK("IPFIRE: [hook %d] pkt %pI4 -> %pI4 on %s (net %px)\n",
+                  hooknum, &ip_hdr(skb)->saddr, &ip_hdr(skb)->daddr,
+                  in ? in->name : (out ? out->name : "none"), state->net);
+  }
+
+  /* IGNORE LOOPBACK TRAFFIC FOR NAT DEBUGGING TO REDUCE NOISE */
+  if (ip_hdr(skb)->saddr == htonl(INADDR_LOOPBACK) || ip_hdr(skb)->daddr == htonl(INADDR_LOOPBACK))
+    return NF_ACCEPT;
   bool no_nat = (READ_ONCE(dnatted_entry_counter) == 0 &&
-                 READ_ONCE(snatted_entry_counter) == 0) ||
+                 READ_ONCE(snatted_entry_counter) == 0 &&
+                 list_empty(&translation_pre.list) &&
+                 list_empty(&translation_post.list) &&
+                 list_empty(&masquerade_post.list) &&
+                 list_empty(&translation_out.list)) ||
                 (fwopts.masquerade == 0 && fwopts.nat == 0);
 
   switch (hooknum) {
@@ -478,26 +492,35 @@ unsigned int process(void *priv, struct sk_buff *skb,
       dst_release(skb_dst(skb));
       skb_dst_set(skb, NULL);
     }
+    if (ret == NF_DROP) IPFI_PRINTK("IPFIRE: PRE_ROUTING DROP\n");
     return ret;
   case NF_IP_LOCAL_IN:
     IPFI_STAT_INC(in_rcv);
     flow.direction = IPFI_INPUT;
-    return ipfi_response(state, skb, &flow);
+    ret = ipfi_response(state, skb, &flow);
+    if (ret == NF_DROP) IPFI_PRINTK("IPFIRE: INPUT DROP\n");
+    return ret;
   case NF_IP_LOCAL_OUT:
     IPFI_STAT_INC(out_rcv);
     flow.direction = IPFI_OUTPUT;
-    return ipfi_response(state, skb, &flow);
+    ret = ipfi_response(state, skb, &flow);
+    if (ret == NF_DROP) IPFI_PRINTK("IPFIRE: OUTPUT DROP\n");
+    return ret;
   case NF_IP_FORWARD:
     IPFI_STAT_INC(fwd_rcv);
     flow.direction = IPFI_FWD;
-    return ipfi_response(state, skb, &flow);
+    ret = ipfi_response(state, skb, &flow);
+    if (ret == NF_DROP) IPFI_PRINTK("IPFIRE: FORWARD DROP\n");
+    return ret;
   case NF_IP_POST_ROUTING:
     IPFI_STAT_INC(post_rcv);
     if (no_nat)
       return NF_ACCEPT;
 
     flow.direction = IPFI_OUTPUT_POST;
-    return ipfi_post_process(state->net, skb, &flow);
+    ret = ipfi_post_process(state->net, skb, &flow);
+    if (ret == NF_DROP) IPFI_PRINTK("IPFIRE: POST_ROUTING DROP\n");
+    return ret;
   default:
     return NF_DROP;
   }
@@ -550,7 +573,9 @@ int ipfi_pre_process(struct net *net, struct sk_buff *skb, const ipfi_flow *flow
   /* nat and masquerade options disabled: return NF_ACCEPT in pre process */
   if ((fwopts.masquerade == 0) && (fwopts.nat == 0) &&
       READ_ONCE(dnatted_entry_counter) == 0 &&
-      READ_ONCE(snatted_entry_counter) == 0) {
+      READ_ONCE(snatted_entry_counter) == 0 &&
+      list_empty(&translation_pre.list) && 
+      list_empty(&translation_out.list)) {
     return NF_ACCEPT;
   }
 
@@ -590,8 +615,12 @@ int ipfi_pre_process(struct net *net, struct sk_buff *skb, const ipfi_flow *flow
 
   /* now let's de-snat, or de-masquerade, if no match has previously succeeded
    */
-  if (ret < 0 && READ_ONCE(snatted_entry_counter) > 0)
+  if (ret < 0 && READ_ONCE(snatted_entry_counter) > 0) {
+    if (ip_hdr(skb)->saddr == 0x0202000a) { // 10.0.2.2 (big endian)
+        IPFI_PRINTK("IPFIRE: ipfi_pre_process: SEEING RETURN TRAFFIC from 10.0.2.2! checking de-SNAT...\n");
+    }
     ret = pre_de_snat(net, skb, flow, &resp, &flags);
+  }
 
   /* checksum is calculated inside set_pairs_in_skb(), ipfi_translation.c */
   if (ret >= 0) {
@@ -641,7 +670,9 @@ int ipfi_post_process(struct net *net, struct sk_buff *skb, const ipfi_flow *flo
   /* masquerade and NAT disabled: nothing to do. We accept here */
   if ((fwopts.masquerade == 0) && (fwopts.nat == 0) &&
       READ_ONCE(dnatted_entry_counter) == 0 &&
-      READ_ONCE(snatted_entry_counter) == 0)
+      READ_ONCE(snatted_entry_counter) == 0 &&
+      list_empty(&masquerade_post.list) && 
+      list_empty(&translation_post.list))
     return NF_ACCEPT;
 
   /* No more kmalloc for ipfire_info_t. */
@@ -928,6 +959,7 @@ int ipfi_response(const struct nf_hook_state *state, struct sk_buff *skb,
     /* IPFI_IMPLICIT: apply default policy */
     if (default_policy == IPFI_ACCEPT)
       return NF_ACCEPT;
+    IPFI_PRINTK("IPFIRE: Applying default DROP policy for direction %d\n", flow->direction);
     return NF_DROP;
   }
 }

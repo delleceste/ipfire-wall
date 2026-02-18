@@ -22,31 +22,31 @@ int translation_rule_match(struct net *net, const struct sk_buff *skb, const ipf
                            const ipfire_rule *r) {
   struct iphdr *iph = ip_hdr(skb);
   if (r->direction != flags->direction) {
-    IPFI_PRINTK("IPFIRE: SNAT rule mismatch: direction %d != %d. Rule ID: %u\n", r->direction, flags->direction, r->rule_id);
+    // IPFI_PRINTK("IPFIRE: SNAT rule mismatch: direction %d != %d. Rule ID: %u\n", r->direction, flags->direction, r->rule_id);
     return -1;
   }
 
   if (r->nflags.proto && r->ip.protocol != iph->protocol) {
-    IPFI_PRINTK("IPFIRE: SNAT rule match failed: protocol mismatch. Packet proto: %d, Rule proto: %d\n", iph->protocol, r->ip.protocol);
+    // IPFI_PRINTK("IPFIRE: SNAT rule match failed: protocol mismatch. Packet proto: %d, Rule proto: %d\n", iph->protocol, r->ip.protocol);
     return -1;
   }
 
   if (r->nflags.indev &&
       (flow->in == NULL ||
        strncmp(r->devpar.in_devname, flow->in->name, IFNAMSIZ) != 0)) {
-    IPFI_PRINTK("IPFIRE: SNAT rule match failed: input device mismatch.\n");
+    // IPFI_PRINTK("IPFIRE: SNAT rule match failed: input device mismatch.\n");
     return -1;
   }
   if (r->nflags.outdev &&
       (flow->out == NULL ||
        strncmp(r->devpar.out_devname, flow->out->name, IFNAMSIZ) != 0)) {
-    IPFI_PRINTK("IPFIRE: SNAT rule match failed: output device mismatch.\n");
+    // IPFI_PRINTK("IPFIRE: SNAT rule match failed: output device mismatch.\n");
     return -1;
   }
 
   if (address_match(iph, r, flags->direction, flow->in, flow->out, net) < 0) {
-    IPFI_PRINTK("IPFIRE: SNAT rule match failed: address mismatch. Src: %pI4, Dst: %pI4, Rule Src: %pI4, Rule Dst: %pI4\n",
-                &iph->saddr, &iph->daddr, &r->ip.ipsrc[0], &r->ip.ipdst[0]);
+    /* IPFI_PRINTK("IPFIRE: SNAT rule match failed: address mismatch. Src: %pI4, Dst: %pI4, Rule Src: %pI4, Rule Dst: %pI4\n",
+                &iph->saddr, &iph->daddr, &r->ip.ipsrc[0], &r->ip.ipdst[0]); */
     return -1;
   }
 
@@ -54,7 +54,7 @@ int translation_rule_match(struct net *net, const struct sk_buff *skb, const ipf
   case IPPROTO_TCP: {
     struct tcphdr *th = (struct tcphdr *)((void *)iph + iph->ihl * 4);
     if (port_match(th, NULL, r, IPPROTO_TCP) < 0) {
-       IPFI_PRINTK("IPFIRE: SNAT rule match failed: TCP port mismatch.\n");
+       // IPFI_PRINTK("IPFIRE: SNAT rule match failed: TCP port mismatch.\n");
       return -1;
     }
     break;
@@ -62,7 +62,7 @@ int translation_rule_match(struct net *net, const struct sk_buff *skb, const ipf
   case IPPROTO_UDP: {
     struct udphdr *uh = (struct udphdr *)((void *)iph + iph->ihl * 4);
     if (port_match(NULL, uh, r, IPPROTO_UDP) < 0) {
-       IPFI_PRINTK("IPFIRE: SNAT rule match failed: UDP port mismatch.\n");
+       // IPFI_PRINTK("IPFIRE: SNAT rule match failed: UDP port mismatch.\n");
       return -1;
     }
     break;
@@ -185,6 +185,17 @@ int manip_skb(struct sk_buff *skb, __u32 saddr, __u16 sport, __u32 daddr,
       break;
     }
   }
+  if (ptcphead) {
+    oldport = mi.sp ? oldport : ptcphead->source;
+    newport = mi.dp ? oldport : ptcphead->dest; // This is illustrative, oldaddr/newaddr are already set correctly above
+  } else if (pudphead) {
+    oldport = mi.sp ? oldport : pudphead->source;
+    newport = mi.dp ? oldport : pudphead->dest;
+  }
+
+  IPFI_PRINTK("IPFIRE: manip_skb: hook %d, %s %pI4:%u -> %pI4:%u (csum: 0x%04x)\n",
+              mi.direction, mi.sa ? "SNAT" : "DNAT", &ipheader->saddr, ntohs(ptcphead ? ptcphead->source : (pudphead ? pudphead->source : 0)),
+              &ipheader->daddr, ntohs(ptcphead ? ptcphead->dest : (pudphead ? pudphead->dest : 0)), ntohs(ipheader->check));
   return 1;
 }
 

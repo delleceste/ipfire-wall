@@ -27,9 +27,11 @@ int snat_translation(struct net *net, struct sk_buff *skb, const ipfi_flow *flow
 
   rcu_read_lock_bh();
   list_for_each_entry_rcu(snatrule, &translation_post.list, list) {
-    IPFI_PRINTK("IPFIRE: Checking SNAT rule %u...\n", snatrule->rule_id);
+    // IPFI_PRINTK("IPFIRE: Checking SNAT rule %u...\n", snatrule->rule_id);
     if (translation_rule_match(net, skb, flow, flags, snatrule) > 0) {
-      IPFI_PRINTK("IPFIRE: SNAT rule %u MATCHED. Creating entry...\n", snatrule->rule_id);
+      if (ip_hdr(skb)->daddr == 0x0202000a) { // 10.0.2.2
+          IPFI_PRINTK("IPFIRE: SNAT rule %u MATCHED for server 10.0.2.2. Creating entry...\n", snatrule->rule_id);
+      }
       if ((snt = add_snatted_entry(net, skb, flow, resp, flags, snatrule)) != NULL) {
         int status = snat_packet(skb, snt);
         nat_put(snt);
@@ -108,13 +110,26 @@ int de_snat_table_match(struct nat_table *snt, struct sk_buff *skb) {
     return -1;
   if (iphead->protocol != snt->protocol)
     return -1;
+
+  if (iphead->saddr == htonl(INADDR_LOOPBACK) || iphead->daddr == htonl(INADDR_LOOPBACK))
+    return -1;
+
   if (snt->protocol != IPPROTO_TCP && snt->protocol != IPPROTO_UDP) {
     if ((nquad.saddr == snt->old_daddr) && (nquad.daddr == snt->new_addr))
       return 1;
+    if (nquad.saddr == 0x0202000a || nquad.daddr == 0x0202000a) {
+        IPFI_PRINTK("IPFIRE: de_snat_table_match mismatch (ICMP): pkt %pI4 -> %pI4, expected %pI4 -> %pI4\n",
+                    &nquad.saddr, &nquad.daddr, &snt->old_daddr, &snt->new_addr);
+    }
   } else {
     if ((nquad.saddr == snt->old_daddr) && (nquad.sport == snt->old_dport) &&
         (nquad.daddr == snt->new_addr) && (nquad.dport == snt->old_sport))
       return 1;
+    if (nquad.saddr == 0x0202000a || nquad.daddr == 0x0202000a) {
+        IPFI_PRINTK("IPFIRE: de_snat_table_match mismatch (TCP/UDP): pkt %pI4:%u -> %pI4:%u, expected %pI4:%u -> %pI4:%u\n",
+                    &nquad.saddr, ntohs(nquad.sport), &nquad.daddr, ntohs(nquad.dport),
+                    &snt->old_daddr, ntohs(snt->old_dport), &snt->new_addr, ntohs(snt->old_sport));
+    }
   }
   return -1;
 }
