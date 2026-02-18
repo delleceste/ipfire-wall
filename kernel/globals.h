@@ -15,6 +15,14 @@
 #define timer_container_of(ptr, timer, member) from_timer(ptr, timer, member)
 #endif
 
+/*
+ * Internal pseudo-protocol for loginfo timer refresh.
+ * Uses IANA-reserved value 254 (experimentation/testing).
+ * This lets log entries reuse ipfi_entry_update_timer()
+ * without needing a separate flat-timeout function.
+ */
+#define IPPROTO_IPFI_LOG 254
+
 /* Netlink related PIDs and sockets */
 extern pid_t userspace_control_pid;
 extern pid_t userspace_data_pid;
@@ -75,7 +83,7 @@ extern unsigned int table_id;
 extern unsigned int state_tables_counter;
 #define dnatted_entry_counter  nat_counters[NAT_DNAT]
 #define snatted_entry_counter  nat_counters[NAT_SNAT]
-extern int loginfo_entry_counter;
+extern unsigned int loginfo_entry_counter;
 
 /* Timeouts and Limits */
 extern unsigned int state_lifetime;

@@ -109,7 +109,7 @@ LIST_HEAD(active_logi_list);
 unsigned int table_id = 0;
 unsigned int state_tables_counter = 0;
 /* NAT counters now in nat_table.c: nat_counters[] */
-int loginfo_entry_counter = 0;
+unsigned int loginfo_entry_counter = 0;
 
 /* Timeouts and Limits */
 unsigned int state_lifetime = 432000; /* 5 days in seconds */

@@ -11,6 +11,8 @@
 #include <linux/skbuff.h>
 #include <linux/slab.h>
 
+struct kmem_cache *state_cache;
+
 /* TODO: restore hash
 __u32 get_state_hash(__u32 saddr, __u32 daddr, __u16 sport, __u16 dport,
                      __u8 proto) {
@@ -372,6 +374,13 @@ inline void update_timer_of_state_entry(struct state_table *sttable) {
 }
 
 int init_machine(void) {
+    state_cache = kmem_cache_create("ipfi_state",
+                                   sizeof(struct state_table),
+                                   0, SLAB_HWCACHE_ALIGN, NULL);
+    if (!state_cache) {
+        IPFI_PRINTK("IPFIRE: failed to create state slab cache\n");
+        return -ENOMEM;
+    }
     return 0;
 }
 
@@ -379,5 +388,7 @@ void fini_machine(void) {
     int ret;
     ret = free_state_tables();
     IPFI_PRINTK("IPFIRE: state tables freed: %d.\n", ret);
+    /* kmem_cache_destroy deferred to ipfire.c::fini() after
+     * destroy_workqueue + rcu_barrier ensure all kfree callbacks ran. */
     might_sleep();
 }

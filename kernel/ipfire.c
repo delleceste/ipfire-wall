@@ -26,7 +26,21 @@
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Giacomo S. <delleceste@gmail.com>");
-MODULE_DESCRIPTION("IPv4 packet filter");
+MODULE_DESCRIPTION(
+    "IPFIRE-wall: A high-performance, stateful IPv4 packet filter.\n"
+    "Features:\n"
+    "  - Stateful Inspection: Advanced TCP/UDP/ICMP state tracking.\n"
+    "  - NAT: SNAT, DNAT, and Masquerading support.\n"
+    "  - Lifecycle Management: Unified ipfi_entry with RCU and per-entry timers.\n"
+    "  - Slab Allocation: Dedicated kmem_cache for state, NAT, and log entries.\n"
+    "  - Smart Logging: Rate-limited, duplicate-suppressed logging system.\n"
+    "  - Protocol Helpers: Optimized support for Passive FTP.\n"
+    "  - Networking: TCP MSS clamping and IPv4 defragmentation.\n"
+    "  - Userspace: Netlink-based control, ruleset sync, and statistics.\n"
+    "Network Namespaces (netns):\n"
+    "  - per_net=0 (default): Hooks registered in init_net only.\n"
+    "  - per_net=1: Hooks in all namespaces; tables (state, NAT, logs) are shared.\n"
+    "  - Primary use: Local host firewalling and cross-netns performance testing.");
 
 /* Versione di test!
  * (C) Giacomo Strangolino, 2005-2026
@@ -84,10 +98,28 @@ char *policy = "drop";
 module_param(policy, charp, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 MODULE_PARM_DESC(default_policy, "\"accept\" or \"drop\" policy as default.\n");
 
+/*
+ * per_net — Network namespace hook registration mode.
+ *
+ * 0 (default): Hooks are registered in init_net only. The firewall sees
+ *              traffic on the host's main network stack. Packets inside
+ *              other namespaces (even through loopback) are invisible
+ *              because each namespace has its own netfilter hook chain.
+ *
+ * 1:           Hooks are registered in every network namespace via
+ *              register_pernet_subsys(). All namespaces share the same
+ *              state, NAT, and log tables (no per-namespace isolation).
+ *
+ * The per_net=1 mode is primarily intended for local performance testing:
+ * flood traffic between namespaces on the same host to measure firewall
+ * overhead without flooding the physical network.
+ */
 static int per_net = 0;
 module_param(per_net, int, S_IRUGO);
 MODULE_PARM_DESC(
-    per_net, "Enable per-network namespace hook registration (default: 0)\n");
+    per_net,
+    "Hook registration mode: 0=init_net only (default), 1=all namespaces.\n"
+    "With per_net=0, traffic in non-init namespaces is not filtered.\n");
 
 int welcome(void);
 
@@ -135,9 +167,18 @@ static struct pernet_operations ipfire_net_ops = {
 };
 
 /*
- * Global Hook Registration
+ * Hook Registration
  *
- * We register our netfilter hooks in the initial network namespace (init_net).
+ * nf_register_net_hook() is namespace-scoped: hooks only fire for packets
+ * traversing the struct net they were registered in.
+ *
+ * per_net=0: register_ipfire_net(&init_net) — only the host's own traffic.
+ *            Other namespaces have their own hook chains and are unaffected.
+ *
+ * per_net=1: register_pernet_subsys() — hooks fire in every namespace.
+ *            Useful for local performance testing: create namespaces with
+ *            veth pairs and flood packets between them to measure firewall
+ *            overhead, without sending any traffic on the physical network.
  */
 
 #define KERNEL_MODULE_VERSION "1.99.5"
@@ -202,16 +243,45 @@ static int __init ini(void) { return welcome(); }
 static void __exit fini(void) {
   IPFI_PRINTK("IPFIRE-wall unloading:  \n");
 
-  /* SIGNAL EXIT START */
-  WRITE_ONCE(we_are_exiting, true);
-  /* net/core/dev.c : synchronizes with packet receive processing.
-   * calls might_sleep() and
-   * synchronize_rcu()
+  /*
+   * ===== SHUTDOWN SEQUENCE =====
+   *
+   * The unified lifecycle (ipfi_entry) uses a deferred-free chain:
+   *
+   *   flush_all / timer_cb
+   *     → ipfi_entry_put()
+   *       → queue_work(ipfire_wq, cleanup_work)      [step A: work queued]
+   *         → free_entry_work()
+   *           → timer_delete_sync()
+   *           → call_rcu(free_entry_rcu)              [step B: RCU cb queued]
+   *             → free_entry_rcu()
+   *               → kfree(h)                          [step C: actual free]
+   *
+   * To safely destroy kmem_cache, we must ensure step C has completed
+   * for ALL entries. This requires:
+   *
+   *   1. we_are_exiting = true        → stop new allocations
+   *   2. synchronize_net()            → finish in-flight packet hooks
+   *   3. unregister hooks             → no more packets
+   *   4. fini_machine / fini_log /    → flush_all queues work items (step A)
+   *      fini_translation
+   *   5. destroy_workqueue(ipfire_wq) → flushes & runs all work items,
+   *                                      which post call_rcu (step B)
+   *   6. rcu_barrier()                → waits for all call_rcu callbacks
+   *                                      to finish (step C — kfree done)
+   *   7. kmem_cache_destroy(...)      → now safe, all objects freed
    */
+
+  /* --- Step 1: signal exit --- */
+  WRITE_ONCE(we_are_exiting, true);
+
+  /* --- Step 2: wait for in-flight RCU readers (packet hooks) ---
+   * synchronize_net() calls synchronize_rcu() internally.
+   * Note: synchronize_rcu() only waits for _readers_, NOT for
+   * call_rcu() _callbacks_ — that's what rcu_barrier() is for. */
   synchronize_net();
 
-  /* Stop receiving anything from the network
-   */
+  /* --- Step 3: unregister hooks --- */
   if (per_net) {
     unregister_pernet_subsys(&ipfire_net_ops);
   } else {
@@ -219,21 +289,40 @@ static void __exit fini(void) {
   }
   IPFI_PRINTK("IPFIRE: Unregistered hooks\n");
 
-  /* will call might_sleep() and rcu_barrier() */
+  /* --- Step 4: flush all tables ---
+   * Each fini function calls ipfi_table_flush_all(), which:
+   *   - splices the list, marks entries REMOVED
+   *   - calls ipfi_entry_put() → queues cleanup work on ipfire_wq */
   fini_machine();
-  /* will call might_sleep() and rcu_barrier() */
   fini_log();
-  /* will call might_sleep() and rcu_barrier() */
   fini_translation();
 
   /* fini_netl(): just calls sock_release on the netlink socket */
   fini_netl();
   clean_proc();
 
+  /* --- Step 5: flush the workqueue ---
+   * destroy_workqueue() drains all pending work items.
+   * This runs free_entry_work() for every entry, which calls
+   * timer_delete_sync() + call_rcu(free_entry_rcu).
+   * After this, all call_rcu callbacks are _posted_ but may
+   * not have _executed_ yet. */
   if (ipfire_wq) {
     destroy_workqueue(ipfire_wq);
     ipfire_wq = NULL;
   }
+
+  /* --- Step 6: wait for all RCU callbacks ---
+   * rcu_barrier() blocks until every call_rcu(free_entry_rcu)
+   * posted in step 5 has finished executing (i.e., kfree done).
+   * After this returns, no slab objects are in use. */
+  rcu_barrier();
+
+  /* --- Step 7: destroy slab caches ---
+   * All objects have been freed, safe to tear down the caches. */
+  kmem_cache_destroy(state_cache);
+  kmem_cache_destroy(nat_cache);
+  kmem_cache_destroy(loginfo_cache);
 
   if (ipfi_counters)
     free_percpu(ipfi_counters);

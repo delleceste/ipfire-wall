@@ -213,16 +213,16 @@ struct state_table *keep_state(const struct sk_buff *skb,
       return NULL;
     }
   struct state_table *state_t =
-      (struct state_table *)kmalloc(sizeof(struct state_table), GFP_ATOMIC);
+      (struct state_table *)kmem_cache_alloc(state_cache, GFP_ATOMIC);
   memset(state_t, 0, sizeof(struct state_table));
   refcount_set(&state_t->h.refcnt, 1);   // initial refcount
   if (fill_net_table_fields(state_t, skb, flow) < 0) {
       IPFI_PRINTK("IPFIRE: fill_net_table_fields failed, ipfi_machine.c\n");
-      kfree(state_t);
+      kmem_cache_free(state_cache, state_t);
       return NULL;
     } else if (set_state(skb, state_t, 0) < 0) {
       IPFI_PRINTK("IPFIRE: invalid state when adding new state entry!\n");
-      kfree(state_t);
+      kmem_cache_free(state_cache, state_t);
       return NULL;
     }
   if (p_rule->nflags.ftp) {

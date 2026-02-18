@@ -2,33 +2,21 @@
 #define IPFI_LOG_H
 
 #include "ipfire.h"
+#include "ipfi_entry.h"
 #include <linux/list.h>
 #include <linux/skbuff.h>
 #include <linux/spinlock.h>
 #include <linux/types.h>
 
-#define MAX_LOGINFO_ENTRIES 10000UL
-
-enum log_entry_state { ENTRY_FREE = 0, ENTRY_ACTIVE };
-
 struct ipfire_loginfo {
+  struct ipfi_entry_head h;  /* MUST be first */
   ipfire_info_t info;
-  unsigned long timestamp;
-  struct rcu_head rcuh;
-  struct list_head lnode;
-};
-
-struct ipfire_loginfo_pool {
-  struct ipfire_loginfo entries[MAX_LOGINFO_ENTRIES];
-  u8 state[MAX_LOGINFO_ENTRIES];
-  unsigned int head;
-  spinlock_t lock;
 };
 
 int init_log(void);
 void fini_log(void);
 
-inline void update_loginfo_timer(struct ipfire_loginfo *iplo);
+extern struct kmem_cache *loginfo_cache;
 
 int build_ipfire_info_from_skb(const struct sk_buff *skb, const ipfi_flow *flow,
                                const struct response *res,
@@ -62,7 +50,5 @@ inline int add_packet_to_infolist(const struct sk_buff *skb,
                                   const struct response *res,
                                   const ipfi_flow *flow,
                                   const struct info_flags *flags);
-
-void loginfo_expire_entries(void);
 
 #endif

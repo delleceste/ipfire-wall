@@ -79,9 +79,11 @@ inline unsigned int get_timeout_by_state(int protocol, int state) {
     timeout = gre_lifetime;
   } else if (protocol == IPPROTO_PIM) {
     timeout = pim_lifetime;
+  } else if (protocol == IPPROTO_IPFI_LOG) {
+    /* Loginfo entries: flat timeout, state is ignored */
+    timeout = loginfo_lifetime;
   } else {
     timeout = l3generic_proto_lifetime;
   }
   return timeout;
 }
-

@@ -1,0 +1,2 @@
+0x00000000	packet_suitable_for_mss_change	ipfi	EXPORT_SYMBOL	
+0x00000000	tcpmss_mangle_packet	ipfi	EXPORT_SYMBOL	

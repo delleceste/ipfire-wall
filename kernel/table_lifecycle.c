@@ -23,8 +23,9 @@ static void free_entry_rcu(struct rcu_head *rcu)
 	struct ipfi_entry_head *h =
 		container_of(rcu, struct ipfi_entry_head, rcuh);
 	/*
-	 * The entry was allocated with kmalloc; the ipfi_entry_head is
-	 * at offset 0, so kfree(h) frees the whole containing struct.
+	 * All entries are allocated via kmem_cache_alloc.
+	 * kfree() handles kmem_cache objects correctly on
+	 * modern kernels (6.x) via virt_to_slab().
 	 */
 	kfree(h);
 }

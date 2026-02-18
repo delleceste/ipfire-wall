@@ -362,5 +362,4 @@ void fini_translation(void) {
   fini_nat_tables();
   might_sleep();
   nf_unregister_sockopt(&so_getoriginal_dst);
-  rcu_barrier();
 }

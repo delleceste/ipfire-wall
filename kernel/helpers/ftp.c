@@ -118,8 +118,8 @@ struct state_table* get_params_and_alloc_newentry(const struct state_table* orig
 
 	if(ftpi.valid)
 	{
-		newt = (struct state_table*) 
-			kmalloc(sizeof(struct state_table), GFP_ATOMIC);
+		newt = (struct state_table*)
+			kmem_cache_alloc(state_cache, GFP_ATOMIC);
 		if(!newt)
 		{
 		  IPFI_PRINTK("failed to allocate space for the ftp state table!\n");

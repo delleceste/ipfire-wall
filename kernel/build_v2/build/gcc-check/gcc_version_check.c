@@ -1,0 +1,1 @@
+/archivi/devel/ipfire-wall/kernel/build/gcc-check/gcc_version_check.c

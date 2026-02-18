@@ -63,7 +63,7 @@ struct nat_table *add_snatted_entry(const struct sk_buff *skb,
     return NULL;
   }
 
-  entry = kmalloc(sizeof(struct nat_table), GFP_ATOMIC);
+  entry = kmem_cache_alloc(nat_cache, GFP_ATOMIC);
   if (!entry)
     return NULL;
 
@@ -75,7 +75,7 @@ struct nat_table *add_snatted_entry(const struct sk_buff *skb,
   spin_lock_bh(&nat_locks[NAT_SNAT]);
   if (unlikely(we_are_exiting)) {
     spin_unlock_bh(&nat_locks[NAT_SNAT]);
-    kfree(entry);
+    kmem_cache_free(nat_cache, entry);
     return NULL;
   }
   timeout = get_timeout_by_state(entry->protocol, entry->state);

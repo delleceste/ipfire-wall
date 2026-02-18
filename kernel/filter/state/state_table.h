@@ -57,4 +57,6 @@ int add_ftp_dynamic_rule(struct state_table *ftpt);
 int get_dev_ifaddr(__u32 *addr, int direction, const struct net_device *in, const struct net_device *out);
 int get_ifaddr_by_name(const char *ifname, __u32 *addr);
 
+extern struct kmem_cache *state_cache;
+
 #endif /* IPFI_STATE_TABLE_H */

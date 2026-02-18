@@ -10,140 +10,68 @@
 #include "globals.h"
 #include "logging/log.h"
 #include <linux/slab.h>
-#include <linux/workqueue.h>
 
 /*
- * LOCKING ARCHITECTURE & DESIGN:
+ * DESIGN:
  *
- * 1. UNIFIED LOCK ORDER:
- *    To prevent deadlocks, a strict hierarchy is established:
- *    loginfo_list_lock (Active List) -> loginfo_pool.lock (Memory Pool).
- *    This order is consistently followed in both the packet logging path
- *    and the periodic expiration worker.
+ * Log entries follow the unified ipfi_entry lifecycle (table_lifecycle.c):
  *
- * 2. SIMPLIFIED ALLOCATION:
- *    pool_alloc() only handles scanning of the static pool state array.
- *    It is protected by loginfo_pool.lock and does not nest any other locks.
- *
- * 3. SAFE RECYCLING:
- *    If the pool is completely full, add_packet_to_infolist() handles
- *    the recycling of the oldest entry (the tail of the active list).
- *    This ensures that unlinking and reallocation are atomic relative to
- *    active readers and follows the unified lock order.
- *
- * 4. PERFORMANCE:
- *    Duplicate detection (packet_not_seen) only scans the Active List.
- *    For N_active << MAX_LOG_ENTRIES, performance is O(N_active).
+ * 1. ALLOCATION: kmem_cache_alloc from a dedicated slab cache.
+ * 2. LIFECYCLE:  Each entry has an individual timer that fires on
+ *                expiration. On duplicate match, the timer is refreshed
+ *                via ipfi_entry_update_timer() using IPPROTO_IPFI_LOG
+ *                as sentinel protocol (throttled to 5s).
+ * 3. REMOVAL:    Timer callback calls ipfi_entry_remove + ipfi_entry_put.
+ *                ipfi_entry_put defers to workqueue -> timer_delete_sync
+ *                -> call_rcu -> kfree (handles kmem_cache objects on 6.x).
+ * 4. MAX CAP:    loginfo_entry_counter is checked before allocation.
+ *                If at capacity, the oldest entry is evicted.
  */
 
-/* The pool and its management */
-static struct ipfire_loginfo_pool loginfo_pool;
+/* Dedicated slab cache for ipfire_loginfo entries */
+struct kmem_cache *loginfo_cache;
 
-/* Periodic cleanup */
-static struct delayed_work loginfo_cleanup_work;
+/* ---- Timer callback ---- */
 
-static void loginfo_cleanup_worker(struct work_struct *work) {
-  if (unlikely(READ_ONCE(we_are_exiting)))
-    return;
+static void handle_loginfo_timeout(struct timer_list *t) {
+  struct ipfire_loginfo *li = timer_container_of(li, t, h.timer);
+  struct ipfi_entry_head *h = &li->h;
 
-  loginfo_expire_entries();
-
-  /* Reschedule cleanup if not exiting */
-  if (likely(!we_are_exiting))
-    queue_delayed_work(ipfire_wq, &loginfo_cleanup_work, HZ * 10);
-}
-
-static void loginfo_unlink_rcu(struct ipfire_loginfo *iplo) {
-  list_del_rcu(&iplo->lnode);
-  loginfo_entry_counter--;
-}
-
-static void pool_free_rcu_callback(struct rcu_head *rcu) {
-  struct ipfire_loginfo *entry = container_of(rcu, struct ipfire_loginfo, rcuh);
-  unsigned int idx;
-
-  /* Pointer arithmetic to find index */
-  idx = entry - loginfo_pool.entries;
-  if (idx >= MAX_LOGINFO_ENTRIES)
-    return;
-
-  spin_lock_bh(&loginfo_pool.lock);
-  loginfo_pool.state[idx] = ENTRY_FREE;
-  spin_unlock_bh(&loginfo_pool.lock);
-}
-
-static void pool_free_immediate(struct ipfire_loginfo *entry) {
-  unsigned int idx;
-  if (!entry)
-    return;
-
-  idx = entry - loginfo_pool.entries;
-  if (idx >= MAX_LOGINFO_ENTRIES)
-    return;
-
-  spin_lock_bh(&loginfo_pool.lock);
-  loginfo_pool.state[idx] = ENTRY_FREE;
-  spin_unlock_bh(&loginfo_pool.lock);
-}
-
-static void pool_free_rcu(struct ipfire_loginfo *entry) {
-  if (!entry)
-    return;
-
-  call_rcu(&entry->rcuh, pool_free_rcu_callback);
-}
-
-/*
- * Scans the pool state array starting from head (round-robin)
- * for the first ENTRY_FREE slot. Returns NULL if pool is full.
- * In that case add_packet_to_infolist will recycle the oldest entry.
- */
-static struct ipfire_loginfo *pool_alloc(void) {
-  struct ipfire_loginfo *entry = NULL;
-  unsigned int i, idx;
-  unsigned int limit = max_loginfo_entries;
-
-  if (limit > MAX_LOGINFO_ENTRIES)
-    limit = MAX_LOGINFO_ENTRIES;
-
-  spin_lock_bh(&loginfo_pool.lock);
-  for (i = 0; i < limit; i++) {
-    idx = (loginfo_pool.head + i) % limit;
-    if (loginfo_pool.state[idx] == ENTRY_FREE) {
-      entry = &loginfo_pool.entries[idx];
-      loginfo_pool.state[idx] = ENTRY_ACTIVE;
-      loginfo_pool.head = (idx + 1) % limit;
-      break;
-    }
-  }
-  spin_unlock_bh(&loginfo_pool.lock);
-
-  return entry;
-}
-
-void loginfo_expire_entries(void) {
-  struct ipfire_loginfo *iplo;
-  struct ipfire_loginfo *tmp;
-  unsigned long now = jiffies;
-  unsigned long expiry = (unsigned long)loginfo_lifetime;
-
-  if (expiry == 0)
-    return;
-
-  /* Follow Hierarchy: loginfo_list_lock -> pool_free (takes loginfo_pool.lock)
-   */
   spin_lock_bh(&loginfo_list_lock);
-  list_for_each_entry_safe(iplo, tmp, &active_logi_list, lnode) {
-    if (time_after(now, READ_ONCE(iplo->timestamp) + HZ * expiry)) {
-      loginfo_unlink_rcu(iplo);
-      pool_free_rcu(iplo);
-    }
-  }
+  ipfi_entry_remove(h, &loginfo_entry_counter);
   spin_unlock_bh(&loginfo_list_lock);
+
+  ipfi_entry_put(h);
 }
 
-inline void update_loginfo_timer(struct ipfire_loginfo *iplo) {
-  WRITE_ONCE(iplo->timestamp, jiffies);
+/* ---- Allocation ---- */
+
+static struct ipfire_loginfo *loginfo_alloc(void) {
+  struct ipfire_loginfo *li;
+
+  li = kmem_cache_alloc(loginfo_cache, GFP_ATOMIC);
+  if (!li)
+    return NULL;
+
+  memset(li, 0, sizeof(*li));
+  ipfi_entry_init(&li->h, loginfo_lifetime, handle_loginfo_timeout);
+  refcount_set(&li->h.refcnt, 1);
+
+  return li;
+}
+
+/* ---- Eviction (when at capacity) ---- */
+
+static void loginfo_evict_oldest(void) {
+  struct ipfire_loginfo *oldest;
+
+  /* Caller MUST hold loginfo_list_lock */
+  if (list_empty(&active_logi_list))
+    return;
+
+  oldest = list_last_entry(&active_logi_list, struct ipfire_loginfo, h.lnode);
+  ipfi_entry_remove(&oldest->h, &loginfo_entry_counter);
+  ipfi_entry_put(&oldest->h);
 }
 
 int build_ipfire_info_from_skb(const struct sk_buff *skb, const ipfi_flow *flow,
@@ -173,49 +101,35 @@ inline int add_packet_to_infolist(const struct sk_buff *skb,
   if (unlikely(READ_ONCE(we_are_exiting)))
     return -EBUSY;
 
-  /*
-   * Consistent locking order: loginfo_list_lock -> pool_alloc (takes pool lock)
-   */
+  ipli = loginfo_alloc();
+  if (unlikely(!ipli))
+    return -ENOMEM;
+
+  if (build_ipfire_info_from_skb(skb, flow, res, flags, &ipli->info) < 0) {
+    ipfi_entry_put(&ipli->h);
+    return -1;
+  }
+
   spin_lock_bh(&loginfo_list_lock);
 
-  ipli = pool_alloc();
-  if (unlikely(!ipli)) {
-    /* Potential "Apocalypse" scenario: pool is full.
-     * We unlink the oldest entry to make space for FUTURE packets,
-     * but we do NOT reuse the memory immediately to avoid RCU race.
-     */
-    if (!list_empty(&active_logi_list)) {
-      struct ipfire_loginfo *oldest;
-      oldest = list_last_entry(&active_logi_list, struct ipfire_loginfo, lnode);
-      loginfo_unlink_rcu(oldest);
-      pool_free_rcu(oldest);
-    }
-    /* Packet is dropped because we have no immediate free slot */
+  if (unlikely(we_are_exiting)) {
     spin_unlock_bh(&loginfo_list_lock);
-    return -ENOMEM;
+    ipfi_entry_put(&ipli->h);
+    return -EBUSY;
   }
 
-  if (ipli) {
-    memset(&ipli->info, 0, sizeof(ipli->info));
-    if (build_ipfire_info_from_skb(skb, flow, res, flags, &ipli->info) < 0) {
-      spin_unlock_bh(&loginfo_list_lock);
-      pool_free_immediate(ipli);
-      return -1;
-    }
-    WRITE_ONCE(ipli->timestamp, jiffies);
+  /* Enforce max entries cap */
+  if (READ_ONCE(loginfo_entry_counter) >= max_loginfo_entries)
+    loginfo_evict_oldest();
 
-    if (unlikely(we_are_exiting)) {
-      spin_unlock_bh(&loginfo_list_lock);
-      pool_free_immediate(ipli);
-      return -EBUSY;
-    }
-
-    list_add_rcu(&ipli->lnode, &active_logi_list);
-    loginfo_entry_counter++;
-  }
+  list_add_rcu(&ipli->h.lnode, &active_logi_list);
+  loginfo_entry_counter++;
   spin_unlock_bh(&loginfo_list_lock);
 
-  return ipli ? 0 : -ENOMEM;
+  /* Arm the timer AFTER the entry is on the list */
+  ipfi_entry_arm_timer(&ipli->h);
+
+  return 0;
 }
 
 inline int iph_compare(const struct iphdr *skb_iphdr, const ipfire_info_t *p2) {
@@ -334,26 +248,20 @@ inline int packet_not_seen(const struct sk_buff *skb,
                            const struct response *res, const ipfi_flow *flow,
                            const struct info_flags *flags, int chk_state) {
   struct ipfire_loginfo *loginfo;
-  unsigned long now = jiffies;
-  unsigned long expiry = (unsigned long)loginfo_lifetime;
 
   /* Short circuit */
   if (READ_ONCE(loginfo_entry_counter) == 0)
     return 1;
 
   rcu_read_lock_bh();
-  /* Iterates ONLY over the active nodes */
-  list_for_each_entry_rcu(loginfo, &active_logi_list, lnode) {
-    /* Check for expiration if lifetime is set */
-    if (expiry > 0 &&
-        time_after(now, READ_ONCE(loginfo->timestamp) + HZ * expiry))
-      continue;
-
+  list_for_each_entry_rcu(loginfo, &active_logi_list, h.lnode) {
     if (compare_loginfo_packets(skb, res, flow, flags, &loginfo->info)) {
       if (!chk_state ||
           (chk_state && (res->st.state == loginfo->info.response.st.state))) {
-        /* Update timestamp on seen packet to slide the window */
-        update_loginfo_timer(loginfo);
+        /* Refresh timer — extends the suppression window.
+         * IPPROTO_IPFI_LOG is a sentinel that makes
+         * get_timeout_by_state() return loginfo_lifetime. */
+        ipfi_entry_update_timer(&loginfo->h, IPPROTO_IPFI_LOG, 0);
         rcu_read_unlock_bh();
         return 0;
       }
@@ -384,18 +292,20 @@ int smart_log_with_state_check(const struct sk_buff *skb,
 }
 
 int init_log(void) {
-  spin_lock_init(&loginfo_pool.lock);
-
-  /* Initialize delayed work for periodic cleanup */
-  INIT_DELAYED_WORK(&loginfo_cleanup_work, loginfo_cleanup_worker);
-  if (ipfire_wq)
-    queue_delayed_work(ipfire_wq, &loginfo_cleanup_work, HZ * 10);
-
+  loginfo_cache = kmem_cache_create("ipfi_loginfo",
+                                    sizeof(struct ipfire_loginfo),
+                                    0, SLAB_HWCACHE_ALIGN, NULL);
+  if (!loginfo_cache) {
+    IPFI_PRINTK("IPFIRE: failed to create loginfo slab cache\n");
+    return -ENOMEM;
+  }
   return 0;
 }
 
 void fini_log(void) {
-  /* Cancel delayed work first */
-  cancel_delayed_work_sync(&loginfo_cleanup_work);
-  synchronize_rcu();
+  /* Flush all active entries using the unified lifecycle */
+  ipfi_table_flush_all(&active_logi_list, &loginfo_list_lock,
+                       &loginfo_entry_counter);
+  /* kmem_cache_destroy deferred to ipfire.c::fini() after
+   * destroy_workqueue + rcu_barrier ensure all kfree callbacks ran. */
 }

@@ -22,6 +22,7 @@
 struct list_head nat_lists[2];
 spinlock_t nat_locks[2];
 unsigned int nat_counters[2];
+struct kmem_cache *nat_cache;
 
 void fini_nat_tables(void)
 {
@@ -29,10 +30,19 @@ void fini_nat_tables(void)
 	s = free_nat_tables(NAT_SNAT);
 	d = free_nat_tables(NAT_DNAT);
 	IPFI_PRINTK("IPFIRE: NAT tables freed: snat=%d dnat=%d\n", s, d);
+	/* kmem_cache_destroy deferred to ipfire.c::fini() after
+	 * destroy_workqueue + rcu_barrier ensure all kfree callbacks ran. */
 }
 
 int init_nat_tables(void)
 {
+	nat_cache = kmem_cache_create("ipfi_nat",
+				     sizeof(struct nat_table),
+				     0, SLAB_HWCACHE_ALIGN, NULL);
+	if (!nat_cache) {
+		IPFI_PRINTK("IPFIRE: failed to create NAT slab cache\n");
+		return -ENOMEM;
+	}
 	INIT_LIST_HEAD(&nat_lists[NAT_SNAT]);
 	INIT_LIST_HEAD(&nat_lists[NAT_DNAT]);
 	spin_lock_init(&nat_locks[NAT_SNAT]);
