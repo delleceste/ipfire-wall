@@ -19,6 +19,10 @@ static void nl_receive_data(struct sock *sk, int len);
 static int create_control_socket(struct net *net) {
   struct sock *sk;
   struct ipfire_net *ipfire_net = ipfire_pernet(net);
+  if (!ipfire_net) {
+    IPFI_PRINTK("IPFIRE: create_control_socket: per-net data is NULL!\n");
+    return -1;
+  }
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 14)
   sk = netlink_kernel_create(NETLINK_IPFI_CONTROL, nl_receive_control);
 
@@ -55,6 +59,10 @@ static int create_control_socket(struct net *net) {
 static int create_data_socket(struct net *net) {
   struct sock *sk;
   struct ipfire_net *ipfire_net = ipfire_pernet(net);
+  if (!ipfire_net) {
+    IPFI_PRINTK("IPFIRE: create_data_socket: per-net data is NULL!\n");
+    return -1;
+  }
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 14)
   sk = netlink_kernel_create(NETLINK_IPFI_DATA, nl_receive_data);
 #elif LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 22)
@@ -88,6 +96,10 @@ static int create_data_socket(struct net *net) {
 static int create_gui_notifier_socket(struct net *net) {
   struct sock *sk;
   struct ipfire_net *ipfire_net = ipfire_pernet(net);
+  if (!ipfire_net) {
+    IPFI_PRINTK("IPFIRE: create_gui_notifier_socket: per-net data is NULL!\n");
+    return -1;
+  }
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 14)
   sk = netlink_kernel_create(NETLINK_IPFI_GUI_NOTIFIER, NULL);
 #elif LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 22)
@@ -197,13 +209,16 @@ void init_ruleset_heads(void) {
 
 int init_netl(struct net *net) {
   int ctrl_so, data_so, gui_so;
+  int i;
   data_so = 0, ctrl_so = 0, gui_so = 0;
   ctrl_so = create_control_socket(net);
   data_so = create_data_socket(net);
   gui_so = create_gui_notifier_socket(net);
 
   memset(moderate_print, 0, sizeof(unsigned int) * MAXMODERATE_ARGS);
-  memset(moderate_print_limit, 0, sizeof(unsigned int) * MAXMODERATE_ARGS);
+  for (i = 0; i < MAXMODERATE_ARGS; i++)
+    moderate_print_limit[i] = MODERATE_LIMIT;
+
   moderate_print_limit[PRINT_PROTO_UNSUPPORTED] = 10000;
 
   memset(&kslight, 0, sizeof(kslight));

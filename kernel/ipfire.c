@@ -84,7 +84,7 @@ char *policy = "drop";
 module_param(policy, charp, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 MODULE_PARM_DESC(default_policy, "\"accept\" or \"drop\" policy as default.\n");
 
-static int per_net = 1;
+static int per_net = 0;
 module_param(per_net, int, S_IRUGO);
 MODULE_PARM_DESC(
     per_net, "Enable per-network namespace hook registration (default: 0)\n");
@@ -126,12 +126,18 @@ static int register_ipfire_net(struct net *net);
 static void unregister_ipfire_net(struct net *net);
 
 static int ipfire_net_init(struct net *net) {
-  IPFI_PRINTK("IPFIRE: Initializing for network namespace %px\n", net);
+  if (!per_net && !net_eq(net, &init_net))
+    return 0;
+
+
   init_netl(net);
   return register_ipfire_net(net);
 }
 
 static void ipfire_net_exit(struct net *net) {
+  if (!per_net && !net_eq(net, &init_net))
+    return;
+
   IPFI_PRINTK("IPFIRE: Cleaning up for network namespace %px\n", net);
   unregister_ipfire_net(net);
   fini_netl(net);
@@ -140,6 +146,8 @@ static void ipfire_net_exit(struct net *net) {
 static struct pernet_operations ipfire_net_ops = {
     .init = ipfire_net_init,
     .exit = ipfire_net_exit,
+    .id = &ipfire_net_id,
+    .size = sizeof(struct ipfire_net),
 };
 
 /*
@@ -191,15 +199,16 @@ int welcome(void) {
   init_log();
 
   init_machine(); /* registers netdevice notifier */
-  if (per_net) {
-    if (register_pernet_subsys(&ipfire_net_ops) < 0) {
+
+  /* Always register pernet pointers, even if per_net is 0.
+   * If per_net is 0, we only initialize init_net (and skip others).
+   * This ensures ipfire_net_id is assigned and accessible via net_generic.
+   */
+  if (register_pernet_subsys(&ipfire_net_ops) < 0) {
       IPFI_PRINTK("IPFIRE: failed to register pernet subsystem\n");
       return -1;
-    }
-  } else {
-    init_netl(&init_net);
-    register_ipfire_net(&init_net);
   }
+
   return 0;
 }
 
@@ -218,11 +227,7 @@ static void __exit fini(void) {
 
   /* Stop receiving anything from the network
    */
-  if (per_net) {
-    unregister_pernet_subsys(&ipfire_net_ops);
-  } else {
-    unregister_ipfire_net(&init_net);
-  }
+  unregister_pernet_subsys(&ipfire_net_ops);
   IPFI_PRINTK("IPFIRE: Unregistered hooks\n");
 
   /* will call might_sleep() and rcu_barrier() */
@@ -232,9 +237,6 @@ static void __exit fini(void) {
   /* will call might_sleep() and rcu_barrier() */
   fini_translation();
 
-  /* fini_netl(): just calls sock_release on the netlink socket */
-  if (!per_net)
-    fini_netl(&init_net);
   clean_proc();
 
   if (ipfire_wq) {
@@ -367,7 +369,6 @@ static int register_ipfire_net(struct net *net) {
   if (ret < 0)
     goto err_post;
 
-  IPFI_PRINTK("IPFIRE: Registered hooks for net %px\n", net);
   return 0;
 
   /* Error handling - unregister in reverse order */
@@ -464,8 +465,10 @@ unsigned int process(void *priv, struct sk_buff *skb,
   switch (hooknum) {
   case NF_IP_PRE_ROUTING:
     IPFI_STAT_INC(pre_rcv); // stats
-    if (no_nat)
-      return NF_ACCEPT;
+    if (no_nat) {
+       IPFI_MODERATE_PRINTK(PRINT_TEST, "IPFIRE: no_nat is true. fwopts.nat=%d, fwopts.masquerade=%d\n", fwopts.nat, fwopts.masquerade);
+       return NF_ACCEPT;
+    }
 
     daddr = ip_hdr(skb)->daddr; /* save original destination address */
     flow.direction = IPFI_INPUT_PRE;

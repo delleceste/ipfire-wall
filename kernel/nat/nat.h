@@ -57,7 +57,7 @@ int csum_error_message(const char *origin, int enum_code);
  * In this function, the skb must match the rule provided by user for
  * DNAT or SNAT (or MASQUERADE). 1 is returned on success
  */
-int translation_rule_match(const struct sk_buff *skb, const ipfi_flow *flow,
+int translation_rule_match(struct net *net, const struct sk_buff *skb, const ipfi_flow *flow,
                            const struct info_flags *flags,
                            const ipfire_rule *r);
 

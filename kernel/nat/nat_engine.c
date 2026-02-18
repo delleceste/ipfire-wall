@@ -17,30 +17,36 @@
 #include <net/tcp.h>
 #include <net/udp.h>
 
-int translation_rule_match(const struct sk_buff *skb, const ipfi_flow *flow,
+int translation_rule_match(struct net *net, const struct sk_buff *skb, const ipfi_flow *flow,
                            const struct info_flags *flags,
                            const ipfire_rule *r) {
   struct iphdr *iph = ip_hdr(skb);
   if (r->direction != flags->direction) {
+    IPFI_PRINTK("IPFIRE: SNAT rule mismatch: direction %d != %d. Rule ID: %u\n", r->direction, flags->direction, r->rule_id);
     return -1;
   }
 
-  if (r->ip.protocol != iph->protocol) {
+  if (r->nflags.proto && r->ip.protocol != iph->protocol) {
+    IPFI_PRINTK("IPFIRE: SNAT rule match failed: protocol mismatch. Packet proto: %d, Rule proto: %d\n", iph->protocol, r->ip.protocol);
     return -1;
   }
 
   if (r->nflags.indev &&
       (flow->in == NULL ||
        strncmp(r->devpar.in_devname, flow->in->name, IFNAMSIZ) != 0)) {
+    IPFI_PRINTK("IPFIRE: SNAT rule match failed: input device mismatch.\n");
     return -1;
   }
   if (r->nflags.outdev &&
       (flow->out == NULL ||
        strncmp(r->devpar.out_devname, flow->out->name, IFNAMSIZ) != 0)) {
+    IPFI_PRINTK("IPFIRE: SNAT rule match failed: output device mismatch.\n");
     return -1;
   }
 
-  if (address_match(iph, r, flags->direction, flow->in, flow->out) < 0) {
+  if (address_match(iph, r, flags->direction, flow->in, flow->out, net) < 0) {
+    IPFI_PRINTK("IPFIRE: SNAT rule match failed: address mismatch. Src: %pI4, Dst: %pI4, Rule Src: %pI4, Rule Dst: %pI4\n",
+                &iph->saddr, &iph->daddr, &r->ip.ipsrc[0], &r->ip.ipdst[0]);
     return -1;
   }
 
@@ -48,6 +54,7 @@ int translation_rule_match(const struct sk_buff *skb, const ipfi_flow *flow,
   case IPPROTO_TCP: {
     struct tcphdr *th = (struct tcphdr *)((void *)iph + iph->ihl * 4);
     if (port_match(th, NULL, r, IPPROTO_TCP) < 0) {
+       IPFI_PRINTK("IPFIRE: SNAT rule match failed: TCP port mismatch.\n");
       return -1;
     }
     break;
@@ -55,11 +62,13 @@ int translation_rule_match(const struct sk_buff *skb, const ipfi_flow *flow,
   case IPPROTO_UDP: {
     struct udphdr *uh = (struct udphdr *)((void *)iph + iph->ihl * 4);
     if (port_match(NULL, uh, r, IPPROTO_UDP) < 0) {
+       IPFI_PRINTK("IPFIRE: SNAT rule match failed: UDP port mismatch.\n");
       return -1;
     }
     break;
   }
   }
+  IPFI_PRINTK("IPFIRE: SNAT rule match SUCCESS!\n");
   return 1;
 }
 

@@ -22,7 +22,7 @@ int masquerade_translation(struct net *net, struct sk_buff *skb, const ipfi_flow
 
   rcu_read_lock_bh();
   list_for_each_entry_rcu(transrule, &masquerade_post.list, list) {
-    if (translation_rule_match(skb, flow, flags, transrule) > 0) {
+    if (translation_rule_match(net, skb, flow, flags, transrule) > 0) {
       struct nat_table *snt;
       masq_addr = get_ifaddr(skb);
       fill_masquerade_rule_fields(transrule, masq_addr);

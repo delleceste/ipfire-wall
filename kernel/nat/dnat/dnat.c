@@ -33,7 +33,7 @@ int dnat_translation(struct net *net, struct sk_buff *skb, const ipfi_flow *flow
 
   rcu_read_lock_bh();
   list_for_each_entry_rcu(transrule, &dnat_rules->list, list) {
-    if (translation_rule_match(skb, flow, flags, transrule) > 0) {
+    if (translation_rule_match(net, skb, flow, flags, transrule) > 0) {
       if ((flow->direction == IPFI_INPUT_PRE) &&
           ((csum_check = check_checksums(skb)) < 0)) {
         rcu_read_unlock_bh();

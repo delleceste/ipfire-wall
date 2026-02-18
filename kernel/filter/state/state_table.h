@@ -54,7 +54,7 @@ void fill_state_info(struct state_info *stinfo, const struct state_table *stt);
 int add_ftp_dynamic_rule(struct state_table *ftpt);
 
 /* Generic helpers */
-int get_dev_ifaddr(__u32 *addr, int direction, const struct net_device *in, const struct net_device *out);
-int get_ifaddr_by_name(const char *ifname, __u32 *addr);
+int get_dev_ifaddr(struct net *net, __u32 *addr, int direction, const struct net_device *in, const struct net_device *out);
+int get_ifaddr_by_name(struct net *net, const char *ifname, __u32 *addr);
 
 #endif /* IPFI_STATE_TABLE_H */

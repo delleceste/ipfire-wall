@@ -27,7 +27,9 @@ int snat_translation(struct net *net, struct sk_buff *skb, const ipfi_flow *flow
 
   rcu_read_lock_bh();
   list_for_each_entry_rcu(snatrule, &translation_post.list, list) {
-    if (translation_rule_match(skb, flow, flags, snatrule) > 0) {
+    IPFI_PRINTK("IPFIRE: Checking SNAT rule %u...\n", snatrule->rule_id);
+    if (translation_rule_match(net, skb, flow, flags, snatrule) > 0) {
+      IPFI_PRINTK("IPFIRE: SNAT rule %u MATCHED. Creating entry...\n", snatrule->rule_id);
       if ((snt = add_snatted_entry(net, skb, flow, resp, flags, snatrule)) != NULL) {
         int status = snat_packet(skb, snt);
         nat_put(snt);

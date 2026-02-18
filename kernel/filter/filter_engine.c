@@ -62,7 +62,7 @@ struct response ipfire_filter(struct net *net,
       drop = 1;
 
     if ((res = ip_layer_filter(iph, rule, flow->direction, flow->in,
-                                flow->out)) < 0)
+                                flow->out, net)) < 0)
       goto next_drop_rule;
     else if (res > 0)
       drop = 1;
@@ -126,7 +126,7 @@ struct response ipfire_filter(struct net *net,
 
 
     if ((res = ip_layer_filter(iph, rule, flow->direction, flow->in,
-                                flow->out)) < 0)
+                                flow->out, net)) < 0)
       goto next_pass_rule;
     else if (res > 0)
       pass = 1;
@@ -267,13 +267,13 @@ void fill_state_info(struct state_info *stinfo, const struct state_table *stt) {
   stinfo->admin = stt->admin;
 }
 
-int get_dev_ifaddr(__u32 *addr, int direction, const struct net_device *in,
+int get_dev_ifaddr(struct net *net, __u32 *addr, int direction, const struct net_device *in,
                 const struct net_device *out) {
   switch (direction) {
     case IPFI_INPUT_PRE:
     case IPFI_INPUT:
       if (in) {
-          if (get_ifaddr_by_name(in->name, addr) < 0) {
+          if (get_ifaddr_by_name(net, in->name, addr) < 0) {
               IPFI_PRINTK("IPFIRE: direction: input no interface matching name %s!\n",
                            in->name);
               return -1;
@@ -285,7 +285,7 @@ int get_dev_ifaddr(__u32 *addr, int direction, const struct net_device *in,
     case IPFI_OUTPUT_POST:
     case IPFI_OUTPUT:
       if (out) {
-          if (get_ifaddr_by_name(out->name, addr) < 0) {
+          if (get_ifaddr_by_name(net, out->name, addr) < 0) {
               printk("IPFIRE: direction: output: no interface matching name %s!\n",
                       out->name);
               return -1;
@@ -301,13 +301,13 @@ int get_dev_ifaddr(__u32 *addr, int direction, const struct net_device *in,
   return 0;
 }
 
-int get_ifaddr_by_name(const char *ifname, __u32 *addr) {
+int get_ifaddr_by_name(struct net *net, const char *ifname, __u32 *addr) {
   struct net_device *pnet_device;
   struct in_device *pin_device;
   struct in_ifaddr *inet_ifaddr;
 
   rcu_read_lock();
-  for_each_netdev_rcu(&init_net, pnet_device) {
+  for_each_netdev_rcu(net, pnet_device) {
     if ((netif_running(pnet_device)) && (pnet_device->ip_ptr != NULL) &&
         (strcmp(pnet_device->name, ifname) == 0)) {
         pin_device = (struct in_device *)pnet_device->ip_ptr;

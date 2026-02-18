@@ -45,7 +45,8 @@ int address_match(const struct iphdr * iph,
                   const ipfire_rule * r,
                   int direction,
                   const struct net_device *in,
-                  const struct net_device *out)
+                  const struct net_device *out,
+                  struct net *net)
 {
     int match = 0;
     int i, addr_in_list;
@@ -57,7 +58,7 @@ int address_match(const struct iphdr * iph,
     * to the interface in packet if MYADDR was specified, the dotted
     * decimal one if ADDR is specified in flags */
     if (r->nflags.src_addr == MYADDR) {
-        if (get_dev_ifaddr(&p_source_address, direction, in, out) < 0) {
+        if (get_dev_ifaddr(net, &p_source_address, direction, in, out) < 0) {
             return -1;
         }
         source_address = p_source_address;
@@ -128,7 +129,7 @@ int address_match(const struct iphdr * iph,
     /* destination address */
     if (r->nflags.dst_addr == MYADDR)
     {
-        if (get_dev_ifaddr(&p_dest_address, direction, in, out) < 0)
+        if (get_dev_ifaddr(net, &p_dest_address, direction, in, out) < 0)
         {
             return -1;
         }
@@ -355,10 +356,10 @@ int port_match(const struct tcphdr *tcph,
 }
 
 int ip_layer_filter(const struct iphdr *iph, const ipfire_rule* r, int direction,
-                    const struct net_device *in, const struct net_device *out)
+                    const struct net_device *in, const struct net_device *out, struct net *net)
 {
     int match = 0;
-    if ((match = address_match(iph, r, direction, in, out)) < 0) {
+    if ((match = address_match(iph, r, direction, in, out, net)) < 0) {
         return -1;
     }
     if (iph && r->nflags.proto) { // filter by proto
