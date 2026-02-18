@@ -22,6 +22,15 @@ typedef struct {
 } ipfire_info_t;
 ```
 
+### 1.2. Unified Entry API (`ipfi_entry.h`)
+All stateful entries use a standardized lifecycle API.
+
+- `ipfi_entry_init(h, list_head, counter, list_lock)`: Initializes the entry, sets up the timer, and provides RCU-safe list insertion.
+- `ipfi_entry_arm_timer(h)`: Activates the entry's timer. Should be called **after** the entry is safely on a list.
+- `ipfi_entry_put(h)`: Standard reference decrement. If the count hits zero, the entry is queued for cleanup.
+- `ipfi_entry_update_timer(h, proto, state)`: Refreshes the entry's lifetime based on the protocol state.
+- `ipfi_entry_remove(h)`: Logically removes the entry from its table.
+
 ---
 
 ## 2. Kernel API: Core Logic Functions

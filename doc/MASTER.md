@@ -31,6 +31,15 @@ Welcome to the comprehensive technical documentation for the IPFire-Wall kernel 
 9. **[Developer API Guide](09_Developer_API_Guide.md)**  
    *Internal kernel interfaces, shared structures, and Netlink protocols.*
 
+10. **[Lifecycle & Synchronization](10_Lifecycle_and_Synchronization.md)**  
+    *Unified table entries, RCU/WQ cleanup chain, and safe shutdown ordering.*
+
+11. **[Network Namespace Support](11_Network_Namespace_Support.md)**  
+    *The `per_net` parameter, namespace scoping, and host-centric design.*
+
+12. **[Concurrency & Safety Analysis](12_Concurrency_and_Safety_Analysis.md)**  
+    *In-depth analysis of Race Conditions, Use-After-Free, and TOCTOU.*
+
 ---
 
 ## How to use this documentation

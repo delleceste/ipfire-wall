@@ -1,6 +1,6 @@
 # IPFire-Wall: Consolidated Project Report
 
-*Generated on: Thu Feb  5 03:58:27 PM CET 2026*
+*Generated on: Wed Feb 18 06:06:18 PM CET 2026*
 
 # Chapter 1: Refactoring & Optimization
 
@@ -37,6 +37,18 @@ The Netlink message structure was streamlined by removing legacy per-packet sequ
 A shadow-tree build system was implemented using a `build/` directory.
 - **Feature**: Source files are symlinked into `build/` before compilation.
 - **Benefit**: All intermediate artifacts (`.o`, `.mod`, etc.) are hidden from the main source tree, keeping the environment clean for development.
+
+## 1.5. Unified Table Lifecycle & Slab Allocation
+The memory management for filtering tables was standardized to use a unified lifecycle and dedicated kernel slab caches (`kmem_cache`).
+
+- **Unified Lifecycle**: All table entries (State, NAT, and LogInfo) now embed `struct ipfi_entry_head`, sharing consistent RCU-based synchronization and reference counting.
+- **Slab Migration**:
+  - The static `loginfo_pool` was removed in favor of the `ipfi_loginfo` slab.
+  - State and NAT tables were migrated from dynamic `kmalloc` to their respective `ipfi_state` and `ipfi_nat` slabs.
+- **Benefits**:
+  - **Efficiency**: Slab allocation provides better cache locality and zero internal fragmentation for fixed-size entries.
+  - **Consistency**: A single code path (`table_lifecycle.c`) manages the complex interactions between RCU, workqueues, and timers for all module entries.
+  - **Transparency**: Memory usage is now visible per-module via `/proc/slabinfo`.
 
 ---
 
@@ -107,6 +119,8 @@ Since UDP is connectionless, the engine creates virtual states (`UDP_NEW` -> `UD
 ## 3.3. Table Management
 - **Lookups**: Perform bidirectional hashing. Both sides of a connection (`A:port1 <-> B:port2` and `B:port2 <-> A:port1`) produce the same hash key, allowing consistent tracking of bidirectional flows.
 - **Lifetimes**: Every state entry has an associated kernel timer. If no traffic is seen for a specific duration (e.g., 3600s for ESTABLISHED TCP, or ~30s for UDP), the entry is automatically purged to free resources.
+- **Allocation**: State entries are allocated from a dedicated `kmem_cache` slab (`ipfi_state`), ensuring low-latency access and optimized memory layout.
+- **Namespaces**: In the current implementation, state tables are shared across all network namespaces (even with `per_net=1`).
 - **Capacity**: The firewall enforces a `max_state_entries` limit to prevent resource exhaustion attacks.
 
 ## 3.4. FTP Support
@@ -518,7 +532,8 @@ In `POST_ROUTING`, the engine identifies packets requiring SNAT.
 
 1.  **Rule Match**: `snat_translation()` finds a match in `translation_post`.
 2.  **Accounting**: `add_snatted_entry()` records the `(original_src -> new_src)` mapping. This is vital for "De-SNATting" the return traffic.
-3.  **Transformation**: `do_source_nat()` executes the `manip_skb` logic on the source fields.
+3.  **Allocation**: Entries are allocated from the `ipfi_nat` slab cache for high-performance translation tracking.
+4.  **Transformation**: `do_source_nat()` executes the `manip_skb` logic on the source fields.
 
 ### 2.2. Masquerade: The Dynamic SNAT
 Masquerade is identical to SNAT except it doesn't have a fixed IP. It calls `get_ifaddr()` which uses `inet_select_addr()` to find the primary IP of the outgoing network interface.
@@ -598,6 +613,15 @@ typedef struct {
 } ipfire_info_t;
 ```
 
+### 1.2. Unified Entry API (`ipfi_entry.h`)
+All stateful entries use a standardized lifecycle API.
+
+- `ipfi_entry_init(h, list_head, counter, list_lock)`: Initializes the entry, sets up the timer, and provides RCU-safe list insertion.
+- `ipfi_entry_arm_timer(h)`: Activates the entry's timer. Should be called **after** the entry is safely on a list.
+- `ipfi_entry_put(h)`: Standard reference decrement. If the count hits zero, the entry is queued for cleanup.
+- `ipfi_entry_update_timer(h, proto, state)`: Refreshes the entry's lifetime based on the protocol state.
+- `ipfi_entry_remove(h)`: Logically removes the entry from its table.
+
 ---
 
 ## 2. Kernel API: Core Logic Functions
@@ -664,6 +688,202 @@ To add support for a new protocol (like FTP), developers should:
 1.  Implement a parser in `kernel/helpers/`.
 2.  Register the helper in the `KEEP_STATE` logic within `ipfi_state_machine.c`.
 3.  Ensure the helper correctly identifies the "adoption" phase versus the "data" phase.
+
+---
+
+# Chapter 10: Lifecycle & Synchronization
+
+This chapter describes how the IPFire-Wall manages the memory and concurrency of its internal tables using the unified `ipfi_entry` framework.
+
+## 10.1. The Unified Entry Framework
+To avoid fragmented logic and potential race conditions, all dynamic table entries (State, NAT, and LogInfo) share a common header:
+
+```c
+struct ipfi_entry_head {
+    struct list_head lnode;      /* RCU-safe linked list node */
+    struct timer_list timer;     /* Entry expiration timer */
+    struct work_struct cleanup_work; /* Deferred deletion work */
+    struct rcu_head rcuh;        /* RCU callback node */
+    refcount_t refcnt;           /* Reference counter */
+    unsigned long status;        /* Removal status bits */
+    unsigned long last_timer_update; /* Throttling timestamp */
+};
+```
+
+## 10.2. The Deletion Chain
+IPFire-Wall uses a multi-stage deferred-free mechanism to ensure that memory is only released when it is no longer being accessed by any CPU.
+
+1.  **Logical Removal**: `ipfi_entry_remove()` marks the entry as removed and unlinks it from the RCU list. No new lookups will find it.
+2.  **Reference Drop**: `ipfi_entry_put()` reduces the reference count. If it reach zero, it queues the `cleanup_work`.
+3.  **Synchronization**: The worker runs `timer_delete_sync()` to ensure the entry's timer is not running on any other CPU.
+4.  **RCU Barrier**: `call_rcu()` is invoked to wait for a quiet period (ensuring no RCU readers are active).
+5.  **Physical Free**: `free_entry_rcu()` finally calls `kfree()`, which releases the memory to its specific slab cache.
+
+## 10.3. Safe Module Shutdown
+Unloading a stateful kernel module is risky due to pending timers and RCU callbacks. IPFire-Wall implements a strict 7-step sequence:
+
+1.  **Exit Signal**: `we_are_exiting = true` prevents new entries from being created.
+2.  **Hook Synchronization**: `synchronize_net()` waits for in-flight packets to finish.
+3.  **Unregistration**: Netfilter hooks are removed.
+4.  **Table Flush**: Every entry is logically removed and its reference count dropped.
+5.  **Workqueue Drain**: `destroy_workqueue()` waits for all `cleanup_work` items (step 3 of the deletion chain).
+6.  **Callback Barrier**: `rcu_barrier()` waits for all `kfree` callbacks to finish.
+7.  **Cache Destruction**: `kmem_cache_destroy()` safely tears down the slabs.
+
+---
+
+# Chapter 11: Network Namespace Support
+
+This chapter details the current implementation of Network Namespace (netns) support and its intended use cases.
+
+## 11.1. Host-Centric Design
+By default, IPFire-Wall is designed as a **Host-Based Firewall**. 
+
+- **Target**: Protect the host's primary network stack.
+- **Scope**: Hooks are registered only in the initial namespace (`init_net`).
+- **Performance**: Minimal overhead for systems using containers or namespaces that don't require firewalling.
+
+## 11.2. The `per_net` Module Parameter
+Administrators can control how the module interacts with namespaces via the `per_net` parameter:
+
+| Mode | Behavior |
+|------|----------|
+| `per_net=0` (Default) | Hooks registered only in `init_net`. Traffic in other namespaces (including loopback inside containers) is invisible to IPFire. |
+| `per_net=1` | Hooks are registered in **every** namespace (via `register_pernet_subsys`). |
+
+## 11.3. Known Limitations (Current Version)
+
+### Shared Global Tables
+Even with `per_net=1`, the internal tables (State, NAT, and Logs) are **global and shared**. 
+- A state entry created in Namespace A can be matched by traffic in Namespace B if the IPs/Ports happen to collide.
+- This is intentional for the current primary use case (local performance testing) but lacks strict isolation between tenants.
+
+### The `MYADDR` Issue
+The `MYADDR` keyword in rules (e.g., `ACCEPT src=MYADDR`) currently relies on a lookup function that is **hardcoded to search `init_net`**.
+- **Symptom**: "IPFIRE: no interface matching name" messages in the kernel log.
+- **Cause**: If a rule uses `MYADDR` in a non-init namespace, the lookup fails because that interface name does not exist in the initial namespace's device list.
+- **Recommendation**: Avoid `MYADDR` in rules when using `per_net=1` for namespace-to-namespace traffic.
+
+## 11.4. Primary Use Case: Local Performance Lab
+The `per_net=1` mode is optimized for local benchmarking:
+1.  Create two namespaces connected via a `veth` pair.
+2.  Enable IPFire in all namespaces.
+3.  Flood packets between the namespaces using tools like `hping3` or `iperf`.
+4.  Measure firewall overhead without involving physical network hardware or saturating the host's external NIC.
+
+---
+
+# Chapter 12: Concurrency & Safety Analysis
+
+This chapter provides an in-depth technical analysis of the synchronization mechanisms used in IPFire-Wall to prevent race conditions, Use-After-Free (UAF) errors, and Time-of-Check to Time-of-Use (TOCTOU) vulnerabilities.
+
+## 12.1. The Memory Safety Trinity: RCU, Refcounting, and Workqueues
+
+IPFire-Wall manages dynamically allocated table entries (State, NAT, Log) using a three-layered defense strategy.
+
+### 1. RCU (Read-Copy-Update)
+Lookups in the "hot path" (packet processing) must be lockless for performance.
+- **Mechanism**: Readers use `rcu_read_lock_bh()` to traverse lists.
+- **Safety**: RCU ensures that an object remains valid for the duration of the read-side critical section, even if another CPU unlinks it from the list.
+
+### 2. Reference Counting (`refcount_t`)
+RCU alone is not enough if a CPU needs to hold onto an object across sleepable boundaries or outside the RCU lock.
+- **Mechanism**: Every entry embeds a `refcount_t`. 
+- **Pattern**:
+  ```c
+  rcu_read_lock();
+  h = lookup_logic();
+  if (h && ipfi_entry_hold_rcu(h)) {
+      /* We now safely own a reference */
+  }
+  rcu_read_unlock();
+  ```
+- **Safety**: The `refcount_inc_not_zero` atomic operation prevents acquiring a reference to an object that has already been scheduled for deletion.
+
+### 3. Workqueues (Deferred Cleanup)
+The final `kfree` cannot happen in atomic context (like a Softirq timer callback).
+- **Mechanism**: When `refcount` hits zero, `ipfi_entry_put` queues a work item.
+- **Safety**: The work handler (`free_entry_work`) runs in process context, allowing it to call `timer_delete_sync()` to ensure no timers are running before the RCU grace period starts.
+
+---
+
+## 12.2. Anatomy of a Race: Timer vs. Flush
+
+A classic race condition occurs when a table entry is expiring (via timer) at the same time an administrator is flushing the table (via userspace command).
+
+### The Vulnerability: Double Unlink
+If both the timer and the flush thread tried to call `list_del_rcu()`, the linked list would become corrupted.
+
+### The Solution: Atomic Status Bits
+IPFire-Wall uses the `IPFI_ENTRY_REMOVED` bit in `h->status`.
+
+```c
+void ipfi_entry_remove(struct ipfi_entry_head *h, unsigned int *counter) {
+    if (test_and_set_bit(IPFI_ENTRY_REMOVED, &h->status))
+        return; /* Someone else already unlinked it! */
+
+    list_del_rcu(&h->lnode);
+    (*counter)--;
+}
+```
+
+- **Invariants**: Only the CPU that successfully transitions the bit from `0` to `1` is allowed to perform the `list_del_rcu`. This guarantees that every entry is unlinked exactly once.
+
+---
+
+## 12.3. TOCTOU Mitigation in Timer Updates
+
+`ipfi_entry_update_timer` must ensure it doesn't try to re-arm a timer for an entry that is currently being deleted.
+
+### The Problem
+1. CPU A checks `if (!removed)`. (True)
+2. CPU B sets `REMOVED` and unlinks the entry.
+3. CPU A calls `mod_timer()`. (The timer is now active on a "ghost" entry).
+
+### The Mitigation: Throttled Double-Check
+```c
+void ipfi_entry_update_timer(struct ipfi_entry_head *h, ...) {
+    if (unlikely(test_bit(IPFI_ENTRY_REMOVED, &h->status)))
+        return;
+
+    /* ... calculate timeout ... */
+
+    if (time_after(jiffies, h->last_timer_update + 5*HZ)) {
+        if (unlikely(test_bit(IPFI_ENTRY_REMOVED, &h->status)))
+            return; /* Re-check after the "gate" */
+
+        mod_timer(&h->timer, ...);
+        WRITE_ONCE(h->last_timer_update, jiffies);
+    }
+}
+```
+By re-checking the bit inside the throttled block, the window for the race is narrowed significantly, and even if a rare race occurs, the `timer_delete_sync` in the cleanup work handler acts as the final safety net.
+
+---
+
+## 12.4. Safe Module Shutdown Analysis
+
+The module unload sequence in `ipfire.c` is carefully ordered to prevent "Delete-After-Free" of the slab caches.
+
+### The 7-Step Sequence and Why it Matters
+
+1.  **`we_are_exiting = true`**: Acts as a global barrier for new allocations.
+2.  **`synchronize_net()`**: Flushes the Netfilter pipeline. Ensures no packets are currently executing the module's code.
+3.  **`unregister_hooks()`**: Blocks all future packet entry.
+4.  **`fini_tables()`**: Flushes all entries. This triggers the `ipfi_entry_put` chain.
+5.  **`destroy_workqueue(ipfire_wq)`**: **Crucial Step.** This flushes all pending cleanup work. After this returns, we know every entry has reached the `call_rcu` stage.
+6.  **`rcu_barrier()`**: Waits for all pending RCU callbacks (the `kfree` calls) to complete.
+7.  **`kmem_cache_destroy()`**: Only now is it safe to destroy the slab. 
+
+If step 5 and 6 were swapped, or if step 6 was missing, a `kfree` callback might fire *after* the slab cache it belongs to has been destroyed, resulting in an immediate kernel panic.
+
+---
+
+## 12.5. Shared Logic: Vertical Integration
+Because `state_table`, `nat_table`, and `ipfire_loginfo` all inherit from `ipfi_entry_head`, they all benefit from this unified, battle-tested synchronization logic. 
+
+- **Reliability**: Any improvement or fix in `table_lifecycle.c` automatically hardens the entire module.
+- **Simplicity**: Component-specific code (like `snat.c`) can focus on logic, knowing that the lifecycle is handled by a robust, non-redundant core.
 
 ---
 

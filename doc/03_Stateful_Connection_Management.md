@@ -23,6 +23,8 @@ Since UDP is connectionless, the engine creates virtual states (`UDP_NEW` -> `UD
 ## 3.3. Table Management
 - **Lookups**: Perform bidirectional hashing. Both sides of a connection (`A:port1 <-> B:port2` and `B:port2 <-> A:port1`) produce the same hash key, allowing consistent tracking of bidirectional flows.
 - **Lifetimes**: Every state entry has an associated kernel timer. If no traffic is seen for a specific duration (e.g., 3600s for ESTABLISHED TCP, or ~30s for UDP), the entry is automatically purged to free resources.
+- **Allocation**: State entries are allocated from a dedicated `kmem_cache` slab (`ipfi_state`), ensuring low-latency access and optimized memory layout.
+- **Namespaces**: In the current implementation, state tables are shared across all network namespaces (even with `per_net=1`).
 - **Capacity**: The firewall enforces a `max_state_entries` limit to prevent resource exhaustion attacks.
 
 ## 3.4. FTP Support

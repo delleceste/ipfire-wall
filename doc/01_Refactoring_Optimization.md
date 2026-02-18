@@ -33,3 +33,15 @@ The Netlink message structure was streamlined by removing legacy per-packet sequ
 A shadow-tree build system was implemented using a `build/` directory.
 - **Feature**: Source files are symlinked into `build/` before compilation.
 - **Benefit**: All intermediate artifacts (`.o`, `.mod`, etc.) are hidden from the main source tree, keeping the environment clean for development.
+
+## 1.5. Unified Table Lifecycle & Slab Allocation
+The memory management for filtering tables was standardized to use a unified lifecycle and dedicated kernel slab caches (`kmem_cache`).
+
+- **Unified Lifecycle**: All table entries (State, NAT, and LogInfo) now embed `struct ipfi_entry_head`, sharing consistent RCU-based synchronization and reference counting.
+- **Slab Migration**:
+  - The static `loginfo_pool` was removed in favor of the `ipfi_loginfo` slab.
+  - State and NAT tables were migrated from dynamic `kmalloc` to their respective `ipfi_state` and `ipfi_nat` slabs.
+- **Benefits**:
+  - **Efficiency**: Slab allocation provides better cache locality and zero internal fragmentation for fixed-size entries.
+  - **Consistency**: A single code path (`table_lifecycle.c`) manages the complex interactions between RCU, workqueues, and timers for all module entries.
+  - **Transparency**: Memory usage is now visible per-module via `/proc/slabinfo`.

@@ -34,7 +34,8 @@ In `POST_ROUTING`, the engine identifies packets requiring SNAT.
 
 1.  **Rule Match**: `snat_translation()` finds a match in `translation_post`.
 2.  **Accounting**: `add_snatted_entry()` records the `(original_src -> new_src)` mapping. This is vital for "De-SNATting" the return traffic.
-3.  **Transformation**: `do_source_nat()` executes the `manip_skb` logic on the source fields.
+3.  **Allocation**: Entries are allocated from the `ipfi_nat` slab cache for high-performance translation tracking.
+4.  **Transformation**: `do_source_nat()` executes the `manip_skb` logic on the source fields.
 
 ### 2.2. Masquerade: The Dynamic SNAT
 Masquerade is identical to SNAT except it doesn't have a fixed IP. It calls `get_ifaddr()` which uses `inet_select_addr()` to find the primary IP of the outgoing network interface.

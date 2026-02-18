@@ -10,7 +10,10 @@ CHAPTERS = 01_Refactoring_Optimization.md \
            06_Detailed_Packet_Flows.md \
            07_State_Machine_Deep_Dive.md \
            08_NAT_Flow_Analysis.md \
-           09_Developer_API_Guide.md
+           09_Developer_API_Guide.md \
+           10_Lifecycle_and_Synchronization.md \
+           11_Network_Namespace_Support.md \
+           12_Concurrency_and_Safety_Analysis.md
 
 all: $(REPORT)
 
