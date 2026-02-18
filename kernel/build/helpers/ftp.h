@@ -1,1 +1,0 @@
-/archivi/devel/ipfire-wall/kernel/helpers/ftp.h

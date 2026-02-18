@@ -1,1 +1,0 @@
-/archivi/devel/ipfire-wall/kernel/build_v2/build/logging/log.c

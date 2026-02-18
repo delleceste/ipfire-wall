@@ -1,1 +1,0 @@
-/archivi/devel/ipfire-wall/kernel/build/netlink/netlink_data.c
