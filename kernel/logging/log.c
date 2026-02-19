@@ -130,6 +130,7 @@ static struct ipfire_loginfo *loginfo_alloc(void) {
 
 /* ---- Eviction (when at capacity) ---- */
 
+// must be called under spinlock_bh
 static void loginfo_evict_oldest(void) {
   struct ipfire_loginfo *oldest;
 
@@ -137,6 +138,8 @@ static void loginfo_evict_oldest(void) {
   if (list_empty(&active_logi_list))
     return;
 
+  /* lnode removal: ipfi_entry_remove removes hnode in hash mode, so we
+   * remove lnode first to keep active_logi_list consistent before remove. */
   oldest = list_last_entry(&active_logi_list, struct ipfire_loginfo, h.lnode);
 #ifdef IPFI_USE_HASH
   list_del_rcu(&oldest->h.lnode);
@@ -258,8 +261,9 @@ inline int add_packet_to_infolist(const struct sk_buff *skb,
   }
 
   /* Enforce max entries cap */
-  if (READ_ONCE(loginfo_entry_counter) >= max_loginfo_entries)
+  if (READ_ONCE(loginfo_entry_counter) >= max_loginfo_entries) {
     loginfo_evict_oldest();
+  }
 
   /* Always add to active list for LRU ordering (eviction uses list_last_entry)
    */

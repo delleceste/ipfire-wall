@@ -190,18 +190,13 @@ static struct pernet_operations ipfire_net_ops = {
 
 int welcome(void) {
   struct timespec64 tv_load_time;
-  IPFI_PRINTK("IPFIRE-wall MODULE INITIALIZED [%s] built on %s, %s\n",
+  IPFI_PRINTK("IPFIRE: MODULE INITIALIZED [%s] built on %s, %s - Giacomo S. "
+              "<delleceste@gmail.com>\n",
               KERNEL_MODULE_VERSION, BUILD_DATE, BUILD_SYS);
-  IPFI_PRINTK("Giacomo S. <delleceste@gmail.com>\n");
 
   /* set loading time into kernel stats struct */
   ktime_get_real_ts64(&tv_load_time);
   module_load_time = tv_load_time.tv_sec;
-  IPFI_PRINTK("sizeof(command) = %zu, sizeof(ipfire_rule) = %zu, "
-              "sizeof(ipfire_info_t) = %zu\n",
-              sizeof(command), sizeof(ipfire_rule), sizeof(ipfire_info_t));
-  IPFI_PRINTK("sizeof(struct rcu_head) = %zu, sizeof(struct list_head) = %zu\n",
-              sizeof(struct rcu_head), sizeof(struct list_head));
 
   /* Allocate per-CPU counters */
   ipfi_counters = alloc_percpu(struct ipfi_counters);
@@ -238,13 +233,32 @@ int welcome(void) {
       register_ipfire_net(&init_net);
     }
   }
+
+  {
+    char state_lim[16], nat_lim[16];
+    if (fwopts.state)
+      snprintf(state_lim, sizeof(state_lim), "%u", max_state_entries);
+    else
+      strcpy(state_lim, "disabled");
+
+    if (fwopts.nat)
+      snprintf(nat_lim, sizeof(nat_lim), "%lu",
+               (unsigned long)fwopts.max_nat_entries);
+    else
+      strcpy(nat_lim, "disabled");
+
+    IPFI_PRINTK(
+        "IPFIRE: default policy: %s. tables limits: state: %s, nat: %s, "
+        "log info: %u\n",
+        policy, state_lim, nat_lim, max_loginfo_entries);
+  }
   return 0;
 }
 
 static int __init ini(void) { return welcome(); }
 
 static void __exit fini(void) {
-  IPFI_PRINTK("IPFIRE-wall unloading:  \n");
+  IPFI_PRINTK("IPFIRE: unloading...\n");
 
   /*
    * ===== SHUTDOWN SEQUENCE =====
@@ -290,7 +304,6 @@ static void __exit fini(void) {
   } else {
     unregister_ipfire_net(&init_net);
   }
-  IPFI_PRINTK("IPFIRE: Unregistered hooks\n");
 
   /* --- Step 4: flush all tables ---
    * Each fini function calls ipfi_table_flush_all(), which:
@@ -327,6 +340,11 @@ static void __exit fini(void) {
   kmem_cache_destroy(nat_cache);
   kmem_cache_destroy(loginfo_cache);
 
+  IPFI_PRINTK("IPFIRE: tables freed: state: %u, nat: %u, log info: %u\n",
+              state_tables_counter,
+              nat_counters[NAT_DNAT] + nat_counters[NAT_SNAT],
+              loginfo_entry_counter);
+
   if (ipfi_counters)
     free_percpu(ipfi_counters);
 }
@@ -334,11 +352,8 @@ static void __exit fini(void) {
 void set_policy(const char *def_policy) {
   if (strncmp(def_policy, "accept", 6) == 0) {
     kstats.policy = default_policy = IPFI_ACCEPT;
-    printk("IPFIRE: default policy: ACCEPT packets which do not match any "
-           "rule.\n");
   } else {
     kstats.policy = default_policy = IPFI_DROP;
-    printk("IPFIRE: default policy: DROP packets not matching rules.\n");
   }
 }
 
@@ -452,7 +467,6 @@ static int register_ipfire_net(struct net *net) {
   if (ret < 0)
     goto err_post;
 
-  IPFI_PRINTK("IPFIRE: Registered hooks for net %px\n", net);
   return 0;
 
   /* Error handling - unregister in reverse order */

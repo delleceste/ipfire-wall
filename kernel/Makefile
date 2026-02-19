@@ -109,7 +109,7 @@ BUILD_DIR_ABS := $(PWD)/$(BUILD_DIR)
 all:
 	@mkdir -p $(BUILD_DIR)
 	@for dir in $(SUBDIRS); do mkdir -p $(BUILD_DIR)/$$dir; done
-	@printf "/* Compilation system and compilation date.\n * Written by Makefile */\n#define _BUILD_DATE \"%%s\"\n#define _BUILD_SYS \"%%s\"\n\n" "`date`" "`uname -sro`" > build.h
+	@printf "/* Compilation system and compilation date.\n * Written by Makefile */\n#define _BUILD_DATE \"%s\"\n#define _BUILD_SYS \"%s\"\n\n" "`date`" "`uname -sro`" > build.h
 	@# Create symlinks for root .c and .h files
 	@for f in *.[ch]; do \
 		if [ -f "$$f" ]; then \

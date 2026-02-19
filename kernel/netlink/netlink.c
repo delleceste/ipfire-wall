@@ -126,7 +126,7 @@ int send_data_to_user(struct sk_buff *skb, pid_t destination_pid,
       IPFI_PRINTK("IPFIRE: netlink_unicast() to pid %d failed with error %d. "
                   "Errnos in asm-generic/errno-base.h\n",
                   destination_pid, ret);
-      }
+    }
   } else
     IPFI_PRINTK("socket or sk_buff null in send_data_to_user(): socket: 0x%p "
                 "skb: 0x%p\n",
@@ -209,7 +209,6 @@ int init_netl(void) {
 }
 
 void fini_netl(void) {
-  IPFI_PRINTK("IPFIRE: Closing netlink sockets: control... ");
   if (sknl_ipfi_control != NULL) {
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 24)
     sock_release(sknl_ipfi_control->sk_socket);
@@ -217,10 +216,7 @@ void fini_netl(void) {
     netlink_kernel_release(sknl_ipfi_control);
 #endif
     sknl_ipfi_control = NULL;
-  } else
-    IPFI_PRINTK("IPFIRE: NULL control netlink socket!\n");
-
-  IPFI_PRINTK("data... ");
+  }
 
   if (sknl_ipfi_data != NULL) {
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 24)
@@ -229,10 +225,7 @@ void fini_netl(void) {
     netlink_kernel_release(sknl_ipfi_data);
 #endif
     sknl_ipfi_data = NULL;
-  } else
-    IPFI_PRINTK("IPFIRE: NULL data netlink socket!\n");
-
-  IPFI_PRINTK("GUI notifier.\n");
+  }
 
   if (sknl_ipfi_gui_notifier != NULL) {
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 24)
@@ -241,7 +234,7 @@ void fini_netl(void) {
     netlink_kernel_release(sknl_ipfi_gui_notifier);
 #endif
     sknl_ipfi_gui_notifier = NULL;
-  } else
-    IPFI_PRINTK(
-        "IPFIRE: the gui notifier socket is already NULL (disabled)!\n");
+  }
+
+  IPFI_PRINTK("IPFIRE: Closing netlink sockets (control, data, gui).\n");
 }
