@@ -12,6 +12,7 @@
 #include <linux/skbuff.h>
 #include <linux/slab.h>
 #include <linux/user_namespace.h>
+#include <linux/workqueue.h>
 
 /* Number of table entries to send before pausing for a BATCH_ACK from
  * userspace. Keeps Netlink socket queues below their buffer limit. */
@@ -32,6 +33,10 @@
  * (wait_for_completion), and the other signals (complete).
  */
 static DECLARE_COMPLETION(batch_ack_completion);
+
+int send_tables(void);
+int send_dnat_tables(void);
+int send_snat_tables(void);
 
 /* Wait up to 5 s for userspace to consume the current batch.
  *
@@ -63,6 +68,37 @@ static int wait_for_batch_ack(void) {
   }
   return 0;
 }
+
+/* --- Workqueue for Offloading Table Dumps ---
+ *
+ * We cannot sleep in 'process_control_received' because it is called
+ * synchronously from the Netlink input callback. If 'send_tables' sleeps
+ * waiting for a BATCH_ACK, it blocks the Netlink receive path, preventing
+ * the kernel from ever receiving that BATCH_ACK (Deadlock).
+ *
+ * Solution: Offload the dump to a system workqueue.
+ */
+
+/* The command ID to process in the worker (state, dnat, or snat). */
+static short current_dump_command;
+
+static void table_dump_worker(struct work_struct *work) {
+  int ret = 0;
+
+  if (current_dump_command == PRINT_STATE_TABLE) {
+    ret = send_tables();
+  } else if (current_dump_command == PRINT_DNAT_TABLE) {
+    ret = send_dnat_tables();
+  } else if (current_dump_command == PRINT_SNAT_TABLE) {
+    ret = send_snat_tables();
+  }
+
+  if (ret < 0) {
+    IPFI_PRINTK("IPFIRE: table dump worker failed with error %d\n", ret);
+  }
+}
+
+static DECLARE_WORK(table_dump_work, table_dump_worker);
 
 void fill_dnat_info(struct dnat_info *dninfo, const struct nat_table *dntt) {
   dninfo->saddr = dntt->old_saddr;
@@ -200,14 +236,32 @@ int process_control_received(struct sk_buff *skb) {
     ret = flush_ruleset(commander, FLUSH_TRANSLATION_RULES);
     tell_user_howmany_rules_flushed(ret);
     return ret;
-  } else if (command_id == PRINT_STATE_TABLE)
-    return send_tables();
-
-  else if (command_id == PRINT_DNAT_TABLE)
-    return send_dnat_tables();
-  else if (command_id == PRINT_SNAT_TABLE)
-    return send_snat_tables();
-  else if (command_id == PRINT_KTABLES_USAGE)
+  } else if (command_id == PRINT_STATE_TABLE) {
+    /* Offload to workqueue to avoid blocking Netlink receive path */
+    if (work_pending(&table_dump_work)) {
+      IPFI_PRINTK("IPFIRE: dump already in progress\n");
+      return -EBUSY;
+    }
+    current_dump_command = PRINT_STATE_TABLE;
+    schedule_work(&table_dump_work);
+    return 0;
+  } else if (command_id == PRINT_DNAT_TABLE) {
+    if (work_pending(&table_dump_work)) {
+      IPFI_PRINTK("IPFIRE: dump already in progress\n");
+      return -EBUSY;
+    }
+    current_dump_command = PRINT_DNAT_TABLE;
+    schedule_work(&table_dump_work);
+    return 0;
+  } else if (command_id == PRINT_SNAT_TABLE) {
+    if (work_pending(&table_dump_work)) {
+      IPFI_PRINTK("IPFIRE: dump already in progress\n");
+      return -EBUSY;
+    }
+    current_dump_command = PRINT_SNAT_TABLE;
+    schedule_work(&table_dump_work);
+    return 0;
+  } else if (command_id == PRINT_KTABLES_USAGE)
     return send_ktables_usage();
 
   else if (command_id == KSTATS_REQUEST)
