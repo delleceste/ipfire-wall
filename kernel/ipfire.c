@@ -234,32 +234,12 @@ int welcome(void) {
     }
   }
 
-  {
-    char state_lim[16], nat_lim[16];
-    if (fwopts.state)
-      snprintf(state_lim, sizeof(state_lim), "%u", max_state_entries);
-    else
-      strcpy(state_lim, "disabled");
-
-    if (fwopts.nat)
-      snprintf(nat_lim, sizeof(nat_lim), "%lu",
-               (unsigned long)fwopts.max_nat_entries);
-    else
-      strcpy(nat_lim, "disabled");
-
-    IPFI_PRINTK(
-        "IPFIRE: default policy: %s. tables limits: state: %s, nat: %s, "
-        "log info: %u\n",
-        policy, state_lim, nat_lim, max_loginfo_entries);
-  }
   return 0;
 }
 
 static int __init ini(void) { return welcome(); }
 
 static void __exit fini(void) {
-  IPFI_PRINTK("IPFIRE: unloading...\n");
-
   /*
    * ===== SHUTDOWN SEQUENCE =====
    *
@@ -340,10 +320,10 @@ static void __exit fini(void) {
   kmem_cache_destroy(nat_cache);
   kmem_cache_destroy(loginfo_cache);
 
-  IPFI_PRINTK("IPFIRE: tables freed: state: %u, nat: %u, log info: %u\n",
-              state_tables_counter,
-              nat_counters[NAT_DNAT] + nat_counters[NAT_SNAT],
-              loginfo_entry_counter);
+  IPFI_PRINTK(
+      "IPFIRE: unloaded: tables freed: state: %u, nat: %u, log info: %u\n",
+      state_tables_counter, nat_counters[NAT_DNAT] + nat_counters[NAT_SNAT],
+      loginfo_entry_counter);
 
   if (ipfi_counters)
     free_percpu(ipfi_counters);

@@ -325,6 +325,25 @@ int set_firewall_options(command *cmd, const uid_t commander) {
     max_loginfo_entries = fwopts.max_loginfo_entries;
     max_state_entries = fwopts.max_state_entries;
     fwopts.loglevel = cmd->loglevel;
+
+    {
+      char state_lim[16], nat_lim[16];
+      if (fwopts.state)
+        snprintf(state_lim, sizeof(state_lim), "%u", max_state_entries);
+      else
+        strcpy(state_lim, "disabled");
+
+      if (fwopts.nat)
+        snprintf(nat_lim, sizeof(nat_lim), "%lu",
+                 (unsigned long)fwopts.max_nat_entries);
+      else
+        strcpy(nat_lim, "disabled");
+
+      IPFI_PRINTK("IPFIRE: default policy: %s. tables limits: state: %s, nat: "
+                  "%s, log info: %u\n",
+                  kstats.policy == IPFI_DROP ? "drop" : "accept", state_lim,
+                  nat_lim, max_loginfo_entries);
+    }
   }
 
   if (fwopts.loglevel > 5) {
