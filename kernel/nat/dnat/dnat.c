@@ -1,21 +1,25 @@
 /* nat/dnat/dnat.c: Destination NAT logic for ipfire-wall */
 
-#include "globals.h"
-#include "ipfire.h"
-#include "ipfi_machine.h"
-#include "netlink/ipfi_netl.h"
+#include "dnat.h"
 #include "../../filter/state/state_machine.h"
 #include "../nat.h"
 #include "../nat_table.h"
-#include "dnat.h"
+#include "globals.h"
+#include "ipfi_machine.h"
+#include "ipfire.h"
+#include "netlink/ipfi_netl.h"
 #include "netlink/message_builder.h"
 #include <linux/ip.h>
+#include <linux/jhash.h>
+#ifdef IPFI_USE_HASH
+#include <linux/hashtable.h>
+#endif
 #include <linux/module.h>
 #include <linux/skbuff.h>
 #include <linux/slab.h>
+#include <linux/stddef.h>
 #include <linux/tcp.h>
 #include <linux/udp.h>
-#include <linux/stddef.h>
 
 int dnat_translation(struct sk_buff *skb, const ipfi_flow *flow,
                      struct response *resp, struct info_flags *flags) {
@@ -42,7 +46,8 @@ int dnat_translation(struct sk_buff *skb, const ipfi_flow *flow,
       if (public_to_private_address(skb, transrule))
         flags->external = 1;
 
-      if ((dnt = add_dnatted_entry(skb, flow, resp, flags, transrule)) != NULL) {
+      if ((dnt = add_dnatted_entry(skb, flow, resp, flags, transrule)) !=
+          NULL) {
         dest_translate(skb, dnt);
         nat_put(dnt);
         rcu_read_unlock_bh();
@@ -80,6 +85,26 @@ int de_dnat_translation(struct sk_buff *skb, const ipfi_flow *flow,
     return -1;
 
   rcu_read_lock_bh();
+#ifdef IPFI_USE_HASH
+  {
+    struct iphdr *iph = ip_hdr(skb);
+    u32 key;
+    if (iph->protocol == IPPROTO_TCP || iph->protocol == IPPROTO_UDP)
+      key = get_dnat_hash(netq.saddr, netq.sport, netq.daddr, netq.dport,
+                          iph->protocol);
+    else
+      key = jhash_2words(iph->saddr, iph->daddr, iph->protocol);
+    hash_for_each_possible_rcu(nat_hashtables[NAT_DNAT], dntmp, h.hnode, key) {
+      if (de_dnat_table_match(dntmp, skb) > 0) {
+        dntmp->state = state_machine(skb, dntmp->state, 1);
+        ipfi_entry_update_timer(&dntmp->h, dntmp->protocol, dntmp->state);
+        int ret = de_dnat(skb, dntmp);
+        rcu_read_unlock_bh();
+        return ret;
+      }
+    }
+  }
+#else
   list_for_each_entry_rcu(dntmp, &nat_lists[NAT_DNAT], h.lnode) {
     if (de_dnat_table_match(dntmp, skb) > 0) {
       dntmp->state = state_machine(skb, dntmp->state, 1);
@@ -89,6 +114,7 @@ int de_dnat_translation(struct sk_buff *skb, const ipfi_flow *flow,
       return ret;
     }
   }
+#endif
   rcu_read_unlock_bh();
   return -1;
 }
@@ -121,6 +147,31 @@ int pre_de_dnat(struct sk_buff *skb, const ipfi_flow *flow,
                 struct response *resp, struct info_flags *flags) {
   struct nat_table *dntmp;
   rcu_read_lock_bh();
+#ifdef IPFI_USE_HASH
+  {
+    struct iphdr *iph = ip_hdr(skb);
+    net_quadruplet netq = get_quad_from_skb(skb);
+    u32 key;
+    if (!netq.valid) {
+      rcu_read_unlock_bh();
+      return -1;
+    }
+    if (iph->protocol == IPPROTO_TCP || iph->protocol == IPPROTO_UDP)
+      key = get_dnat_hash(netq.saddr, netq.sport, netq.daddr, netq.dport,
+                          iph->protocol);
+    else
+      key = jhash_2words(iph->saddr, iph->daddr, iph->protocol);
+    hash_for_each_possible_rcu(nat_hashtables[NAT_DNAT], dntmp, h.hnode, key) {
+      if (pre_denat_table_match(dntmp, skb) > 0) {
+        dntmp->state = state_machine(skb, dntmp->state, 1);
+        ipfi_entry_update_timer(&dntmp->h, dntmp->protocol, dntmp->state);
+        int ret = pre_de_dnat_translate(skb, dntmp);
+        rcu_read_unlock_bh();
+        return ret;
+      }
+    }
+  }
+#else
   list_for_each_entry_rcu(dntmp, &nat_lists[NAT_DNAT], h.lnode) {
     if (pre_denat_table_match(dntmp, skb) > 0) {
       dntmp->state = state_machine(skb, dntmp->state, 1);
@@ -130,6 +181,7 @@ int pre_de_dnat(struct sk_buff *skb, const ipfi_flow *flow,
       return ret;
     }
   }
+#endif
   rcu_read_unlock_bh();
   return -1;
 }
@@ -149,8 +201,7 @@ int pre_denat_table_match(const struct nat_table *dnt,
     return -1;
   if (dnt->direction == IPFI_OUTPUT) {
     if (dnt->protocol != IPPROTO_TCP && dnt->protocol != IPPROTO_UDP) {
-      if ((netquad.saddr == dnt->new_addr) &&
-          (netquad.daddr == dnt->old_saddr))
+      if ((netquad.saddr == dnt->new_addr) && (netquad.daddr == dnt->old_saddr))
         return 1;
     } else {
       if ((netquad.saddr == dnt->new_addr) &&
@@ -161,8 +212,7 @@ int pre_denat_table_match(const struct nat_table *dnt,
     }
   } else {
     if (dnt->protocol != IPPROTO_TCP && dnt->protocol != IPPROTO_UDP) {
-      if ((netquad.saddr == dnt->new_addr) &&
-          (netquad.daddr == dnt->old_daddr))
+      if ((netquad.saddr == dnt->new_addr) && (netquad.daddr == dnt->old_daddr))
         return 1;
     } else {
       if ((netquad.saddr == dnt->new_addr) &&
@@ -176,8 +226,7 @@ int pre_denat_table_match(const struct nat_table *dnt,
   return -1;
 }
 
-int pre_de_dnat_translate(struct sk_buff *skb,
-                          const struct nat_table *dnt) {
+int pre_de_dnat_translate(struct sk_buff *skb, const struct nat_table *dnt) {
   struct pkt_manip_info mi;
   memset(&mi, 0, sizeof(mi));
   mi.direction = IPFI_INPUT_PRE;
@@ -231,8 +280,19 @@ struct nat_table *add_dnatted_entry(const struct sk_buff *skb,
   timeout = get_timeout_by_state(newtable->protocol, newtable->state);
   ipfi_entry_init(&newtable->h, timeout, handle_nat_entry_timeout);
 
-  ipfi_entry_hold(&newtable->h);  /* list ref */
+  ipfi_entry_hold(&newtable->h); /* table ref */
+#ifdef IPFI_USE_HASH
+  {
+    u32 key = get_dnat_hash(newtable->old_saddr, newtable->old_sport,
+                            newtable->new_addr, newtable->new_port,
+                            newtable->protocol);
+    hlist_add_head_rcu(
+        &newtable->h.hnode,
+        &nat_hashtables[NAT_DNAT][key & ((1 << NAT_HASH_BITS) - 1)]);
+  }
+#else
   list_add_rcu(&newtable->h.lnode, &nat_lists[NAT_DNAT]);
+#endif
   nat_counters[NAT_DNAT]++;
   spin_unlock_bh(&nat_locks[NAT_DNAT]);
   ipfi_entry_arm_timer(&newtable->h);

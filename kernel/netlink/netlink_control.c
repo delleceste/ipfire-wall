@@ -3,17 +3,16 @@
 #include "globals.h"
 #include "ipfire.h"
 #include "logging/log.h"
-#include "netlink/ipfi_netl.h"
 #include "message_builder.h"
+#include "netlink/ipfi_netl.h"
+#include <linux/delay.h>
 #include <linux/module.h>
 #include <linux/netlink.h>
 #include <linux/skbuff.h>
 #include <linux/slab.h>
-#include <linux/delay.h>
 #include <linux/user_namespace.h>
 
-void fill_dnat_info(struct dnat_info *dninfo,
-                    const struct nat_table *dntt) {
+void fill_dnat_info(struct dnat_info *dninfo, const struct nat_table *dntt) {
   dninfo->saddr = dntt->old_saddr;
   dninfo->daddr = dntt->old_daddr;
   dninfo->sport = dntt->old_sport;
@@ -30,8 +29,7 @@ void fill_dnat_info(struct dnat_info *dninfo,
   dninfo->protocol = dntt->protocol;
 }
 
-void fill_snat_info(struct snat_info *sninfo,
-                    const struct nat_table *sntt) {
+void fill_snat_info(struct snat_info *sninfo, const struct nat_table *sntt) {
   sninfo->saddr = sntt->old_saddr;
   sninfo->daddr = sntt->old_daddr;
   sninfo->sport = sntt->old_sport;
@@ -538,15 +536,24 @@ int send_tables(void) {
 
   /* Phase 2: Collect entries under RCU lock */
   rcu_read_lock_bh();
-  /* TODO: restore hash
-  hash_for_each_rcu(state_hashtable, bkt, st, hnode) {
-  */
+#ifdef IPFI_USE_HASH
+  {
+    unsigned int bkt;
+    hash_for_each_rcu(state_hashtable, bkt, st, h.hnode) {
+      if (count >= max_entries)
+        break;
+      fill_state_info(&entries[count], st);
+      count++;
+    }
+  }
+#else
   list_for_each_entry_rcu(st, &state_list, h.lnode) {
     if (count >= max_entries)
       break;
     fill_state_info(&entries[count], st);
     count++;
   }
+#endif
   rcu_read_unlock_bh();
 
   /* Phase 3: Send entries outside RCU lock (can sleep/retry) */
@@ -581,15 +588,24 @@ int send_dnat_tables(void) {
 
   /* Phase 2: Collect entries under RCU lock */
   rcu_read_lock();
-  /* TODO: restore hash
-  hash_for_each_rcu(dnat_hashtable, bkt, dt, hnode) {
-  */
+#ifdef IPFI_USE_HASH
+  {
+    unsigned int bkt;
+    hash_for_each_rcu(nat_hashtables[NAT_DNAT], bkt, dt, h.hnode) {
+      if (count >= max_entries)
+        break;
+      fill_dnat_info(&entries[count], dt);
+      count++;
+    }
+  }
+#else
   list_for_each_entry_rcu(dt, &nat_lists[NAT_DNAT], h.lnode) {
     if (count >= max_entries)
       break;
     fill_dnat_info(&entries[count], dt);
     count++;
   }
+#endif
   rcu_read_unlock();
 
   /* Phase 3: Send entries outside RCU lock (can sleep/retry) */
@@ -624,15 +640,24 @@ int send_snat_tables(void) {
 
   /* Phase 2: Collect entries under RCU lock */
   rcu_read_lock();
-  /* TODO: restore hash
-  hash_for_each_rcu(snat_hashtable, bkt, st, hnode) {
-  */
+#ifdef IPFI_USE_HASH
+  {
+    unsigned int bkt;
+    hash_for_each_rcu(nat_hashtables[NAT_SNAT], bkt, st, h.hnode) {
+      if (count >= max_entries)
+        break;
+      fill_snat_info(&entries[count], st);
+      count++;
+    }
+  }
+#else
   list_for_each_entry_rcu(st, &nat_lists[NAT_SNAT], h.lnode) {
     if (count >= max_entries)
       break;
     fill_snat_info(&entries[count], st);
     count++;
   }
+#endif
   rcu_read_unlock();
 
   /* Phase 3: Send entries outside RCU lock (can sleep/retry) */

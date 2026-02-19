@@ -1,16 +1,15 @@
 /* ip firewall Giacomo S. */
-#include "build.h"
-#include "globals.h"
 #include "ipfire.h"
+#include "build.h"
 #include "filter/defrag.h"
+#include "globals.h"
 #include "ipfi_machine.h"
-#include "netlink/ipfi_netl.h"
-#include "proc/proc.h"
 #include "mangle/tcpmss.h"
-#include "ipfi_machine.h"
-#include <linux/init.h>
-#include "netlink/message_builder.h"
 #include "module_init.h"
+#include "netlink/ipfi_netl.h"
+#include "netlink/message_builder.h"
+#include "proc/proc.h"
+#include <linux/init.h>
 #include <linux/list.h>
 #include <linux/module.h>
 #include <linux/netfilter.h>
@@ -31,16 +30,20 @@ MODULE_DESCRIPTION(
     "Features:\n"
     "  - Stateful Inspection: Advanced TCP/UDP/ICMP state tracking.\n"
     "  - NAT: SNAT, DNAT, and Masquerading support.\n"
-    "  - Lifecycle Management: Unified ipfi_entry with RCU and per-entry timers.\n"
-    "  - Slab Allocation: Dedicated kmem_cache for state, NAT, and log entries.\n"
+    "  - Lifecycle Management: Unified ipfi_entry with RCU and per-entry "
+    "timers.\n"
+    "  - Slab Allocation: Dedicated kmem_cache for state, NAT, and log "
+    "entries.\n"
     "  - Smart Logging: Rate-limited, duplicate-suppressed logging system.\n"
     "  - Protocol Helpers: Optimized support for Passive FTP.\n"
     "  - Networking: TCP MSS clamping and IPv4 defragmentation.\n"
     "  - Userspace: Netlink-based control, ruleset sync, and statistics.\n"
     "Network Namespaces (netns):\n"
     "  - per_net=0 (default): Hooks registered in init_net only.\n"
-    "  - per_net=1: Hooks in all namespaces; tables (state, NAT, logs) are shared.\n"
-    "  - Primary use: Local host firewalling and cross-netns performance testing.");
+    "  - per_net=1: Hooks in all namespaces; tables (state, NAT, logs) are "
+    "shared.\n"
+    "  - Primary use: Local host firewalling and cross-netns performance "
+    "testing.");
 
 /* Versione di test!
  * (C) Giacomo Strangolino, 2005-2026
@@ -785,66 +788,6 @@ send_touser:
   return NF_ACCEPT;
 }
 
-/* The following three functions extract from the socket buffer
- * skb the tcp/udp/icmp header.
- * Since allocate_headers() already extracts the IP header,
- * allocate_headers() itself passes this header to build_xxxh_usermess()
- * for convenience
- */
-inline void build_tcph_usermess(const struct tcphdr *tcph,
-                                ipfire_info_t *ipfi_info) {
-  /* we fill in our userspace information */
-  memcpy(&(ipfi_info->packet.transport_header.tcphead), tcph,
-         sizeof(struct tcphdr));
-}
-
-/* See build_tcph_usermess() above for the comments */
-inline void build_udph_usermess(const struct udphdr *p_udphead,
-                                ipfire_info_t *ipfi_info) {
-  memcpy(&(ipfi_info->packet.transport_header).udphead, p_udphead,
-         sizeof(*p_udphead));
-}
-
-/* See build_tcph_usermess() above for the comments */
-inline void build_icmph_usermess(const struct icmphdr *p_icmphead,
-                                 ipfire_info_t *ipfi_info) {
-  memcpy(&(ipfi_info->packet.transport_header).icmphead, p_icmphead,
-         sizeof(*p_icmphead));
-}
-
-/* since version 0.98.7 we support the IGMP protocol */
-inline void build_igmph_usermess(const struct igmphdr *p_igmphead,
-                                 ipfire_info_t *ipfi_info) {
-  memcpy(&(ipfi_info->packet.transport_header).igmphead, p_igmphead,
-         sizeof(*p_igmphead));
-}
-
-inline int copy_headers(const struct sk_buff *skb, ipfire_info_t *fireinfo) {
-  struct iphdr *iph;
-  iph = ip_hdr(skb);
-  /* protocol information */
-  fireinfo->packet.ip.protocol = iph->protocol;
-  fireinfo->packet.ip.saddr = iph->saddr;
-  fireinfo->packet.ip.daddr = iph->daddr;
-  /* internet header */
-  /* tcp, udp icmp headers? */
-  if (iph->protocol == IPPROTO_TCP)
-    build_tcph_usermess((struct tcphdr *)((void *)iph + iph->ihl * 4),
-                        fireinfo);
-  else if (iph->protocol == IPPROTO_UDP)
-    build_udph_usermess((struct udphdr *)((void *)iph + iph->ihl * 4),
-                        fireinfo);
-  else if (iph->protocol == IPPROTO_ICMP)
-    build_icmph_usermess((struct icmphdr *)((void *)iph + iph->ihl * 4),
-                         fireinfo);
-  else if (iph->protocol == IPPROTO_IGMP)
-    build_igmph_usermess((struct igmphdr *)((void *)iph + iph->ihl * 4),
-                         fireinfo); /* since 0.98.7 */
-  else
-    return -1;
-  return 0;
-}
-
 int ipfi_response(const struct nf_hook_state *state, struct sk_buff *skb,
                   ipfi_flow *flow) {
   /* 0.98.4: When we have to DNAT in output direction, we have to
@@ -909,10 +852,9 @@ int ipfi_response(const struct nf_hook_state *state, struct sk_buff *skb,
      * ipfi_translation: set_pairs_in_skb().
      */
     if (fwopts.nat != 0 && flow->direction == IPFI_OUTPUT) {
-      struct nat_table *dnt =
-          READ_ONCE(nat_counters[NAT_DNAT]) > 0
-              ? lookup_nat_forward(skb, NAT_DNAT)
-              : NULL;
+      struct nat_table *dnt = READ_ONCE(nat_counters[NAT_DNAT]) > 0
+                                  ? lookup_nat_forward(skb, NAT_DNAT)
+                                  : NULL;
       int dnat_ret = -1;
       if (dnt != NULL) {
         /*

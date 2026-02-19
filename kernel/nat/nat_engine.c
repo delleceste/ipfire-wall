@@ -1,12 +1,16 @@
 /* nat/nat_engine.c: NAT engine entry point for ipfire-wall */
 
-#include "globals.h"
-#include "ipfire.h"
-#include "ipfi_machine.h"
-#include "netlink/ipfi_netl.h"
 #include "../../filter/state/state_machine.h"
+#include "globals.h"
+#include "ipfi_machine.h"
+#include "ipfire.h"
 #include "nat.h"
-#include <linux/icmp.h>
+#include "nat_table.h"
+#include "netlink/ipfi_netl.h"
+#ifdef IPFI_USE_HASH
+#include <linux/hashtable.h>
+#include <linux/jhash.h>
+#endif
 #include <linux/icmp.h>
 #include <linux/ip.h>
 #include <linux/module.h>
@@ -257,19 +261,25 @@ int get_orig_from_dnat_entry(const struct nat_table *dnt,
 int lookup_dnat_table_and_getorigdst(const net_quadruplet *n4,
                                      struct sockaddr_in *sin) {
   struct nat_table *dntmp;
-  /* TODO: restore hash
-  int bkt;
-  */
   rcu_read_lock_bh();
-  /* TODO: restore hash
-  hash_for_each_rcu(dnat_hashtable, bkt, dntmp, hnode) {
-  */
+#ifdef IPFI_USE_HASH
+  {
+    unsigned int bkt;
+    hash_for_each_rcu(nat_hashtables[NAT_DNAT], bkt, dntmp, h.hnode) {
+      if (get_orig_from_dnat_entry(dntmp, n4, sin) == 1) {
+        rcu_read_unlock_bh();
+        return 0;
+      }
+    }
+  }
+#else
   list_for_each_entry_rcu(dntmp, &nat_lists[NAT_DNAT], h.lnode) {
     if (get_orig_from_dnat_entry(dntmp, n4, sin) == 1) {
       rcu_read_unlock_bh();
       return 0;
     }
   }
+#endif
   rcu_read_unlock_bh();
   return -1;
 }
@@ -348,10 +358,6 @@ static struct nf_sockopt_ops so_getoriginal_dst = {
 
 int init_translation(void) {
   init_nat_tables();
-  /* TODO: restore hash
-  hash_init(dnat_hashtable);
-  hash_init(snat_hashtable);
-  */
   ipfire_wq = alloc_workqueue("ipfire_wq", WQ_MEM_RECLAIM, 0);
   if (!ipfire_wq)
     return -ENOMEM;

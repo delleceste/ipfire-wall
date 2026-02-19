@@ -1,16 +1,20 @@
 /* nat/snat/snat.c: Source NAT logic for ipfire-wall */
 
-#include "globals.h"
-#include "ipfire.h"
-#include "ipfi_machine.h"
-#include "netlink/ipfi_netl.h"
+#include "snat.h"
 #include "../../filter/state/state_machine.h"
+#include "../dnat/dnat.h"
 #include "../nat.h"
 #include "../nat_table.h"
-#include "snat.h"
-#include "../dnat/dnat.h"
+#include "globals.h"
+#include "ipfi_machine.h"
+#include "ipfire.h"
+#include "netlink/ipfi_netl.h"
 #include "netlink/message_builder.h"
 #include <linux/ip.h>
+#include <linux/jhash.h>
+#ifdef IPFI_USE_HASH
+#include <linux/hashtable.h>
+#endif
 #include <linux/module.h>
 #include <linux/rcupdate.h>
 #include <linux/skbuff.h>
@@ -81,8 +85,18 @@ struct nat_table *add_snatted_entry(const struct sk_buff *skb,
   timeout = get_timeout_by_state(entry->protocol, entry->state);
   ipfi_entry_init(&entry->h, timeout, handle_nat_entry_timeout);
 
-  ipfi_entry_hold(&entry->h);  /* list ref */
+  ipfi_entry_hold(&entry->h); /* table ref */
+#ifdef IPFI_USE_HASH
+  {
+    u32 key = get_snat_hash(entry->new_addr, entry->new_port, entry->old_daddr,
+                            entry->old_dport, entry->protocol);
+    hlist_add_head_rcu(
+        &entry->h.hnode,
+        &nat_hashtables[NAT_SNAT][key & ((1 << NAT_HASH_BITS) - 1)]);
+  }
+#else
   list_add_rcu(&entry->h.lnode, &nat_lists[NAT_SNAT]);
+#endif
   nat_counters[NAT_SNAT]++;
   spin_unlock_bh(&nat_locks[NAT_SNAT]);
   ipfi_entry_arm_timer(&entry->h);
@@ -122,6 +136,31 @@ int pre_de_snat(struct sk_buff *skb, const ipfi_flow *flow,
   struct nat_table *sntmp;
 
   rcu_read_lock_bh();
+#ifdef IPFI_USE_HASH
+  {
+    struct iphdr *iph = ip_hdr(skb);
+    net_quadruplet nq = get_quad_from_skb(skb);
+    u32 key;
+    if (!nq.valid) {
+      rcu_read_unlock_bh();
+      return -1;
+    }
+    if (iph->protocol == IPPROTO_TCP || iph->protocol == IPPROTO_UDP)
+      key =
+          get_snat_hash(nq.saddr, nq.sport, nq.daddr, nq.dport, iph->protocol);
+    else
+      key = jhash_2words(iph->saddr, iph->daddr, iph->protocol);
+    hash_for_each_possible_rcu(nat_hashtables[NAT_SNAT], sntmp, h.hnode, key) {
+      if (de_snat_table_match(sntmp, skb) > 0) {
+        sntmp->state = state_machine(skb, sntmp->state, 1);
+        ipfi_entry_update_timer(&sntmp->h, sntmp->protocol, sntmp->state);
+        int ret = de_snat(skb, sntmp);
+        rcu_read_unlock_bh();
+        return ret;
+      }
+    }
+  }
+#else
   list_for_each_entry_rcu(sntmp, &nat_lists[NAT_SNAT], h.lnode) {
     if (de_snat_table_match(sntmp, skb) > 0) {
       sntmp->state = state_machine(skb, sntmp->state, 1);
@@ -131,6 +170,7 @@ int pre_de_snat(struct sk_buff *skb, const ipfi_flow *flow,
       return ret;
     }
   }
+#endif
   rcu_read_unlock_bh();
   return -1;
 }
@@ -140,6 +180,31 @@ int post_snat_dynamic(struct sk_buff *skb, const ipfi_flow *flow,
   struct nat_table *dntmp;
 
   rcu_read_lock_bh();
+#ifdef IPFI_USE_HASH
+  {
+    struct iphdr *iph = ip_hdr(skb);
+    net_quadruplet netq = get_quad_from_skb(skb);
+    u32 key;
+    if (!netq.valid) {
+      rcu_read_unlock_bh();
+      return -1;
+    }
+    if (iph->protocol == IPPROTO_TCP || iph->protocol == IPPROTO_UDP)
+      key = get_dnat_hash(netq.saddr, netq.sport, netq.daddr, netq.dport,
+                          iph->protocol);
+    else
+      key = jhash_2words(iph->saddr, iph->daddr, iph->protocol);
+    hash_for_each_possible_rcu(nat_hashtables[NAT_DNAT], dntmp, h.hnode, key) {
+      if (snat_dynamic_table_match(dntmp, skb) > 0) {
+        dntmp->state = state_machine(skb, dntmp->state, 0);
+        ipfi_entry_update_timer(&dntmp->h, dntmp->protocol, dntmp->state);
+        int ret = snat_dynamic_translate(skb, dntmp);
+        rcu_read_unlock_bh();
+        return ret;
+      }
+    }
+  }
+#else
   list_for_each_entry_rcu(dntmp, &nat_lists[NAT_DNAT], h.lnode) {
     if (snat_dynamic_table_match(dntmp, skb) > 0) {
       dntmp->state = state_machine(skb, dntmp->state, 0);
@@ -149,6 +214,7 @@ int post_snat_dynamic(struct sk_buff *skb, const ipfi_flow *flow,
       return ret;
     }
   }
+#endif
   rcu_read_unlock_bh();
   return -1;
 }

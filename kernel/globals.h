@@ -1,12 +1,12 @@
 #ifndef IPFI_GLOBALS_H
 #define IPFI_GLOBALS_H
 
+#include "../nat/dnat/dnat.h"
+#include "../nat/nat.h"
+#include "../nat/snat/snat.h"
+#include "ipfi_machine.h"
 #include "ipfire.h"
 #include "logging/log.h"
-#include "ipfi_machine.h"
-#include "../nat/nat.h"
-#include "../nat/dnat/dnat.h"
-#include "../nat/snat/snat.h"
 #include <linux/percpu.h>
 #include <linux/spinlock.h>
 #include <linux/types.h>
@@ -60,29 +60,52 @@ extern ipfire_rule translation_post;
 extern ipfire_rule translation_out;
 extern ipfire_rule masquerade_post;
 
-/* State and NAT tables */
-
-/* extern DECLARE_HASHTABLE(state_hashtable, STATE_HASH_BITS); TODO: restore
- * hash
+/* State table — either a hash table or a linked list, never both */
+#ifdef IPFI_USE_HASH
+/*
+ * SIZING EXPLANATION:
+ * We use `1 << STATE_HASH_BITS` to force the table size to be a Power of Two.
+ * Example: 1 << 10 = 1024.
+ *
+ * INTENT:
+ * Computers are much faster at bitwise operations than division. By
+ * guaranteeing a Power of Two size, the kernel can use a fast bitwise mask
+ * (`key & mask`) to find the bucket index, instead of a slow modulo operation
+ * (`key % size`).
  */
+extern struct hlist_head state_hashtable[1 << STATE_HASH_BITS];
+#else
 extern struct list_head state_list;
+#endif
 
-/* NAT tables now use arrays indexed by nat_type in nat_table.h.
- * Compatibility macros for existing callers: */
-#define dnat_list       nat_lists[NAT_DNAT]
-#define snat_list       nat_lists[NAT_SNAT]
+/* NAT tables — per type (SNAT=0, DNAT=1); hash mode uses nat_hashtables */
+#ifdef IPFI_USE_HASH
+#ifndef NAT_HASH_BITS
+#define NAT_HASH_BITS 8 /* 256 buckets; override via make NAT_HASH_BITS=N */
+#endif
+extern struct hlist_head nat_hashtables[2][1 << NAT_HASH_BITS];
+/* Counters shared between list and hash modes */
+extern unsigned int nat_counters[2];
+#else
+/* Compatibility macros for existing callers */
+#define dnat_list nat_lists[NAT_DNAT]
+#define snat_list nat_lists[NAT_SNAT]
+#endif
 
-/* Log info */
-/* extern DECLARE_HASHTABLE(loginfo_hashtable, LOGINFO_HASH_BITS); TODO: restore
- * hash
- */
+/* Log info — active_logi_list kept for LRU eviction even in hash mode */
 extern struct list_head active_logi_list;
+#ifdef IPFI_USE_HASH
+#ifndef LOG_HASH_BITS
+#define LOG_HASH_BITS 7 /* 128 buckets; override via make LOG_HASH_BITS=N */
+#endif
+extern struct hlist_head loginfo_hashtable[1 << LOG_HASH_BITS];
+#endif
 
 /* Counters */
 extern unsigned int table_id;
 extern unsigned int state_tables_counter;
-#define dnatted_entry_counter  nat_counters[NAT_DNAT]
-#define snatted_entry_counter  nat_counters[NAT_SNAT]
+#define dnatted_entry_counter nat_counters[NAT_DNAT]
+#define snatted_entry_counter nat_counters[NAT_SNAT]
 extern unsigned int loginfo_entry_counter;
 
 /* Timeouts and Limits */
@@ -103,8 +126,8 @@ extern unsigned int moderate_print_limit[MAXMODERATE_ARGS];
 extern spinlock_t rulelist_lock;
 extern spinlock_t state_list_lock;
 extern spinlock_t loginfo_list_lock;
-#define snat_list_lock  nat_locks[NAT_SNAT]
-#define dnat_list_lock  nat_locks[NAT_DNAT]
+#define snat_list_lock nat_locks[NAT_SNAT]
+#define dnat_list_lock nat_locks[NAT_DNAT]
 extern struct workqueue_struct *ipfire_wq;
 
 /* Other */

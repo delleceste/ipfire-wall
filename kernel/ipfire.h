@@ -26,8 +26,8 @@ extern struct sock *sknl_ipfi_gui_notifier;
 
 #include "filter/header_check.h"
 
-extern struct nf_hook_ops nfh_pre, nfh_in, nfh_out, nfh_fwd, nfh_post, nfh_defrag_pre,
-    nfh_defrag_out;
+extern struct nf_hook_ops nfh_pre, nfh_in, nfh_out, nfh_fwd, nfh_post,
+    nfh_defrag_pre, nfh_defrag_out;
 
 #define NOLOCK 0
 #define ACQUIRE_LOCK 1
@@ -148,17 +148,6 @@ unsigned int process(void *priv, struct sk_buff *skb,
                      const struct nf_hook_state *state);
 
 /* ipfire functions */
-
-/*! returns nonzero only if protocol is unsupported */
-inline int copy_headers(const struct sk_buff *skb, ipfire_info_t *fireinfo);
-inline void build_tcph_usermess(const struct tcphdr *tcph,
-                                ipfire_info_t *ipfi_info);
-inline void build_udph_usermess(const struct udphdr *p_udphead,
-                                ipfire_info_t *ipfi_info);
-inline void build_icmph_usermess(const struct icmphdr *icmph,
-                                 ipfire_info_t *ipfi_info);
-inline void build_igmph_usermess(const struct igmphdr *igmph,
-                                 ipfire_info_t *ipfi_info);
 
 struct response iph_in_get_response(struct sk_buff *skb, ipfi_flow *flow,
                                     struct info_flags *flags);

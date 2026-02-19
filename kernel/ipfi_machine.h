@@ -6,21 +6,23 @@
  * (C) 2005 Giacomo S.
  */
 
-#include "ipfire.h"
-#include "helpers/ftp.h"
-#include "netlink/ipfi_netl.h"
 #include "globals.h"
+#include "helpers/ftp.h"
+#include "ipfire.h"
+#include "netlink/ipfi_netl.h"
 #include <common/ipfi_structures.h>
 #include <linux/hashtable.h>
 #include <linux/jhash.h>
 #include <linux/timer.h>
 
-#include "../filter/state/state_table.h"
 #include "../filter/state/state_check.h"
 #include "../filter/state/state_machine.h"
+#include "../filter/state/state_table.h"
 #include "../filter/state/state_timeout.h"
 
-#define STATE_HASH_BITS 12
+#ifndef STATE_HASH_BITS
+#define STATE_HASH_BITS 12 /* default: override via make STATE_HASH_BITS=N */
+#endif
 
 /* ftp passive support */
 #define FTP_NONE 0     /* not an ftp rule */
@@ -43,6 +45,7 @@ struct state {
 #include "../filter/filter_engine.h"
 #include "../filter/rule_match.h"
 
-/* DEAD CODE REMOVED: fill_table_with_name, fill_packet_with_name, fill_packet_with_table_rulename, ixmp_match, transport_state_match */
+/* DEAD CODE REMOVED: fill_table_with_name, fill_packet_with_name,
+ * fill_packet_with_table_rulename, ixmp_match, transport_state_match */
 
 #endif

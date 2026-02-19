@@ -51,7 +51,55 @@ $(MODULE_NAME)-objs += logging/log.o \
 
 obj-m += $(MODULE_NAME).o
 
+
+# --------------------------------------------------------------------------
+# Hash table configuration (only used when USE_HASH=y, the default).
+#
+# STATE_HASH_BITS controls the number of buckets (2^N) for the state table.
+# Pick based on expected maximum concurrent flows:
+#
+#   SCENARIO               BITS  BUCKETS  SUITABLE FOR
+#   ipfire-small (default)   10     1024  home / small office  (<500 flows)
+#   ipfire-medium            11     2048  SMB                  (<1000 flows)
+#   ipfire-large             12     4096  datacenter / ISP     (<4096 flows)
+#
+# Override at build time:   make STATE_HASH_BITS=12
+# --------------------------------------------------------------------------
+USE_HASH ?= y
+STATE_HASH_BITS ?= 10
+NAT_HASH_BITS   ?= 8
+LOG_HASH_BITS   ?= 7
+
+
+ifeq ($(USE_HASH),y)
+  ccflags-y += -DIPFI_USE_HASH
+  ccflags-y += -DSTATE_HASH_BITS=$(STATE_HASH_BITS)
+  ccflags-y += -DNAT_HASH_BITS=$(NAT_HASH_BITS)
+  ccflags-y += -DLOG_HASH_BITS=$(LOG_HASH_BITS)
+
+  # Pick a human-readable scenario label based on the bit width
+  ifeq ($(STATE_HASH_BITS),10)
+    _HASH_SCENARIO := home / small office
+  else ifeq ($(STATE_HASH_BITS),11)
+    _HASH_SCENARIO := SMB
+  else ifeq ($(STATE_HASH_BITS),12)
+    _HASH_SCENARIO := datacenter / ISP
+  else
+    _HASH_SCENARIO := custom
+  endif
+  $(info  )
+  $(info   --------)
+  $(info   [ipfire])
+  $(info   [ipfire] tables: hash — state=$(STATE_HASH_BITS)b nat=$(NAT_HASH_BITS)b log=$(LOG_HASH_BITS)b ($(_HASH_SCENARIO)))
+  $(info   [ipfire])
+  $(info   --------)
+  $(info  )
+else
+  $(info   [ipfire] all tables: list — linear traversal (hash disabled))
+endif
+
 ccflags-y += -I$(src) -I$(src)/../..
+
 
 else
 KDIR	:= /lib/modules/$(shell uname -r)/build
@@ -62,11 +110,19 @@ all:
 	@mkdir -p $(BUILD_DIR)
 	@for dir in $(SUBDIRS); do mkdir -p $(BUILD_DIR)/$$dir; done
 	@printf "/* Compilation system and compilation date.\n * Written by Makefile */\n#define _BUILD_DATE \"%%s\"\n#define _BUILD_SYS \"%%s\"\n\n" "`date`" "`uname -sro`" > build.h
-	@# Create symlinks for all .c files in build dir to allow out-of-tree build
-	@find . -name "*.[ch]" -not -path "./$(BUILD_DIR)/*" | while read f; do \
-		dest=$(BUILD_DIR)/$${f#./}; \
-		mkdir -p $$(dirname $$dest); \
-		ln -sf $(PWD)/$${f#./} $$dest; \
+	@# Create symlinks for root .c and .h files
+	@for f in *.[ch]; do \
+		if [ -f "$$f" ]; then \
+			ln -sf $(PWD)/$$f $(BUILD_DIR)/$$f; \
+		fi; \
+	done
+	@# Create symlinks for files in SUBDIRS
+	@for dir in $(SUBDIRS); do \
+		for f in $$dir/*.[ch]; do \
+			if [ -f "$$f" ]; then \
+				ln -sf $(PWD)/$$f $(BUILD_DIR)/$$f; \
+			fi; \
+		done; \
 	done
 	@# Create Kbuild redirection
 	@echo "include $(PWD)/Makefile" > $(BUILD_DIR)/Kbuild

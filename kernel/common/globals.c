@@ -99,8 +99,16 @@ ipfire_rule masquerade_post;
 
 /* State tables (NAT lists/locks/counters now in nat_table.c) */
 
-/* DEFINE_HASHTABLE(state_hashtable, STATE_HASH_BITS); TODO: restore hash */
+/* State table storage — only one of these is compiled in */
+#ifdef IPFI_USE_HASH
+struct hlist_head state_hashtable[1 << STATE_HASH_BITS];
+/* NAT hash tables */
+struct hlist_head nat_hashtables[2][1 << NAT_HASH_BITS];
+/* Loginfo hash table (list still used for LRU eviction) */
+struct hlist_head loginfo_hashtable[1 << LOG_HASH_BITS];
+#else
 LIST_HEAD(state_list);
+#endif
 
 /* Log info */
 LIST_HEAD(active_logi_list);
@@ -114,7 +122,7 @@ unsigned int loginfo_entry_counter = 0;
 /* Timeouts and Limits */
 unsigned int state_lifetime = 432000; /* 5 days in seconds */
 unsigned int setup_shutd_state_lifetime = 120;
-unsigned int loginfo_lifetime = 0;
+unsigned int loginfo_lifetime = 120;
 unsigned int max_loginfo_entries = 100;
 int (*smartlog_func)(const struct sk_buff *skb, const struct response *res,
                      const ipfi_flow *flow,
