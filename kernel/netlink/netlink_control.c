@@ -397,9 +397,9 @@ void check_max_timeout_values(command *cmd) {
                 cmd->loginfo_lifetime);
   }
 
-  if (cmd->max_loginfo_entries < 16) {
-    cmd->max_loginfo_entries = 16;
-    IPFI_PRINTK("IPFIRE: max_loginfo_entries too low, adjusted to 16\n");
+  if (cmd->max_loginfo_entries < 64) {
+    cmd->max_loginfo_entries = 64;
+    IPFI_PRINTK("IPFIRE: max_loginfo_entries too low, adjusted to 64\n");
   } else if (cmd->max_loginfo_entries > 65536) {
     cmd->max_loginfo_entries = 65536;
     IPFI_PRINTK("IPFIRE: max_loginfo_entries %lu too high, adjusted to 65536\n",

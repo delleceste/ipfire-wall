@@ -43,7 +43,7 @@ LOGINFO_LIFETIME=30
 
 # Maximum number of information (log) entries to track in the kernel.
 # Balance memory usage (256 entries is ~100KB) with deduplication coverage.
-# Lower bound: 16, Upper bound: 65536.
+# Lower bound: 64, Upper bound: 65536.
 MAX_LOGINFO_ENTRIES=256
 
 # Log level between kernel and user spaces:
