@@ -17,13 +17,46 @@
  * userspace. Keeps Netlink socket queues below their buffer limit. */
 #define TABLE_DUMP_BATCH_SIZE 200
 
-/* Signalled by process_command() when BATCH_ACK arrives from userspace. */
+/* Signalled by process_command() when BATCH_ACK arrives from userspace.
+ *
+ * DECLARE_COMPLETION is a macro defined in <linux/completion.h>.
+ * It expands to:
+ *   struct completion batch_ack_completion =
+ * COMPLETION_INITIALIZER(batch_ack_completion);
+ *
+ * A 'struct completion' contains:
+ *   - 'done': an atomic integer (simple counter)
+ *   - 'wait': a wait queue head (struct wait_queue_head)
+ *
+ * This structure is used to synchronize two tasks: one waits
+ * (wait_for_completion), and the other signals (complete).
+ */
 static DECLARE_COMPLETION(batch_ack_completion);
 
-/* Wait up to 5 s for userspace to consume the current batch. */
+/* Wait up to 5 s for userspace to consume the current batch.
+ *
+ * This function calls 'wait_for_completion_timeout', which:
+ * 1. Checks if 'batch_ack_completion.done' > 0.
+ * 2. If not, it adds the CURRENT task (this kernel thread) to the
+ *    'batch_ack_completion.wait' queue.
+ * 3. It sets the current task state to TASK_UNINTERRUPTIBLE (sleeping).
+ * 4. It calls schedule(), causing the CPU to context switch to another task.
+ *
+ * NOTE: Only THIS specific kernel thread sleeps. The CPU is free to run
+ * other processes, interrupts, and kernel threads. This does NOT block
+ * the entire CPU.
+ *
+ * When userspace sends BATCH_ACK, process_command() calls complete(), which
+ * wakes up this thread, putting it back into TASK_RUNNING state.
+ */
 static int wait_for_batch_ack(void) {
+  /* Wait for 'complete()' to be called or 5 seconds to pass */
   int ret = wait_for_completion_timeout(&batch_ack_completion, 5 * HZ);
+
+  /* We must reset the completion variable to 'not done' (0) so we can
+   * wait on it again for the next batch. */
   reinit_completion(&batch_ack_completion);
+
   if (ret == 0) {
     IPFI_PRINTK("IPFIRE: batch ack timeout — userspace too slow?\n");
     return -ETIMEDOUT;
