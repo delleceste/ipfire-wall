@@ -122,8 +122,8 @@ unsigned int loginfo_entry_counter = 0;
 /* Timeouts and Limits */
 unsigned int state_lifetime = 432000; /* 5 days in seconds */
 unsigned int setup_shutd_state_lifetime = 120;
-unsigned int loginfo_lifetime = 120;
-unsigned int max_loginfo_entries = 100;
+unsigned int loginfo_lifetime = 30;
+unsigned int max_loginfo_entries = 256;
 int (*smartlog_func)(const struct sk_buff *skb, const struct response *res,
                      const ipfi_flow *flow,
                      const struct info_flags *flags) = NULL;

@@ -384,10 +384,27 @@ void check_max_timeout_values(command *cmd) {
     cmd->dnatted_lifetime = MAX_TIMEOUT;
   if (cmd->state_lifetime > MAX_TIMEOUT)
     cmd->state_lifetime = MAX_TIMEOUT;
-  if (cmd->loginfo_lifetime > MAX_LOGINFO_TIMEOUT)
-    cmd->loginfo_lifetime = MAX_LOGINFO_TIMEOUT;
   if (cmd->setup_shutd_state_lifetime > MAX_TIMEOUT)
     cmd->setup_shutd_state_lifetime = MAX_TIMEOUT;
+
+  /* Loginfo bounds (technical consensus for system safety/usability) */
+  if (cmd->loginfo_lifetime < 5) {
+    cmd->loginfo_lifetime = 5;
+    IPFI_PRINTK("IPFIRE: loginfo_lifetime too low, adjusted to 5s\n");
+  } else if (cmd->loginfo_lifetime > 600) {
+    cmd->loginfo_lifetime = 600;
+    IPFI_PRINTK("IPFIRE: loginfo_lifetime %lu > 600s, adjusted to 600s\n",
+                cmd->loginfo_lifetime);
+  }
+
+  if (cmd->max_loginfo_entries < 16) {
+    cmd->max_loginfo_entries = 16;
+    IPFI_PRINTK("IPFIRE: max_loginfo_entries too low, adjusted to 16\n");
+  } else if (cmd->max_loginfo_entries > 65536) {
+    cmd->max_loginfo_entries = 65536;
+    IPFI_PRINTK("IPFIRE: max_loginfo_entries %lu too high, adjusted to 65536\n",
+                cmd->max_loginfo_entries);
+  }
 }
 
 void opts_to_cmd(command *cmd) {
