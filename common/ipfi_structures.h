@@ -155,6 +155,9 @@ enum command_options {
 
   RELOAD_VECTOR,
   RELOAD_FILE,
+  /* Batch flow control: userspace sends BATCH_ACK after receiving
+   * BATCH_SIZE entries to prevent kernel netlink buffer overflow */
+  BATCH_ACK,
   /* respones from kernel */
   /* generic error */
   ADDING_FAILED,
@@ -421,7 +424,7 @@ typedef struct {
       /* for nat */
       newaddr : 1, newport : 1,
       /* direction: INPUT, OUTPUT... mandatory in NAT */
-      direction : 1, ftp : 1, nolog: 1, other : 2;
+      direction : 1, ftp : 1, nolog : 1, other : 2;
 } netflags;
 
 typedef struct {

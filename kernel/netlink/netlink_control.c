@@ -5,12 +5,31 @@
 #include "logging/log.h"
 #include "message_builder.h"
 #include "netlink/ipfi_netl.h"
+#include <linux/completion.h>
 #include <linux/delay.h>
 #include <linux/module.h>
 #include <linux/netlink.h>
 #include <linux/skbuff.h>
 #include <linux/slab.h>
 #include <linux/user_namespace.h>
+
+/* Number of table entries to send before pausing for a BATCH_ACK from
+ * userspace. Keeps Netlink socket queues below their buffer limit. */
+#define TABLE_DUMP_BATCH_SIZE 200
+
+/* Signalled by process_command() when BATCH_ACK arrives from userspace. */
+static DECLARE_COMPLETION(batch_ack_completion);
+
+/* Wait up to 5 s for userspace to consume the current batch. */
+static int wait_for_batch_ack(void) {
+  int ret = wait_for_completion_timeout(&batch_ack_completion, 5 * HZ);
+  reinit_completion(&batch_ack_completion);
+  if (ret == 0) {
+    IPFI_PRINTK("IPFIRE: batch ack timeout — userspace too slow?\n");
+    return -ETIMEDOUT;
+  }
+  return 0;
+}
 
 void fill_dnat_info(struct dnat_info *dninfo, const struct nat_table *dntt) {
   dninfo->saddr = dntt->old_saddr;
@@ -129,6 +148,9 @@ int process_control_received(struct sk_buff *skb) {
   } else if (command_id == IS_LOGUSER_ENABLED) {
     ret = send_loguser_enabled(loguser_enabled);
     return ret;
+  } else if (command_id == BATCH_ACK) {
+    complete(&batch_ack_completion);
+    return 0;
   } else if (command_id == FLUSH_RULES) {
     ret = flush_ruleset(commander, FLUSH_RULES);
     tell_user_howmany_rules_flushed(ret);
@@ -596,6 +618,12 @@ int send_tables(void) {
   for (i = 0; i < count; i++) {
     if (send_with_retry(&entries[i], sizeof(struct state_info), 5) < 0)
       break;
+    /* Pause every TABLE_DUMP_BATCH_SIZE entries so userspace drains the
+     * socket buffer before we flood it with the next batch. */
+    if ((i + 1) % TABLE_DUMP_BATCH_SIZE == 0) {
+      if (wait_for_batch_ack() < 0)
+        break;
+    }
   }
 
   kfree(entries);
@@ -648,6 +676,10 @@ int send_dnat_tables(void) {
   for (i = 0; i < count; i++) {
     if (send_with_retry(&entries[i], sizeof(struct dnat_info), 5) < 0)
       break;
+    if ((i + 1) % TABLE_DUMP_BATCH_SIZE == 0) {
+      if (wait_for_batch_ack() < 0)
+        break;
+    }
   }
 
   kfree(entries);
@@ -700,6 +732,10 @@ int send_snat_tables(void) {
   for (i = 0; i < count; i++) {
     if (send_with_retry(&entries[i], sizeof(struct snat_info), 5) < 0)
       break;
+    if ((i + 1) % TABLE_DUMP_BATCH_SIZE == 0) {
+      if (wait_for_batch_ack() < 0)
+        break;
+    }
   }
 
   kfree(entries);

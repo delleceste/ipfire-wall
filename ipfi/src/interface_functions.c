@@ -9,6 +9,9 @@
 #include "includes/rule_cache.h"
 #include <net/if.h>
 
+/* Must match TABLE_DUMP_BATCH_SIZE in kernel/netlink/netlink_control.c */
+#define TABLE_DUMP_BATCH_SIZE 200
+
 int print_request(const struct netl_handle *nh_control);
 int state_table_request(const struct netl_handle *nh_control);
 int snat_table_request(const struct netl_handle *nh_control);
@@ -246,8 +249,17 @@ int state_table_request(const struct netl_handle *nh_control) {
     }
     if (st.direction == PRINT_FINISHED)
       break;
-    else
+    else {
       print_state_table_entry((struct state_info *)&st, counter);
+      /* Send BATCH_ACK every TABLE_DUMP_BATCH_SIZE entries so the kernel
+       * can release the next batch without overflowing its socket queue. */
+      if (counter % TABLE_DUMP_BATCH_SIZE == 0) {
+        command ack;
+        init_command(&ack);
+        ack.cmd = BATCH_ACK;
+        send_to_kernel((void *)&ack, nh_control, CONTROL_DATA);
+      }
+    }
   }
   if (counter == 1)
     PGRAY, printf(TR("Kernel table empty.")), PCL;
@@ -280,8 +292,15 @@ int dnat_table_request(const struct netl_handle *nh_control) {
       libnetl_perror("dnat_table_request()");
     if (di.direction == PRINT_FINISHED)
       break;
-    else
+    else {
       print_dnat_table_entry((struct dnat_info *)&di, counter);
+      if (counter % TABLE_DUMP_BATCH_SIZE == 0) {
+        command ack;
+        init_command(&ack);
+        ack.cmd = BATCH_ACK;
+        send_to_kernel((void *)&ack, nh_control, CONTROL_DATA);
+      }
+    }
   }
   if (counter == 1)
     PGRAY, printf(TR("Kernel table empty.")), PCL;
@@ -291,7 +310,7 @@ int dnat_table_request(const struct netl_handle *nh_control) {
   return 0;
 }
 
-/* requests dnat  tables to kernel and prints responses */
+/* requests snat tables to kernel and prints responses */
 int snat_table_request(const struct netl_handle *nh_control) {
   int counter = 0;
   struct snat_info si;
@@ -314,8 +333,15 @@ int snat_table_request(const struct netl_handle *nh_control) {
       libnetl_perror("snat_table_request()");
     if (si.direction == PRINT_FINISHED)
       break;
-    else
+    else {
       print_snat_table_entry((struct snat_info *)&si, counter);
+      if (counter % TABLE_DUMP_BATCH_SIZE == 0) {
+        command ack;
+        init_command(&ack);
+        ack.cmd = BATCH_ACK;
+        send_to_kernel((void *)&ack, nh_control, CONTROL_DATA);
+      }
+    }
   }
   if (counter == 1)
     PGRAY, printf(TR("Kernel table empty.")), PCL;
@@ -2117,7 +2143,8 @@ get_nat:
       printf(TR(" no.")), PNL;
     }
   }
-  printf(NL), printf(TR("DO YOU WANT TO DISABLE LOGGING FOR THIS RULE [y|n]? "));
+  printf(NL),
+      printf(TR("DO YOU WANT TO DISABLE LOGGING FOR THIS RULE [y|n]? "));
   if (char_translation(g_getchar()) == 'y') {
     printf(TR(" yes.")), PNL;
     r->nflags.nolog = 1;
