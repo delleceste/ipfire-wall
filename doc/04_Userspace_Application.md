@@ -17,7 +17,7 @@ The application communicates with the kernel via Netlink sockets using the `IPFI
 The application behavior can be customized via config files, typically located in `/etc/ipfire/`.
 
 - `allowed.base`: List of rules to be automatically loaded on startup.
-- `ipfire.conf`: Global options such as logging levels, max NAT entries, and stateful tracking defaults.
+- `ipfi/IPFIRE/options`: Global configuration file (compatible with IqFIREwall) using a simple `KEY=VALUE` format.
 
 ## 4.3. Interpreting Statistics
 The `-s` (Statistics) output is divided into three sections:
@@ -30,3 +30,12 @@ When running, `ipfire` can act as a listener, printing headers for every packet 
 - Timestamp and user ID.
 - Hook location and verdict (ACCEPT/DROP).
 - Detailed IP/TCP/UDP header information.
+## 4.5. Logging Deduplication & Technical Bounds
+To prevent system instability and terminal flooding, the kernel enforces technical bounds on logging configuration. These values control the **deduplication window**: a packet hitting a rule for the first time is logged, and subsequent identical packets are suppressed until the lifetime expires.
+
+| Parameter | Default (SMB) | Enforced Range | Description |
+|-----------|---------------|----------------|-------------|
+| `LOGINFO_LIFETIME` | 30s | 5s – 600s | The TTL for a deduplication entry. |
+| `MAX_LOGINFO_ENTRIES` | 256 | 64 – 65536 | The maximum number of distinct flows to track for deduplication. |
+
+If a user attempts to set values outside these bounds via the Netlink interface, the kernel will automatically adjust them to the nearest limit and print a warning in `dmesg`.

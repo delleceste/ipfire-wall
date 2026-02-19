@@ -121,7 +121,7 @@ Since UDP is connectionless, the engine creates virtual states (`UDP_NEW` -> `UD
 - **Lifetimes**: Every state entry has an associated kernel timer. If no traffic is seen for a specific duration (e.g., 3600s for ESTABLISHED TCP, or ~30s for UDP), the entry is automatically purged to free resources.
 - **Allocation**: State entries are allocated from a dedicated `kmem_cache` slab (`ipfi_state`), ensuring low-latency access and optimized memory layout.
 - **Namespaces**: In the current implementation, state tables are shared across all network namespaces (even with `per_net=1`).
-- **Capacity**: The firewall enforces a `max_state_entries` limit to prevent resource exhaustion attacks.
+- **Capacity**: The firewall enforces a `max_state_entries` limit to prevent resource exhaustion attacks. Technical bounds are also applied to loginfo entries ([64, 65536]).
 
 ## 3.4. FTP Support
 The engine includes a specialized parser for the FTP protocol. It monitors the "control" channel for `PASV` commands and dynamically injects "Data Channel" states, allowing passive FTP to function through the NAT without requiring manual rule openings for high-numbered ports.
@@ -147,7 +147,7 @@ The application communicates with the kernel via Netlink sockets using the `IPFI
 The application behavior can be customized via config files, typically located in `/etc/ipfire/`.
 
 - `allowed.base`: List of rules to be automatically loaded on startup.
-- `ipfire.conf`: Global options such as logging levels, max NAT entries, and stateful tracking defaults.
+- `ipfi/IPFIRE/options`: Global configuration file (compatible with IqFIREwall) using a simple `KEY=VALUE` format.
 
 ## 4.3. Interpreting Statistics
 The `-s` (Statistics) output is divided into three sections:
@@ -160,6 +160,16 @@ When running, `ipfire` can act as a listener, printing headers for every packet 
 - Timestamp and user ID.
 - Hook location and verdict (ACCEPT/DROP).
 - Detailed IP/TCP/UDP header information.
+
+## 4.5. Logging Deduplication & Technical Bounds
+To prevent system instability and terminal flooding, the kernel enforces technical bounds on logging configuration. These values control the **deduplication window**: a packet hitting a rule for the first time is logged, and subsequent identical packets are suppressed until the lifetime expires.
+
+| Parameter | Default (SMB) | Enforced Range | Description |
+|-----------|---------------|----------------|-------------|
+| `LOGINFO_LIFETIME` | 30s | 5s – 600s | The TTL for a deduplication entry. |
+| `MAX_LOGINFO_ENTRIES` | 256 | 64 – 65536 | The maximum number of distinct flows to track for deduplication. |
+
+If a user attempts to set values outside these bounds via the Netlink interface, the kernel will automatically adjust them to the nearest limit and print a warning in `dmesg`.
 
 ---
 

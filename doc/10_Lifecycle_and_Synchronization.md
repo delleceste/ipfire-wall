@@ -87,6 +87,8 @@ active_logi_list  ◄─── lnode ───► ipfire_loginfo ◄─── hn
 This is necessary because:
 - `active_logi_list` (lnode) enables O(1) LRU eviction: oldest entry is
   always at the tail, removed when the table reaches `max_loginfo_entries`.
+  The kernel enforces a capacity bound of **[64, 65536]** to ensure both
+  deduplication effectiveness and memory safety.
 - `loginfo_hashtable` (hnode) enables O(1) duplicate detection lookups.
 
 `ipfi_entry_remove` handles **only hnode** (hash mode) or **only lnode**
