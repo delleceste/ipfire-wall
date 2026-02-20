@@ -424,7 +424,6 @@ QString IQFTextEdit::fireinfo_line_formatter(const ipfire_info_t *pack)
 		insertPlainTextDummy(info = "  ");
 	
 	newline += info;
-	#ifdef ENABLE_RULENAME
 	/* finally, print rule name */
 	if(strlen(pack->rulename) > 0)
 	{
@@ -453,8 +452,7 @@ QString IQFTextEdit::fireinfo_line_formatter(const ipfire_info_t *pack)
 			insertPlainTextDummy(QString("[ %1 ]").arg( pack->rulename));
 		
 		newline += QString("[%1]").arg(pack->rulename);
-	}	
-	#endif
+	}
 	if(filter != NULL) /* if we are here we have passed the filter */
 	{
 		 insertPlainTextDummy(" ");

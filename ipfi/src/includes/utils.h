@@ -55,6 +55,9 @@ int filter_packet_to_print(const ipfire_info_t* p, const ipfire_rule_filter* f);
 
 /* removed duplicate resolv_ports declaration */
 	
+uint32_t calculate_rule_id(const ipfire_rule *r);
+ipfire_rule* lookup_rule_by_id(uint32_t id, int *policy);
+
 void restore_color(int direction);
 	
 

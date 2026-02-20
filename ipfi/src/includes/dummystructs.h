@@ -28,9 +28,7 @@ struct dnatted_table
 	int state;
 	char in_devname[IFNAMSIZ];
 	char out_devname[IFNAMSIZ];
-#ifdef ENABLE_RULENAME
 	char rulename[RULENAMELEN];
-#endif	
 	struct timer_list timer_dnattedlist;
 	struct list_head list;
 	/* RCU */
@@ -58,9 +56,7 @@ struct snatted_table
 	int state;
 	char in_devname[IFNAMSIZ];
 	char out_devname[IFNAMSIZ];
-#ifdef ENABLE_RULENAME
 	char rulename[RULENAMELEN];
-#endif	
 	struct timer_list timer_snattedlist;
 	struct list_head list;
 	/* RCU */
@@ -81,9 +77,7 @@ struct state_table
 	unsigned short protocol;
 	char in_devname[IFNAMSIZ];
 	char out_devname[IFNAMSIZ];
-#ifdef ENABLE_RULENAME
 	char rulename[RULENAMELEN];
-#endif
 	
 	struct timer_list timer_statelist;
 	struct list_head list;

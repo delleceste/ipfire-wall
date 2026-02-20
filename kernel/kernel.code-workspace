@@ -1,0 +1,20 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../common"
+		},
+		{
+			"path": "../ipfi"
+		},
+		{
+			"path": "../test"
+		},
+		{
+			"path": "../doc"
+		}
+	],
+	"settings": {}
+}

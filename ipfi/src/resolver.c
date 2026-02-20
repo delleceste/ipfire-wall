@@ -235,19 +235,15 @@ int write_resolved_blackrule(const struct hostent* he, FILE* fptemp,
 	int counter = *numrules;
 	int i = 0;
 	char address[INET_ADDRSTRLEN];
-	#ifdef ENABLE_RULENAME
 	char name[RULENAMELEN];
-	#endif
 	
 	while(he->h_addr_list[i] != NULL)
 	{
 		counter ++;
 		/* output hook... */
 		fprintf(fptemp, "BSRULE\n");
-		#ifdef ENABLE_RULENAME
 		snprintf(name, RULENAMELEN, "OUT:%s", he->h_name);
-		fprintf(fptemp, "NAME=%s\n", name);	
-		#endif
+		fprintf(fptemp, "NAME=%s\n", name);
 		fprintf(fptemp, "POSITION=%d\n", counter);		
 		fprintf(fptemp, "DIRECTION=OUTPUT\n");
 		if(inet_ntop(AF_INET, he->h_addr_list[i], address, INET_ADDRSTRLEN) <= 0)
@@ -259,10 +255,8 @@ int write_resolved_blackrule(const struct hostent* he, FILE* fptemp,
 		/* ..and forward of course */
 		counter ++;
 		fprintf(fptemp, "BSRULE\n");
-		#ifdef ENABLE_RULENAME
 		snprintf(name, RULENAMELEN, "FWD:%s", he->h_name);
-		fprintf(fptemp, "NAME=%s\n", name);	
-		#endif
+		fprintf(fptemp, "NAME=%s\n", name);
 		fprintf(fptemp, "POSITION=%d\n", counter);
 		fprintf(fptemp, "DIRECTION=FORWARD\n");
 		fprintf(fptemp, "DSTADDR=%s\n", address);	

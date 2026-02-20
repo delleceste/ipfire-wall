@@ -1,0 +1,79 @@
+#!/usr/sbin/nft -f
+
+flush ruleset
+
+table inet filter {
+    chain input {
+        type filter hook input priority 0; policy drop;
+
+        # Allow loopback
+        iif "lo" accept
+
+        # Allow established and related traffic
+        ct state established,related accept
+
+        # Drop invalid packets
+        ct state invalid drop
+    }
+
+    chain forward {
+        type filter hook forward priority 0; policy drop;
+
+        # Allow established and related traffic
+        ct state established,related accept
+
+        # iperf3 traffic (TCP/UDP 5201)
+        tcp dport 5201 ct state { new } accept
+        udp dport 5201 ct state { new } accept
+
+        # Generic Forwarding (matching the spirit of the original catch-all script)
+        meta l4proto tcp ct state { new } accept
+        meta l4proto udp ct state { new } accept
+        ip protocol icmp accept
+    }
+
+    chain output {
+        type filter hook output priority 0; policy drop;
+
+        # Allow loopback
+        oif "lo" accept
+
+        # Allow established and related traffic
+        ct state established,related accept
+
+        # HTTP (TCP 80)
+        tcp dport 80 ct state { new } accept
+
+        # DNS (UDP 53)
+        udp dport 53 ct state { new } accept
+
+        # POP3 mail (TCP 110)
+        tcp dport 110 ct state { new } accept
+
+        # SMTP mail (TCP 25)
+        tcp dport 25 ct state { new } accept
+
+        # FTP control (TCP 21)
+        tcp dport 21 ct state { new } accept
+
+        # ICMP
+        ip protocol icmp accept
+
+        # HTTPS (TCP 443)
+        tcp dport 443 ct state { new } accept
+
+        # SSH out (TCP 22)
+        tcp dport 22 ct state { new } accept
+
+        # Unix printing (TCP 631)
+        tcp dport 631 ct state { new } accept
+
+        # iperf3 traffic (TCP/UDP 5201)
+        tcp dport 5201 ct state { new } accept
+        udp dport 5201 ct state { new } accept
+
+        # Generic TCP/UDP out (Restored from original script)
+        meta l4proto tcp ct state { new } accept
+        meta l4proto udp ct state { new } accept
+    }
+}

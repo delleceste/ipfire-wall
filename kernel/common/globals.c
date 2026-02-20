@@ -1,0 +1,148 @@
+#include "globals.h"
+#include <linux/module.h>
+#include <linux/spinlock.h>
+
+/* Netlink related PIDs and sockets */
+pid_t userspace_control_pid = 0;
+pid_t userspace_data_pid = 0;
+uid_t userspace_uid = 0;
+struct sock *sknl_ipfi_control = NULL;
+struct sock *sknl_ipfi_data = NULL;
+struct sock *sknl_ipfi_gui_notifier = NULL;
+
+/* Firewall options and status */
+struct ipfire_options fwopts;
+short default_policy = IPFIRE_DEFAULT_POLICY;
+short loguser_enabled = 1;
+short gui_notifier_enabled = 0;
+
+/* Statistics */
+struct kernel_stats kstats;
+struct kstats_light kslight;
+
+struct ipfi_counters __percpu *ipfi_counters = NULL;
+
+void ipfi_get_total_stats(struct kernel_stats *total) {
+  int cpu;
+  memset(total, 0, sizeof(struct kernel_stats));
+
+  /* Aggregate counters from all CPUs */
+  if (ipfi_counters) {
+    for_each_possible_cpu(cpu) {
+      struct ipfi_counters *c = per_cpu_ptr(ipfi_counters, cpu);
+      total->in_rcv += c->in_rcv;
+      total->out_rcv += c->out_rcv;
+      total->pre_rcv += c->pre_rcv;
+      total->post_rcv += c->post_rcv;
+      total->fwd_rcv += c->fwd_rcv;
+      total->sum += c->sum;
+      total->total_lost += c->total_lost;
+
+      /* Sum per-direction sent counters */
+      /* Note: structural update: these are not in original struct kernel_stats
+       * BUT we might want to sum them somewhere or just provide them.
+       * For now, we sum them into the total kstats if we added them there.
+       */
+      total->sent_tou += c->sent_tou;
+      total->last_failed += c->last_failed;
+
+      total->in_acc += c->in_acc;
+      total->in_drop += c->in_drop;
+      total->in_drop_impl += c->in_drop_impl;
+      total->in_acc_impl += c->in_acc_impl;
+
+      total->out_acc += c->out_acc;
+      total->out_drop += c->out_drop;
+      total->out_drop_impl += c->out_drop_impl;
+      total->out_acc_impl += c->out_acc_impl;
+
+      total->fwd_acc += c->fwd_acc;
+      total->fwd_drop += c->fwd_drop;
+      total->fwd_drop_impl += c->fwd_drop_impl;
+      total->fwd_acc_impl += c->fwd_acc_impl;
+
+      total->not_sent += c->not_sent;
+      total->bad_checksum_in += c->bad_checksum_in;
+      total->bad_checksum_out += c->bad_checksum_out;
+    }
+  }
+
+  /* Copy global metadata */
+  total->kmod_load_time = kstats.kmod_load_time;
+  total->policy = kstats.policy;
+}
+
+void ipfi_get_light_stats(struct kstats_light *light) {
+  int cpu;
+  memset(light, 0, sizeof(struct kstats_light));
+
+  if (ipfi_counters) {
+    for_each_possible_cpu(cpu) {
+      struct ipfi_counters *c = per_cpu_ptr(ipfi_counters, cpu);
+      light->blocked += c->blocked;
+      light->allowed += c->allowed;
+    }
+  }
+}
+
+/* Rulesets */
+ipfire_rule in_drop;
+ipfire_rule out_drop;
+ipfire_rule fwd_drop;
+ipfire_rule in_acc;
+ipfire_rule out_acc;
+ipfire_rule fwd_acc;
+ipfire_rule translation_pre;
+ipfire_rule translation_post;
+ipfire_rule translation_out;
+ipfire_rule masquerade_post;
+
+/* State tables (NAT lists/locks/counters now in nat_table.c) */
+
+/* State table storage */
+struct hlist_head state_hashtable[1 << STATE_HASH_BITS];
+/* NAT hash tables */
+struct hlist_head nat_hashtables[2][1 << NAT_HASH_BITS];
+/* Loginfo hash table (list still used for LRU eviction) */
+struct hlist_head loginfo_hashtable[1 << LOG_HASH_BITS];
+
+/* Log info */
+LIST_HEAD(active_logi_list);
+
+/* Counters */
+unsigned int table_id = 0;
+struct percpu_counter state_tables_counter;
+/* NAT counters now in nat_table.c: nat_counters[] */
+struct percpu_counter loginfo_entry_counter;
+
+/* Timeouts and Limits */
+unsigned int state_lifetime = 432000; /* 5 days in seconds */
+unsigned int setup_shutd_state_lifetime = 120;
+unsigned int loginfo_lifetime = 30;
+unsigned int max_loginfo_entries = 256;
+int (*smartlog_func)(const struct sk_buff *skb, const struct response *res,
+                     const ipfi_flow *flow,
+                     const struct info_flags *flags) = NULL;
+unsigned int max_state_entries = 65536;
+
+/* Print limiting */
+unsigned int moderate_print[MAXMODERATE_ARGS];
+unsigned int moderate_print_limit[MAXMODERATE_ARGS];
+
+// Locks. With the following macros
+// The lock is statically initialized
+// It is valid before initcall()
+// It works correctly on SMP, PREEMPT, DEBUG_SPINLOCK, etc
+// Lockdep gets the right metadata (name, class key)
+// This is the blessed way to define a global or file-scope spinlock.
+//
+DEFINE_SPINLOCK(rulelist_lock);
+spinlock_t state_bucket_locks[1 << STATE_HASH_BITS];
+DEFINE_SPINLOCK(loginfo_list_lock);
+/* NAT locks now in nat_table.c: nat_locks[] */
+struct workqueue_struct *ipfire_wq = NULL;
+
+bool we_are_exiting = false;
+
+/* Export symbols if needed by other modules, but here they are used within the
+ * same module */

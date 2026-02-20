@@ -53,8 +53,6 @@ LIBS += -L/usr/kde/4.2/lib \
 	-L/usr/local/qwt-5.1.1/lib
 
 
-DEFINES += ENABLE_RULENAME
-
 MOC_DIR         = moc
 OBJECTS_DIR     = obj
 

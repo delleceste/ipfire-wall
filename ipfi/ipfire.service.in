@@ -1,0 +1,25 @@
+[Unit]
+Description=ipfirewall kernel module and rules manager
+After=network-pre.target
+Before=network.target
+Wants=network-pre.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+Environment="LD_LIBRARY_PATH=@CMAKE_INSTALL_FULL_LIBDIR@"
+
+# Start: load module, load rules
+ExecStart=@CMAKE_INSTALL_FULL_BINDIR@/ipfire -rc -user
+
+# Stop: Kill any running ipfire userspace listeners, then remove the module
+ExecStop=-/usr/bin/killall -q ipfire
+ExecStop=/sbin/modprobe -r ipfi
+
+# Reload: send SIGHUP to the application, then remove and reload.
+ExecReload=-/usr/bin/killall -q -s HUP ipfire
+ExecReload=/sbin/modprobe -r ipfi
+ExecReload=@CMAKE_INSTALL_FULL_BINDIR@/ipfire -rc -user
+
+[Install]
+WantedBy=multi-user.target

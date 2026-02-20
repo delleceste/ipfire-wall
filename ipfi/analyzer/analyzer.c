@@ -247,21 +247,12 @@ int get_packet_and_add_to_vector(int index, struct anpacket* anp,
 	int ret;
 
 	/* get packet */
-#ifdef ENABLE_RULENAME
 	ret = sscanf(line,
 		     "|%d|%d|%d|%d|%16[^|]|%16[^|]|%d|%lu|%16[^|]|%d|%16[^|]|%d|%d|%d|%d|%d|%d|%d|%20[^|]|\n",
 		     &anp->nat, &anp->response, &anp->state, &anp->direction, anp->in_device,
 		     anp->out_device, &anp->protocol, &anp->id, anp->saddr, &anp->sport, 
 		     anp->daddr,  &anp->dport, &anp->syn, &anp->ack, &anp->fin, &anp->urg, 
 		     &anp->psh, &anp->rst, &anp->rulename);	
-#else
-	ret = sscanf(line,
-	"|%d|%d|%d|%d|%16[^|]|%16[^|]|%d|%lu|%16[^|]|%d|%16[^|]|%d|%d|%d|%d|%d|%d|%d|\n",
-		     &anp->nat, &anp->response, &anp->state, &anp->direction, anp->in_device,
-		     anp->out_device, &anp->protocol, &anp->id, anp->saddr, &anp->sport, 
-		     anp->daddr,  &anp->dport, &anp->syn, &anp->ack, &anp->fin, &anp->urg, 
-		     &anp->psh, &anp->rst);	
-#endif
 // 	printf("URG: %d, RST: %d, PSH:%d\n", anp->urg, anp->rst, anp->psh);	 
 	/* inizializziamo anche i campi resolve */
 	strncpy(anp->saddr_resolved, anp->saddr, INET_ADDRSTRLEN);
@@ -699,16 +690,12 @@ void print_anentry(const struct anpacket *anp)
 	if(anp->response == DEN)
 	{
 		printf(RED "X" );
-#ifdef ENABLE_RULENAME
 		printf(CLR "[" DRED "%s" CLR "]", anp->rulename);
-#endif	
 	}
 	else if(anp->response == PERM)
 	{
 		printf(GREEN "OK");
-#ifdef ENABLE_RULENAME
 		printf(CLR "[" DGREEN "%s" CLR "]", anp->rulename);
-#endif
 	}
 	else if(anp->response == BOH)
 		printf(VIOLET "?" );

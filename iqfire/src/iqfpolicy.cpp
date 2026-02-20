@@ -23,9 +23,7 @@ extern "C"
  	 */
 	int send_rules_to_kernel(ipfire_rule* rules,  int nrules);
 	int build_rule_command(command *cmd);
-	#ifdef ENABLE_RULENAME
 	void get_rule_name(const char* line, char* name);
-	#endif
 	
 	/* save_rules() sends file pointer and a rule
 	* to be written on file */
@@ -626,9 +624,7 @@ QVector<ipfire_rule > Policy::parse_rulefile_and_alloc_ruleset
   char key[MAXLINELEN];
   short next_policy_is_blacksite = 0;
 	
-#ifdef ENABLE_RULENAME
   char rulename[RULENAMELEN];
-#endif
   struct in_addr address;
   ipfire_rule arule;
   short protocol;
@@ -950,16 +946,8 @@ QVector<ipfire_rule > Policy::parse_rulefile_and_alloc_ruleset
 	
       else if(strncmp(line, "NAME=", 5) == 0)
 	{
-#ifdef ENABLE_RULENAME
 	  get_rule_name(line, rulename);
 	  strncpy(arule.rulename, rulename, RULENAMELEN);
-#else  /* warn user */
-	  printf(VIOLET "WARNING" CLR ": option \"NAME\" is disabled.\n"
-		 "If you want to enable it, you must compile IPFIRE with\n"
-		 "option \"ENABLE_RULENAME\", " UNDERL RED "both" NL
-		 "in userspace program and in kernel modules. See manual\n"
-		 "for further explanation." NL );
-#endif
 	}
      /* Start parsing lines which might indicate multiple values */
      /* ============================================== */
