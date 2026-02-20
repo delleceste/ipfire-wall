@@ -122,8 +122,8 @@ int main(int argc, char *argv[]) {
     // 	printf("["GREEN "OK" CLR "]" NL);
   }
 
-  printf(UNDERL "%s" CLR " %s \"%s\"" CLR "." NL, USERFIRENAME, VERSION,
-         CODENAME);
+  printf(UNDERL "%s" CLR " %s \"\e[1;31m%s\e[0m\"" CLR "." NL, USERFIRENAME,
+         VERSION, CODENAME);
 
   /* get username and transform it to upper case */
   toupper_username(upper_username);
@@ -379,7 +379,7 @@ int main(int argc, char *argv[]) {
           printf(
               TR("* Option \"-mailer\" ignored when \"-load\" is specified!")),
           PNL, PNL;
-    kill(getpid(), SIGINT);
+    signal_handler(SIGINT);
   }
   if (uops.mail) {
     if (pipe(mailpipefd) < 0)
