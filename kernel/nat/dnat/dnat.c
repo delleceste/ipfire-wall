@@ -9,11 +9,9 @@
 #include "ipfire.h"
 #include "netlink/ipfi_netl.h"
 #include "netlink/message_builder.h"
+#include <linux/hashtable.h>
 #include <linux/ip.h>
 #include <linux/jhash.h>
-#ifdef IPFI_USE_HASH
-#include <linux/hashtable.h>
-#endif
 #include <linux/module.h>
 #include <linux/skbuff.h>
 #include <linux/slab.h>
@@ -85,7 +83,6 @@ int de_dnat_translation(struct sk_buff *skb, const ipfi_flow *flow,
     return -1;
 
   rcu_read_lock_bh();
-#ifdef IPFI_USE_HASH
   {
     struct iphdr *iph = ip_hdr(skb);
     u32 key;
@@ -104,17 +101,6 @@ int de_dnat_translation(struct sk_buff *skb, const ipfi_flow *flow,
       }
     }
   }
-#else
-  list_for_each_entry_rcu(dntmp, &nat_lists[NAT_DNAT], h.lnode) {
-    if (de_dnat_table_match(dntmp, skb) > 0) {
-      dntmp->state = state_machine(skb, dntmp->state, 1);
-      ipfi_entry_update_timer(&dntmp->h, dntmp->protocol, dntmp->state);
-      int ret = de_dnat(skb, dntmp);
-      rcu_read_unlock_bh();
-      return ret;
-    }
-  }
-#endif
   rcu_read_unlock_bh();
   return -1;
 }
@@ -147,7 +133,6 @@ int pre_de_dnat(struct sk_buff *skb, const ipfi_flow *flow,
                 struct response *resp, struct info_flags *flags) {
   struct nat_table *dntmp;
   rcu_read_lock_bh();
-#ifdef IPFI_USE_HASH
   {
     struct iphdr *iph = ip_hdr(skb);
     net_quadruplet netq = get_quad_from_skb(skb);
@@ -171,17 +156,6 @@ int pre_de_dnat(struct sk_buff *skb, const ipfi_flow *flow,
       }
     }
   }
-#else
-  list_for_each_entry_rcu(dntmp, &nat_lists[NAT_DNAT], h.lnode) {
-    if (pre_denat_table_match(dntmp, skb) > 0) {
-      dntmp->state = state_machine(skb, dntmp->state, 1);
-      ipfi_entry_update_timer(&dntmp->h, dntmp->protocol, dntmp->state);
-      int ret = pre_de_dnat_translate(skb, dntmp);
-      rcu_read_unlock_bh();
-      return ret;
-    }
-  }
-#endif
   rcu_read_unlock_bh();
   return -1;
 }
@@ -281,7 +255,6 @@ struct nat_table *add_dnatted_entry(const struct sk_buff *skb,
   ipfi_entry_init(&newtable->h, timeout, handle_nat_entry_timeout);
 
   ipfi_entry_hold(&newtable->h); /* table ref */
-#ifdef IPFI_USE_HASH
   {
     u32 key = get_dnat_hash(newtable->old_saddr, newtable->old_sport,
                             newtable->new_addr, newtable->new_port,
@@ -290,9 +263,6 @@ struct nat_table *add_dnatted_entry(const struct sk_buff *skb,
         &newtable->h.hnode,
         &nat_hashtables[NAT_DNAT][key & ((1 << NAT_HASH_BITS) - 1)]);
   }
-#else
-  list_add_rcu(&newtable->h.lnode, &nat_lists[NAT_DNAT]);
-#endif
   nat_counters[NAT_DNAT]++;
   spin_unlock_bh(&nat_locks[NAT_DNAT]);
   ipfi_entry_arm_timer(&newtable->h);

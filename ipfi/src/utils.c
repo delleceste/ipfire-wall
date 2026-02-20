@@ -91,7 +91,6 @@ ipfire_rule *lookup_rule_by_id(uint32_t id, int *policy) {
 }
 
 #define LOGLINELEN 200
-#define MAXFILENAMELEN 60
 
 #define PROTONAMELEN 5
 #define SERVICENAMELEN 16

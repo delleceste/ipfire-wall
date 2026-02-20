@@ -25,30 +25,35 @@ int init_useropts(struct userspace_opts *uops) {
   strcpy(uops->blacksites_filename, "");
   strcpy(uops->mailer_options_filename, "");
 
-  len = get_user_info(HOMEDIR, home);
-
-  /* PWD_FIELDS_LEN is 20, filenames are MAXFILENAMELEN (60) */
-  /* default log file */
-  strcat(uops->logfile_name, home);
-  strcat(uops->logfile_name, "/.IPFIRE/ipfire.log");
-
-  strcat(uops->permission_filename, home);
-  strcat(uops->permission_filename, "/.IPFIRE/allowed");
-
-  strcat(uops->blacklist_filename, home);
-  strcat(uops->blacklist_filename, "/.IPFIRE/blacklist");
-
-  strcat(uops->translation_filename, home);
-  strcat(uops->translation_filename, "/.IPFIRE/translation");
-
-  strcat(uops->options_filename, home);
-  strcat(uops->options_filename, "/.IPFIRE/options");
-
-  strcat(uops->blacksites_filename, home);
-  strcat(uops->blacksites_filename, "/.IPFIRE/blacksites");
-
-  strcat(uops->mailer_options_filename, home);
-  strcat(uops->mailer_options_filename, "/.IPFIRE/mailer/options");
+  if (geteuid() == 0) {
+    snprintf(uops->logfile_name, MAXFILENAMELEN, "%s/ipfire.log", ROOT_CFGDIR);
+    snprintf(uops->permission_filename, MAXFILENAMELEN, "%s/allowed",
+             ROOT_CFGDIR);
+    snprintf(uops->blacklist_filename, MAXFILENAMELEN, "%s/blacklist",
+             ROOT_CFGDIR);
+    snprintf(uops->translation_filename, MAXFILENAMELEN, "%s/translation",
+             ROOT_CFGDIR);
+    snprintf(uops->options_filename, MAXFILENAMELEN, "%s/options", ROOT_CFGDIR);
+    snprintf(uops->blacksites_filename, MAXFILENAMELEN, "%s/blacksites",
+             ROOT_CFGDIR);
+    snprintf(uops->mailer_options_filename, MAXFILENAMELEN, "%s/mailer/options",
+             ROOT_CFGDIR);
+  } else {
+    get_user_info(HOMEDIR, home);
+    snprintf(uops->logfile_name, MAXFILENAMELEN, "%s/.IPFIRE/ipfire.log", home);
+    snprintf(uops->permission_filename, MAXFILENAMELEN, "%s/.IPFIRE/allowed",
+             home);
+    snprintf(uops->blacklist_filename, MAXFILENAMELEN, "%s/.IPFIRE/blacklist",
+             home);
+    snprintf(uops->translation_filename, MAXFILENAMELEN,
+             "%s/.IPFIRE/translation", home);
+    snprintf(uops->options_filename, MAXFILENAMELEN, "%s/.IPFIRE/options",
+             home);
+    snprintf(uops->blacksites_filename, MAXFILENAMELEN, "%s/.IPFIRE/blacksites",
+             home);
+    snprintf(uops->mailer_options_filename, MAXFILENAMELEN,
+             "%s/.IPFIRE/mailer/options", home);
+  }
 
   uops->clearlog = 0;
   uops->loglevel = 1;
@@ -1026,6 +1031,43 @@ int get_options(command *opt, struct userspace_opts *uo, struct cmdopts *cmdo) {
   }
   return 0;
 }
+void print_usage(const char *progname) {
+  printf(TR("Usage: %s [OPTIONS]\n\n"), progname);
+  printf(TR("Options:\n"));
+  printf(TR("  -h, --help           Show this help message and exit\n"));
+  printf(TR("  -noflush             Do not flush rules on exit (root only)\n"));
+  printf(TR("  -services            Resolve ports to service names\n"));
+  printf(TR("  -noservices          Do not resolve ports to service names\n"));
+  printf(TR("  -mailer <V> <U>      Send email every <V> units <U> (sec, min, "
+            "hour, days)\n"));
+  printf(TR("  -kloglevel <0-7>     Set kernel log level\n"));
+  printf(
+      TR("  -loguser <0-7>       Set user interface log level (root only)\n"));
+  printf(
+      TR("  -dns <seconds>       Enable DNS resolver with <refresh> time\n"));
+  printf(TR("  -nodns               Disable DNS resolver\n"));
+  printf(TR("  -log <0-7>           Set file log level\n"));
+  printf(TR("  -logfile <file>      Set log file path (root only)\n"));
+  printf(TR("  -allowed <file>      Set permission rules file\n"));
+  printf(TR("  -blacklist <file>    Set denial rules file\n"));
+  printf(TR("  -blacksites <file>   Set blocked sites rules file\n"));
+  printf(TR("  -translation <file>  Set translation rules file\n"));
+  printf(TR("  -lang <file>         Set language file\n"));
+  printf(TR("  -clearlog            Clear log file at startup (root only)\n"));
+  printf(TR("  -allstate            Enable stateful tracking for all packets "
+            "(root only)\n"));
+  printf(TR("  -quiet               Do not print packets to console\n"));
+  printf(TR("  -user                Run as user process (root only)\n"));
+  printf(TR("  -nouser              Do not run as user process (root only)\n"));
+  printf(TR("  -daemon              Run as a daemon\n"));
+  printf(TR("  -quiet_daemon        Run as a quiet daemon\n"));
+  printf(TR(
+      "  -load, -rc           Load rules and run in background (root only)\n"));
+  printf(TR("  -flush               Flush rules and exit (root only)\n"));
+  printf(
+      TR("  -rmmod               Unload kernel module on exit (root only)\n"));
+  printf("\n");
+}
 
 int parse_cmdline(struct cmdopts *cmdo, struct userspace_opts *uo, command *cmd,
                   int argc, char *argv[], int *different_ruleset_by_cmd) {
@@ -1296,10 +1338,14 @@ int parse_cmdline(struct cmdopts *cmdo, struct userspace_opts *uo, command *cmd,
             printf(TR("Option \"%s\": warning: you are user %d."), argv[i],
                    user),
             printf(TR("You must be root to unload module at exit.")), PNL;
+    } else if ((!strcmp(argv[i], "-h")) || (!strcmp(argv[i], "-help")) ||
+               (!strcmp(argv[i], "--help"))) {
+      print_usage(argv[0]);
+      exit(0);
+    } else {
+      PVIO, printf(TR("Unknown option: %s"), argv[i]), PNL;
+      return -1;
     }
-
-    else
-      PVIO, printf(TR("Ignoring unknown option %s."), argv[i]), PNL;
 
     i++;
   }

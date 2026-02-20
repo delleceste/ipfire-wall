@@ -282,13 +282,9 @@ int compare_state_entries(const struct state_table *s1,
 int lookup_state_table_n_update_timer(const struct state_table *stt) {
   struct state_table *statet;
 
-#ifdef IPFI_USE_HASH
   __u32 key = get_state_hash(stt->saddr, stt->daddr, stt->sport, stt->dport,
                              stt->protocol);
   hash_for_each_possible_rcu(state_hashtable, statet, h.hnode, key) {
-#else
-  list_for_each_entry_rcu(statet, &state_list, h.lnode) {
-#endif
     if (compare_state_entries(statet, stt) == 1) {
       if (state_hold_rcu(statet)) {
         update_timer_of_state_entry(statet);
@@ -321,13 +317,9 @@ int add_state_table_to_list(struct state_table *newtable) {
 
   state_hold(newtable); /* container ref */
 
-#ifdef IPFI_USE_HASH
   hash_add_rcu(state_hashtable, &newtable->h.hnode,
                get_state_hash(newtable->saddr, newtable->daddr, newtable->sport,
                               newtable->dport, newtable->protocol));
-#else
-  list_add_rcu(&newtable->h.lnode, &state_list);
-#endif
 
   state_tables_counter++;
   table_id++;
@@ -348,13 +340,8 @@ void handle_keep_state_timeout(struct timer_list *t) {
 }
 
 int free_state_tables(void) {
-#ifdef IPFI_USE_HASH
   return ipfi_table_flush_hash(state_hashtable, ARRAY_SIZE(state_hashtable),
                                &state_list_lock, &state_tables_counter);
-#else
-  return ipfi_table_flush_all(&state_list, &state_list_lock,
-                              &state_tables_counter);
-#endif
 }
 
 inline void update_timer_of_state_entry(struct state_table *sttable) {
@@ -368,9 +355,7 @@ int init_machine(void) {
     IPFI_PRINTK("IPFIRE: failed to create state slab cache\n");
     return -ENOMEM;
   }
-#ifdef IPFI_USE_HASH
   hash_init(state_hashtable);
-#endif
   return 0;
 }
 

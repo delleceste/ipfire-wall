@@ -155,9 +155,6 @@ enum command_options {
 
   RELOAD_VECTOR,
   RELOAD_FILE,
-  /* Batch flow control: userspace sends BATCH_ACK after receiving
-   * BATCH_SIZE entries to prevent kernel netlink buffer overflow */
-  BATCH_ACK,
   /* respones from kernel */
   /* generic error */
   ADDING_FAILED,

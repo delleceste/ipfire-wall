@@ -7,16 +7,14 @@
 #ifndef IPFI_ENTRY_H
 #define IPFI_ENTRY_H
 
+#include <linux/hashtable.h>
+#include <linux/jhash.h>
 #include <linux/list.h>
 #include <linux/rcupdate.h>
 #include <linux/refcount.h>
 #include <linux/spinlock.h>
 #include <linux/timer.h>
 #include <linux/workqueue.h>
-#ifdef IPFI_USE_HASH
-#include <linux/hashtable.h>
-#include <linux/jhash.h>
-#endif
 
 /* Bit index for the "entry has been removed from its list" flag */
 #define IPFI_ENTRY_REMOVED 0
@@ -34,11 +32,8 @@ struct ipfi_entry_head {
   struct timer_list timer;
   struct work_struct cleanup_work;
   struct rcu_head rcuh;
-  struct list_head
-      lnode; /* list linkage (always present; used by NAT tables) */
-#ifdef IPFI_USE_HASH
-  struct hlist_node hnode; /* hash linkage (state table only) */
-#endif
+  struct list_head lnode;  /* list linkage (used by loginfo LRU) */
+  struct hlist_node hnode; /* hash linkage */
   refcount_t refcnt;
   unsigned long status;
   unsigned long last_timer_update;
@@ -116,22 +111,20 @@ void ipfi_entry_remove(struct ipfi_entry_head *h, unsigned int *counter);
 /**
  * ipfi_table_flush_all - Remove and put all lnode-linked entries.
  *
- * Always compiled. Used by NAT tables regardless of IPFI_USE_HASH.
- * Also used by the state table when IPFI_USE_HASH is not set.
+
  * Process-context only (sleepable).
  */
 int ipfi_table_flush_all(struct list_head *list, spinlock_t *lock,
                          unsigned int *counter);
 
-#ifdef IPFI_USE_HASH
 /**
  * ipfi_table_flush_hash - Remove and put all hnode-linked entries.
  *
- * Hash-mode only. Used by the state table when IPFI_USE_HASH is set.
+ * Used by the state table and log table.
  * Process-context only (sleepable).
  */
 int ipfi_table_flush_hash(struct hlist_head *ht, unsigned int nbuckets,
                           spinlock_t *lock, unsigned int *counter);
 #endif
 
-#endif /* IPFI_ENTRY_H */
+/* IPFI_ENTRY_H */

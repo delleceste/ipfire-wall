@@ -89,6 +89,7 @@ void init_cmdopts(struct cmdopts *cmdo);
  * the user specifies an alternate file name for
  * any of the ruleset files, or for the log file.
  */
+void print_usage(const char *progname);
 int parse_cmdline(struct cmdopts *cmdo, struct userspace_opts *uo, command *cmd,
                   int argc, char *argv[], int *different_ruleset_by_cmd);
 

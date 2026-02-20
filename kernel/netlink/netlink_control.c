@@ -5,100 +5,12 @@
 #include "logging/log.h"
 #include "message_builder.h"
 #include "netlink/ipfi_netl.h"
-#include <linux/completion.h>
 #include <linux/delay.h>
 #include <linux/module.h>
 #include <linux/netlink.h>
 #include <linux/skbuff.h>
 #include <linux/slab.h>
 #include <linux/user_namespace.h>
-#include <linux/workqueue.h>
-
-/* Number of table entries to send before pausing for a BATCH_ACK from
- * userspace. Keeps Netlink socket queues below their buffer limit. */
-#define TABLE_DUMP_BATCH_SIZE 200
-
-/* Signalled by process_command() when BATCH_ACK arrives from userspace.
- *
- * DECLARE_COMPLETION is a macro defined in <linux/completion.h>.
- * It expands to:
- *   struct completion batch_ack_completion =
- * COMPLETION_INITIALIZER(batch_ack_completion);
- *
- * A 'struct completion' contains:
- *   - 'done': an atomic integer (simple counter)
- *   - 'wait': a wait queue head (struct wait_queue_head)
- *
- * This structure is used to synchronize two tasks: one waits
- * (wait_for_completion), and the other signals (complete).
- */
-static DECLARE_COMPLETION(batch_ack_completion);
-
-int send_tables(void);
-int send_dnat_tables(void);
-int send_snat_tables(void);
-
-/* Wait up to 5 s for userspace to consume the current batch.
- *
- * This function calls 'wait_for_completion_timeout', which:
- * 1. Checks if 'batch_ack_completion.done' > 0.
- * 2. If not, it adds the CURRENT task (this kernel thread) to the
- *    'batch_ack_completion.wait' queue.
- * 3. It sets the current task state to TASK_UNINTERRUPTIBLE (sleeping).
- * 4. It calls schedule(), causing the CPU to context switch to another task.
- *
- * NOTE: Only THIS specific kernel thread sleeps. The CPU is free to run
- * other processes, interrupts, and kernel threads. This does NOT block
- * the entire CPU.
- *
- * When userspace sends BATCH_ACK, process_command() calls complete(), which
- * wakes up this thread, putting it back into TASK_RUNNING state.
- */
-static int wait_for_batch_ack(void) {
-  /* Wait for 'complete()' to be called or 5 seconds to pass */
-  int ret = wait_for_completion_timeout(&batch_ack_completion, 5 * HZ);
-
-  /* We must reset the completion variable to 'not done' (0) so we can
-   * wait on it again for the next batch. */
-  reinit_completion(&batch_ack_completion);
-
-  if (ret == 0) {
-    IPFI_PRINTK("IPFIRE: batch ack timeout — userspace too slow?\n");
-    return -ETIMEDOUT;
-  }
-  return 0;
-}
-
-/* --- Workqueue for Offloading Table Dumps ---
- *
- * We cannot sleep in 'process_control_received' because it is called
- * synchronously from the Netlink input callback. If 'send_tables' sleeps
- * waiting for a BATCH_ACK, it blocks the Netlink receive path, preventing
- * the kernel from ever receiving that BATCH_ACK (Deadlock).
- *
- * Solution: Offload the dump to a system workqueue.
- */
-
-/* The command ID to process in the worker (state, dnat, or snat). */
-static short current_dump_command;
-
-static void table_dump_worker(struct work_struct *work) {
-  int ret = 0;
-
-  if (current_dump_command == PRINT_STATE_TABLE) {
-    ret = send_tables();
-  } else if (current_dump_command == PRINT_DNAT_TABLE) {
-    ret = send_dnat_tables();
-  } else if (current_dump_command == PRINT_SNAT_TABLE) {
-    ret = send_snat_tables();
-  }
-
-  if (ret < 0) {
-    IPFI_PRINTK("IPFIRE: table dump worker failed with error %d\n", ret);
-  }
-}
-
-static DECLARE_WORK(table_dump_work, table_dump_worker);
 
 void fill_dnat_info(struct dnat_info *dninfo, const struct nat_table *dntt) {
   dninfo->saddr = dntt->old_saddr;
@@ -217,9 +129,6 @@ int process_control_received(struct sk_buff *skb) {
   } else if (command_id == IS_LOGUSER_ENABLED) {
     ret = send_loguser_enabled(loguser_enabled);
     return ret;
-  } else if (command_id == BATCH_ACK) {
-    complete(&batch_ack_completion);
-    return 0;
   } else if (command_id == FLUSH_RULES) {
     ret = flush_ruleset(commander, FLUSH_RULES);
     tell_user_howmany_rules_flushed(ret);
@@ -236,32 +145,14 @@ int process_control_received(struct sk_buff *skb) {
     ret = flush_ruleset(commander, FLUSH_TRANSLATION_RULES);
     tell_user_howmany_rules_flushed(ret);
     return ret;
-  } else if (command_id == PRINT_STATE_TABLE) {
-    /* Offload to workqueue to avoid blocking Netlink receive path */
-    if (work_pending(&table_dump_work)) {
-      IPFI_PRINTK("IPFIRE: dump already in progress\n");
-      return -EBUSY;
-    }
-    current_dump_command = PRINT_STATE_TABLE;
-    schedule_work(&table_dump_work);
-    return 0;
-  } else if (command_id == PRINT_DNAT_TABLE) {
-    if (work_pending(&table_dump_work)) {
-      IPFI_PRINTK("IPFIRE: dump already in progress\n");
-      return -EBUSY;
-    }
-    current_dump_command = PRINT_DNAT_TABLE;
-    schedule_work(&table_dump_work);
-    return 0;
-  } else if (command_id == PRINT_SNAT_TABLE) {
-    if (work_pending(&table_dump_work)) {
-      IPFI_PRINTK("IPFIRE: dump already in progress\n");
-      return -EBUSY;
-    }
-    current_dump_command = PRINT_SNAT_TABLE;
-    schedule_work(&table_dump_work);
-    return 0;
-  } else if (command_id == PRINT_KTABLES_USAGE)
+  } else if (command_id == PRINT_STATE_TABLE)
+    return send_tables();
+
+  else if (command_id == PRINT_DNAT_TABLE)
+    return send_dnat_tables();
+  else if (command_id == PRINT_SNAT_TABLE)
+    return send_snat_tables();
+  else if (command_id == PRINT_KTABLES_USAGE)
     return send_ktables_usage();
 
   else if (command_id == KSTATS_REQUEST)
@@ -681,7 +572,6 @@ int send_tables(void) {
 
   /* Phase 2: Collect entries under RCU lock */
   rcu_read_lock_bh();
-#ifdef IPFI_USE_HASH
   {
     unsigned int bkt;
     hash_for_each_rcu(state_hashtable, bkt, st, h.hnode) {
@@ -691,26 +581,12 @@ int send_tables(void) {
       count++;
     }
   }
-#else
-  list_for_each_entry_rcu(st, &state_list, h.lnode) {
-    if (count >= max_entries)
-      break;
-    fill_state_info(&entries[count], st);
-    count++;
-  }
-#endif
   rcu_read_unlock_bh();
 
   /* Phase 3: Send entries outside RCU lock (can sleep/retry) */
   for (i = 0; i < count; i++) {
     if (send_with_retry(&entries[i], sizeof(struct state_info), 5) < 0)
       break;
-    /* Pause every TABLE_DUMP_BATCH_SIZE entries so userspace drains the
-     * socket buffer before we flood it with the next batch. */
-    if ((i + 1) % TABLE_DUMP_BATCH_SIZE == 0) {
-      if (wait_for_batch_ack() < 0)
-        break;
-    }
   }
 
   kfree(entries);
@@ -739,7 +615,6 @@ int send_dnat_tables(void) {
 
   /* Phase 2: Collect entries under RCU lock */
   rcu_read_lock();
-#ifdef IPFI_USE_HASH
   {
     unsigned int bkt;
     hash_for_each_rcu(nat_hashtables[NAT_DNAT], bkt, dt, h.hnode) {
@@ -749,24 +624,12 @@ int send_dnat_tables(void) {
       count++;
     }
   }
-#else
-  list_for_each_entry_rcu(dt, &nat_lists[NAT_DNAT], h.lnode) {
-    if (count >= max_entries)
-      break;
-    fill_dnat_info(&entries[count], dt);
-    count++;
-  }
-#endif
   rcu_read_unlock();
 
   /* Phase 3: Send entries outside RCU lock (can sleep/retry) */
   for (i = 0; i < count; i++) {
     if (send_with_retry(&entries[i], sizeof(struct dnat_info), 5) < 0)
       break;
-    if ((i + 1) % TABLE_DUMP_BATCH_SIZE == 0) {
-      if (wait_for_batch_ack() < 0)
-        break;
-    }
   }
 
   kfree(entries);
@@ -795,7 +658,6 @@ int send_snat_tables(void) {
 
   /* Phase 2: Collect entries under RCU lock */
   rcu_read_lock();
-#ifdef IPFI_USE_HASH
   {
     unsigned int bkt;
     hash_for_each_rcu(nat_hashtables[NAT_SNAT], bkt, st, h.hnode) {
@@ -805,24 +667,12 @@ int send_snat_tables(void) {
       count++;
     }
   }
-#else
-  list_for_each_entry_rcu(st, &nat_lists[NAT_SNAT], h.lnode) {
-    if (count >= max_entries)
-      break;
-    fill_snat_info(&entries[count], st);
-    count++;
-  }
-#endif
   rcu_read_unlock();
 
   /* Phase 3: Send entries outside RCU lock (can sleep/retry) */
   for (i = 0; i < count; i++) {
     if (send_with_retry(&entries[i], sizeof(struct snat_info), 5) < 0)
       break;
-    if ((i + 1) % TABLE_DUMP_BATCH_SIZE == 0) {
-      if (wait_for_batch_ack() < 0)
-        break;
-    }
   }
 
   kfree(entries);

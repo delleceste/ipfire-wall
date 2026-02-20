@@ -72,18 +72,6 @@ Messages are sent using the `send_data_to_user()` function in `kernel/netlink/`.
 ### 3.2. Reliability Tracking
 If `netlink_unicast()` returns a negative value, the kernel increments the `total_lost` counter in the per-CPU statistics. This allows the administrator to detect if the logging daemon is falling behind.
 
-### 3.3. Flow Control and Synchronization (Batching)
-To prevent buffer overflows when dumping large tables (e.g., state table), a windowed batch protocol is used.
-
-- **`DECLARE_COMPLETION(work)`**: This macro (from `<linux/completion.h>`) defines and initializes a `struct completion`. It contains an atomic counter (`done`) and a wait queue (`wait`).
-- **`wait_for_completion_timeout()`**: This function is used to pause the **kernel thread** sending the dump until userspace acknowledges the batch.
-    - **Note**: This function sleeps **only the current task** (the kernel thread executing the Netlink command). It calls `schedule()`, yielding the CPU to other processes. It does **not** block the entire CPU or core.
-- **Protocol**:
-    1.  Kernel sends `TABLE_DUMP_BATCH_SIZE` (200) entries.
-    2.  Kernel calls `wait_for_completion_timeout()`.
-    3.  Userspace processes the batch and sends `BATCH_ACK`.
-    4.  Kernel command handler calls `complete()`, waking up the sender thread.
-
 ---
 
 ## 4. Statistics Management

@@ -9,10 +9,8 @@
 
 #include "logging/log.h"
 #include "globals.h"
-#include <linux/jhash.h>
-#ifdef IPFI_USE_HASH
 #include <linux/hashtable.h>
-#endif
+#include <linux/jhash.h>
 #include <linux/slab.h>
 
 /*
@@ -35,7 +33,6 @@
 /* ---- Dedicated slab cache for ipfire_loginfo entries ---- */
 struct kmem_cache *loginfo_cache;
 
-#ifdef IPFI_USE_HASH
 /**
  * get_log_hash - compute the hash bucket key for a log-deduplication entry.
  * @saddr:  IPv4 source address (network byte order)
@@ -84,7 +81,6 @@ struct kmem_cache *loginfo_cache;
 static u32 get_log_hash(__be32 saddr, __be32 daddr, __u8 proto) {
   return jhash_3words((__u32)saddr, (__u32)daddr, proto, 0);
 }
-#endif
 
 /* ---- Timer callback ---- */
 
@@ -93,7 +89,6 @@ static void handle_loginfo_timeout(struct timer_list *t) {
   struct ipfi_entry_head *h = &li->h;
 
   spin_lock_bh(&loginfo_list_lock);
-#ifdef IPFI_USE_HASH
   /*
    * BUG FIX: check REMOVED *before* list_del_rcu.
    *
@@ -107,7 +102,6 @@ static void handle_loginfo_timeout(struct timer_list *t) {
    */
   if (!test_bit(IPFI_ENTRY_REMOVED, &h->status))
     list_del_rcu(&h->lnode);
-#endif
   ipfi_entry_remove(h, &loginfo_entry_counter); /* puts internally if winner */
   spin_unlock_bh(&loginfo_list_lock);
 }
@@ -141,9 +135,7 @@ static void loginfo_evict_oldest(void) {
   /* lnode removal: ipfi_entry_remove removes hnode in hash mode, so we
    * remove lnode first to keep active_logi_list consistent before remove. */
   oldest = list_last_entry(&active_logi_list, struct ipfire_loginfo, h.lnode);
-#ifdef IPFI_USE_HASH
   list_del_rcu(&oldest->h.lnode);
-#endif
   ipfi_entry_remove(&oldest->h, &loginfo_entry_counter); /* puts internally */
 
   /*
@@ -268,14 +260,12 @@ inline int add_packet_to_infolist(const struct sk_buff *skb,
   /* Always add to active list for LRU ordering (eviction uses list_last_entry)
    */
   list_add_rcu(&ipli->h.lnode, &active_logi_list);
-#ifdef IPFI_USE_HASH
   {
     u32 key =
         get_log_hash(ipli->info.packet.ip.saddr, ipli->info.packet.ip.daddr,
                      ipli->info.packet.ip.protocol);
     hash_add_rcu(loginfo_hashtable, &ipli->h.hnode, key);
   }
-#endif
   loginfo_entry_counter++;
 
   /*
@@ -424,7 +414,6 @@ inline int packet_not_seen(const struct sk_buff *skb,
     return 1;
 
   rcu_read_lock_bh();
-#ifdef IPFI_USE_HASH
   {
     struct iphdr *iph = ip_hdr(skb);
     u32 key = get_log_hash(iph->saddr, iph->daddr, iph->protocol);
@@ -439,24 +428,6 @@ inline int packet_not_seen(const struct sk_buff *skb,
       }
     }
   }
-#else
-  list_for_each_entry_rcu(loginfo, &active_logi_list, h.lnode) {
-    if (compare_loginfo_packets(skb, res, flow, flags, &loginfo->info)) {
-      if (!chk_state ||
-          (chk_state && (res->st.state == loginfo->info.response.st.state))) {
-        /* Refresh timer — extends the suppression window.
-         * IPPROTO_IPFI_LOG is a sentinel that makes
-         * get_timeout_by_state() return loginfo_lifetime. */
-        if (ipfi_entry_hold_rcu(&loginfo->h)) {
-          ipfi_entry_update_timer(&loginfo->h, IPPROTO_IPFI_LOG, 0);
-          ipfi_entry_put(&loginfo->h);
-          rcu_read_unlock_bh();
-          return 0;
-        }
-      }
-    }
-  }
-#endif
   rcu_read_unlock_bh();
   return 1;
 }

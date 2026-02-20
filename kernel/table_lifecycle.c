@@ -4,7 +4,7 @@
  * bulk flush for any struct that embeds an ipfi_entry_head as its
  * first member (state_table, nat_table, ipfire_loginfo).
  *
- * Compiled in two variants selected at build time via USE_HASH=y|n:
+
  *   - List build  (default off): uses list_head / lnode for O(N) traversal
  *   - Hash build  (default on):  uses hlist_node / hnode for O(1) lookups
  *
@@ -156,12 +156,8 @@ void ipfi_entry_remove(struct ipfi_entry_head *h, unsigned int *counter) {
   if (test_and_set_bit(IPFI_ENTRY_REMOVED, &h->status))
     return; /* loser: complete no-op */
 
-#ifdef IPFI_USE_HASH
-  /* State table entries are tracked by hnode in hash mode */
+  /* Entries are tracked by hnode in hash mode */
   hlist_del_rcu(&h->hnode);
-#else
-  list_del_rcu(&h->lnode);
-#endif
   (*counter)--;
 
   /*
@@ -179,29 +175,26 @@ void ipfi_entry_remove(struct ipfi_entry_head *h, unsigned int *counter) {
 int ipfi_table_flush_all(struct list_head *list, spinlock_t *lock,
                          unsigned int *counter) {
   struct ipfi_entry_head *h, *tmp;
-  int count;
-  LIST_HEAD(to_free);
+  int count = 0;
 
   spin_lock_bh(lock);
-  list_splice_init(list, &to_free);
-  list_for_each_entry(h, &to_free, lnode)
-      set_bit(IPFI_ENTRY_REMOVED, &h->status);
   count = *counter;
   *counter = 0;
-  spin_unlock_bh(lock);
 
-  list_for_each_entry_safe(h, tmp, &to_free, lnode) {
-    list_del(&h->lnode);
-    ipfi_entry_put(h);
+  list_for_each_entry_safe(h, tmp, list, lnode) {
+    if (!test_and_set_bit(IPFI_ENTRY_REMOVED, &h->status)) {
+      list_del_rcu(&h->lnode);
+      ipfi_entry_put(h);
+    }
   }
+  spin_unlock_bh(lock);
 
   return count;
 }
 
 /* ============================================================
- * Hash-mode bulk flush (compiled only when IPFI_USE_HASH is set)
+ * Hash-mode bulk flush
  * ============================================================ */
-#ifdef IPFI_USE_HASH
 
 /**
  * ipfi_table_flush_hash - drain all entries from a hash table.
@@ -223,13 +216,14 @@ int ipfi_table_flush_hash(struct hlist_head *ht, unsigned int nbuckets,
   spin_lock_bh(lock);
   for (bkt = 0; bkt < nbuckets; bkt++) {
     hlist_for_each_entry_safe(h, tmp, &ht[bkt], hnode) {
-      hlist_del_rcu(&h->hnode);
-      set_bit(IPFI_ENTRY_REMOVED, &h->status);
-      /*
-       * ipfi_entry_put only calls queue_work(), which is
-       * safe from BH/spinlock context.
-       */
-      ipfi_entry_put(h);
+      if (!test_and_set_bit(IPFI_ENTRY_REMOVED, &h->status)) {
+        hlist_del_rcu(&h->hnode);
+        /*
+         * ipfi_entry_put only calls queue_work(), which is
+         * safe from BH/spinlock context.
+         */
+        ipfi_entry_put(h);
+      }
     }
   }
   count = *counter;
@@ -238,5 +232,3 @@ int ipfi_table_flush_hash(struct hlist_head *ht, unsigned int nbuckets,
 
   return count;
 }
-
-#endif /* IPFI_USE_HASH */

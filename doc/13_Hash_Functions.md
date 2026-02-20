@@ -10,13 +10,15 @@ difference between the 5-tuple approach used by state/NAT tables and the
 
 ## Background: kernel hash tables
 
-ipfire-wall uses the kernel's `linux/hashtable.h` API (available since
+ipfire-wall exclusively uses the kernel's `linux/hashtable.h` API for its
+internal tables. List-based fallbacks were removed to simplify the codebase
+and ensure O(1) performance is always guaranteed. (Hash API available since
 Linux 3.7 and documented in
 [`Documentation/core-api/kernel-api.rst`][kernel-api]).
 
 The API provides fixed-size, power-of-two hash tables with open chaining
 via `struct hlist_head` / `struct hlist_node`.  The number of buckets is
-`1 << BITS`, chosen at compile time.  Bucket selection is:
+`1 << BITS`, chosen at compile time via the Makefile.  Bucket selection is:
 
 ```c
 bucket = hash_value & HASH_MASK;   /* HASH_MASK = (1 << BITS) - 1 */

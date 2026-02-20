@@ -99,16 +99,12 @@ ipfire_rule masquerade_post;
 
 /* State tables (NAT lists/locks/counters now in nat_table.c) */
 
-/* State table storage — only one of these is compiled in */
-#ifdef IPFI_USE_HASH
+/* State table storage */
 struct hlist_head state_hashtable[1 << STATE_HASH_BITS];
 /* NAT hash tables */
 struct hlist_head nat_hashtables[2][1 << NAT_HASH_BITS];
 /* Loginfo hash table (list still used for LRU eviction) */
 struct hlist_head loginfo_hashtable[1 << LOG_HASH_BITS];
-#else
-LIST_HEAD(state_list);
-#endif
 
 /* Log info */
 LIST_HEAD(active_logi_list);

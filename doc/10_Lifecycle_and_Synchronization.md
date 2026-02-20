@@ -17,7 +17,7 @@ struct ipfi_entry_head {
     struct work_struct   cleanup_work;   /* deferred-delete work item */
     struct rcu_head      rcuh;           /* RCU callback node */
     struct list_head     lnode;          /* list linkage (NAT; loginfo LRU) */
-    struct hlist_node    hnode;          /* hash linkage (IPFI_USE_HASH) */
+    struct hlist_node    hnode;          /* primary hash linkage */
     refcount_t           refcnt;         /* reference counter */
     unsigned long        status;         /* IPFI_ENTRY_REMOVED bit */
     unsigned long        last_timer_update; /* throttle timestamp */
@@ -33,7 +33,7 @@ Every entry starts with `refcount = 1` (the **container reference**).
 ```
 ALLOCATED (refcnt = 1)
     │
-    ▼  added to list/hash + timer armed
+    ▼  added to hash table + timer armed
 LIVE
     │
     ├─── timer fires ──────────────────────────────────────────┐
@@ -44,8 +44,8 @@ LIVE
                                                [under table spinlock]
                                                 ipfi_entry_remove(h, &counter)
                                                   │
-                                                  ├─ test_and_set_bit(REMOVED)
-                                                  │     WINNER proceeds ──────▶ hlist/list del_rcu
+                                                ├─ test_and_set_bit(REMOVED)
+                                                  │     WINNER proceeds ──────▶ hlist del_rcu
                                                   │     LOSER returns (no-op)        counter−−
                                                   │                                  ipfi_entry_put(h)
                                                   │                                        │
@@ -76,8 +76,7 @@ LIVE
 
 ## 10.3. loginfo — The Dual-Link Special Case
 
-`ipfire_loginfo` is the **only** entry type carrying two simultaneous links
-in hash mode:
+`ipfire_loginfo` is the **only** entry type carrying two simultaneous links:
 
 ```
 active_logi_list  ◄─── lnode ───► ipfire_loginfo ◄─── hnode ───► loginfo_hashtable
@@ -91,10 +90,9 @@ This is necessary because:
   deduplication effectiveness and memory safety.
 - `loginfo_hashtable` (hnode) enables O(1) duplicate detection lookups.
 
-`ipfi_entry_remove` handles **only hnode** (hash mode) or **only lnode**
-(list mode). The loginfo lnode in hash mode must be managed separately,
-under `loginfo_list_lock`, by **both** the timer callback and the eviction
-path.
+`ipfi_entry_remove` handles **only hnode**. The loginfo lnode must be
+managed separately, under `loginfo_list_lock`, by **both** the timer
+callback and the eviction path.
 
 ### The evict-vs-timer race and its fix
 
@@ -128,8 +126,8 @@ work items, and RCU callbacks before freeing the slab caches.
 
 ```
 Step 1  we_are_exiting = true         ← no new allocations
-Step 2  synchronize_net()             ← wait for in-flight packets
-Step 3  unregister_hooks()            ← no new packets enter
+Step 2  unregister_hooks()            ← no new packets enter
+Step 3  synchronize_net()             ← wait for in-flight packets
 Step 4  fini_machine / fini_log /     ← flush tables:
         fini_translation                ipfi_entry_put chains → queue_work
 Step 5  destroy_workqueue(ipfire_wq)  ← drain work items:
@@ -137,6 +135,27 @@ Step 5  destroy_workqueue(ipfire_wq)  ← drain work items:
 Step 6  rcu_barrier()                 ← wait for all call_rcu callbacks
                                         (i.e., all kfree calls) to complete
 Step 7  kmem_cache_destroy()          ← safe: all objects are freed
+
+> [!WARNING]
+> The order of Step 2 and Step 3 is critical. If `synchronize_net()` is called *before* unregistering hooks, new packets can still enter the system immediately after the synchronization finishes, leading to potential use-after-free conditions during `kmem_cache_destroy()`.
+
+---
+
+During shutdown or when bulk-flushing elements from a state or NAT table, it is necessary to clear all active entries without disrupting concurrent RCU readers (e.g., in-flight packets traversing the filter hooks).
+
+The module uses `ipfi_table_flush_hash()` to safely drain hash buckets. For the loginfo LRU list, it uses `ipfi_table_flush_all()`. Both ensure that any concurrent lockless readers traversing a node will still be safely directed to the next valid element through the RCU grace period.
+
+### The Correct Flush Pattern (Hash)
+```c
+hash_for_each_possible_rcu(ht, h, hnode, key) {
+    if (!test_and_set_bit(IPFI_ENTRY_REMOVED, &h->status)) {
+        hlist_del_rcu(&h->hnode);
+        ipfi_entry_put(h);
+    }
+}
+```
+
+By using `test_and_set_bit()`, we establish an atomic "winner" for the removal of the entry. If a timer callback is simultaneously trying to expire the same entry, only one will successfully set the bit and proceed to the deletion and `ipfi_entry_put()`. The loser safely skips the element.
 ```
 
 > [!WARNING]

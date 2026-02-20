@@ -51,7 +51,6 @@ int lookup_state_table_n_update_timer(const struct state_table *stt);
 int add_state_table_to_list(struct state_table *newtable);
 void handle_keep_state_timeout(struct timer_list *t);
 
-#ifdef IPFI_USE_HASH
 /**
  * get_state_hash - symmetric 5-tuple hash for state table lookups.
  *
@@ -71,7 +70,6 @@ static __always_inline __u32 get_state_hash(__u32 saddr, __u32 daddr,
 
   return jhash_3words(a1, a2, ((__u32)p1 << 16) | p2, proto);
 }
-#endif /* IPFI_USE_HASH */
 
 int free_state_tables(void);
 void update_timer_of_state_entry(struct state_table *sttable);

@@ -272,22 +272,26 @@ static void __exit fini(void) {
   /* --- Step 1: signal exit --- */
   WRITE_ONCE(we_are_exiting, true);
 
-  /* --- Step 2: wait for in-flight RCU readers (packet hooks) ---
-   * synchronize_net() calls synchronize_rcu() internally.
-   * Note: synchronize_rcu() only waits for _readers_, NOT for
-   * call_rcu() _callbacks_ — that's what rcu_barrier() is for. */
-  synchronize_net();
-
-  /* --- Step 3: unregister hooks --- */
+  /* --- Step 2: unregister hooks ---
+   * Stop new packets from entering the module's paths */
   if (per_net) {
     unregister_pernet_subsys(&ipfire_net_ops);
   } else {
     unregister_ipfire_net(&init_net);
   }
 
+  /* --- Step 3: wait for in-flight RCU readers (packet hooks) ---
+   * synchronize_net() calls synchronize_rcu() internally.
+   * Note: synchronize_rcu() only waits for _readers_, NOT for
+   * call_rcu() _callbacks_ — that's what rcu_barrier() is for.
+   * We do this AFTER unregistering hooks so we know no new
+   * packets are entering. */
+  synchronize_net();
+
   /* --- Step 4: flush all tables ---
-   * Each fini function calls ipfi_table_flush_all(), which:
-   *   - splices the list, marks entries REMOVED
+   * Each fini function calls ipfi_table_flush_hash() (or flush_all for LRU
+   * lists), which:
+   *   - iterates buckets/lists, marks entries REMOVED
    *   - calls ipfi_entry_put() → queues cleanup work on ipfire_wq */
   fini_machine();
   fini_log();

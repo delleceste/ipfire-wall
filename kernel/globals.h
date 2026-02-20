@@ -60,8 +60,7 @@ extern ipfire_rule translation_post;
 extern ipfire_rule translation_out;
 extern ipfire_rule masquerade_post;
 
-/* State table — either a hash table or a linked list, never both */
-#ifdef IPFI_USE_HASH
+/* State table */
 /*
  * SIZING EXPLANATION:
  * We use `1 << STATE_HASH_BITS` to force the table size to be a Power of Two.
@@ -74,32 +73,21 @@ extern ipfire_rule masquerade_post;
  * (`key % size`).
  */
 extern struct hlist_head state_hashtable[1 << STATE_HASH_BITS];
-#else
-extern struct list_head state_list;
-#endif
 
 /* NAT tables — per type (SNAT=0, DNAT=1); hash mode uses nat_hashtables */
-#ifdef IPFI_USE_HASH
 #ifndef NAT_HASH_BITS
 #define NAT_HASH_BITS 8 /* 256 buckets; override via make NAT_HASH_BITS=N */
 #endif
 extern struct hlist_head nat_hashtables[2][1 << NAT_HASH_BITS];
 /* Counters shared between list and hash modes */
 extern unsigned int nat_counters[2];
-#else
-/* Compatibility macros for existing callers */
-#define dnat_list nat_lists[NAT_DNAT]
-#define snat_list nat_lists[NAT_SNAT]
-#endif
 
 /* Log info — active_logi_list kept for LRU eviction even in hash mode */
 extern struct list_head active_logi_list;
-#ifdef IPFI_USE_HASH
 #ifndef LOG_HASH_BITS
 #define LOG_HASH_BITS 7 /* 128 buckets; override via make LOG_HASH_BITS=N */
 #endif
 extern struct hlist_head loginfo_hashtable[1 << LOG_HASH_BITS];
-#endif
 
 /* Counters */
 extern unsigned int table_id;

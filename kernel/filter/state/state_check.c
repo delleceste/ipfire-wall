@@ -19,7 +19,6 @@ struct response check_state(struct sk_buff *skb, const ipfi_flow *flow,
   short reverse = 0;
   struct iphdr *iph = ip_hdr(skb);
 
-#ifdef IPFI_USE_HASH
   /*
    * Hash-mode: O(1) average lookup.
    *
@@ -51,15 +50,10 @@ struct response check_state(struct sk_buff *skb, const ipfi_flow *flow,
 
   __u32 key =
       get_state_hash(iph->saddr, iph->daddr, sport, dport, iph->protocol);
-#endif /* IPFI_USE_HASH */
 
   rcu_read_lock_bh();
 
-#ifdef IPFI_USE_HASH
   hash_for_each_possible_rcu(state_hashtable, table_entry, h.hnode, key) {
-#else
-  list_for_each_entry_rcu(table_entry, &state_list, h.lnode) {
-#endif
     if (skb_matches_state_table(skb, table_entry, &reverse, flow) > 0) {
       ret.verdict = IPFI_ACCEPT;
       ret.notify = table_entry->notify;

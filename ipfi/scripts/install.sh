@@ -63,6 +63,18 @@ uninstall)
 			rm /etc/rc.d/rc.ipfire	
 		fi
 
+		if [ -f /etc/systemd/system/ipfire.service ]; then
+			if [ "${LANG}" == "it_IT" ]; then
+				echo -e "Rimuovo il file di unit di Systemd...\n"
+			else
+				echo -e "Removing Systemd unit file...\n"
+			fi
+			systemctl stop ipfire.service || true
+			systemctl disable ipfire.service || true
+			rm /etc/systemd/system/ipfire.service
+			systemctl daemon-reload || true
+		fi
+
 		if [ -e /usr/share/icons/ipfire/ipfire.png ]; then
 			echo -e "icons...\e[0m\n"
 			rm -rf /usr/share/icons/ipfire
@@ -519,6 +531,17 @@ echo -e "\n\e[1;32mInstalling IPFIRE-wall\n\e[0m"
 				echo -e "rc.ipfire -> directory \e[1;33mrc.d\e[0m\n"
 				cp rc.ipfire /etc/rc.d
 				chmod +x /etc/rc.d/rc.ipfire	
+			fi
+
+			if command -v systemctl >/dev/null 2>&1; then
+				if [ "${LANG}" == "it_IT" ]; then
+					echo -e "Installo il file di unit di Systemd...\n"
+				else
+					echo -e "Installing Systemd unit file...\n"
+				fi
+				cp ipfire.service /etc/systemd/system/
+				systemctl daemon-reload
+				systemctl enable ipfire.service
 			fi			
 		esac
 		

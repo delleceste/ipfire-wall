@@ -53,7 +53,7 @@ obj-m += $(MODULE_NAME).o
 
 
 # --------------------------------------------------------------------------
-# Hash table configuration (only used when USE_HASH=y, the default).
+# Hash table configuration
 #
 # STATE_HASH_BITS controls the number of buckets (2^N) for the state table.
 # Pick based on expected maximum concurrent flows:
@@ -65,38 +65,31 @@ obj-m += $(MODULE_NAME).o
 #
 # Override at build time:   make STATE_HASH_BITS=12
 # --------------------------------------------------------------------------
-USE_HASH ?= y
 STATE_HASH_BITS ?= 10
 NAT_HASH_BITS   ?= 8
 LOG_HASH_BITS   ?= 7
 
+ccflags-y += -DSTATE_HASH_BITS=$(STATE_HASH_BITS)
+ccflags-y += -DNAT_HASH_BITS=$(NAT_HASH_BITS)
+ccflags-y += -DLOG_HASH_BITS=$(LOG_HASH_BITS)
 
-ifeq ($(USE_HASH),y)
-  ccflags-y += -DIPFI_USE_HASH
-  ccflags-y += -DSTATE_HASH_BITS=$(STATE_HASH_BITS)
-  ccflags-y += -DNAT_HASH_BITS=$(NAT_HASH_BITS)
-  ccflags-y += -DLOG_HASH_BITS=$(LOG_HASH_BITS)
-
-  # Pick a human-readable scenario label based on the bit width
-  ifeq ($(STATE_HASH_BITS),10)
-    _HASH_SCENARIO := home / small office
-  else ifeq ($(STATE_HASH_BITS),11)
-    _HASH_SCENARIO := SMB
-  else ifeq ($(STATE_HASH_BITS),12)
-    _HASH_SCENARIO := datacenter / ISP
-  else
-    _HASH_SCENARIO := custom
-  endif
-  $(info  )
-  $(info   --------)
-  $(info   [ipfire])
-  $(info   [ipfire] tables: hash — state=$(STATE_HASH_BITS)b nat=$(NAT_HASH_BITS)b log=$(LOG_HASH_BITS)b ($(_HASH_SCENARIO)))
-  $(info   [ipfire])
-  $(info   --------)
-  $(info  )
+# Pick a human-readable scenario label based on the bit width
+ifeq ($(STATE_HASH_BITS),10)
+  _HASH_SCENARIO := home / small office
+else ifeq ($(STATE_HASH_BITS),11)
+  _HASH_SCENARIO := SMB
+else ifeq ($(STATE_HASH_BITS),12)
+  _HASH_SCENARIO := datacenter / ISP
 else
-  $(info   [ipfire] all tables: list — linear traversal (hash disabled))
+  _HASH_SCENARIO := custom
 endif
+$(info  )
+$(info   --------)
+$(info   [ipfire])
+$(info   [ipfire] tables: hash — state=$(STATE_HASH_BITS)b nat=$(NAT_HASH_BITS)b log=$(LOG_HASH_BITS)b ($(_HASH_SCENARIO)))
+$(info   [ipfire])
+$(info   --------)
+$(info  )
 
 ccflags-y += -I$(src) -I$(src)/../..
 

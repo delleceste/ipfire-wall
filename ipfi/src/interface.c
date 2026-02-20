@@ -88,9 +88,16 @@ int main(int argc, char *argv[]) {
   signal(SIGHUP, signal_handler);
   signal(SIGUSR2, dnsres_handler);
   signal(SIGUSR1, mailer_read_handler);
-  /* Clear the terminal at startup, if not root */
-  //   if(getuid() != 0)
-  //   	system("clear");
+
+  /* Early check for help option before relying on configuration directories */
+  for (int i = 1; i < argc; i++) {
+    if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "-help") ||
+        !strcmp(argv[i], "--help")) {
+      print_usage(argv[0]);
+      exit(0);
+    }
+  }
+
   /* check that the directory .IPFIRE exists. If not,
    * create it and copy the default configuration files
    */
@@ -688,8 +695,21 @@ void signal_handler(int signum) {
   /* only parent process executes cleaning operations */
   if (getpid() != listener_pid) {
     if (!uops.rc) {
-      printf(TR("Signal handler... "));
-      print_signal(signum);
+      if (signum == SIGTERM) {
+        printf(TR("\nThe application has been closed due to a service "
+                  "\e[1;31mstop\e[0m "
+                  "(SIGTERM).\n"));
+      } else if (signum == SIGHUP) {
+        printf(TR("\nThe application has been closed due to a service "
+                  "\e[1;33mreload\e[0m "
+                  "(SIGHUP).\n"));
+      } else if (signum == SIGINT) {
+        printf(TR("\nThe application has been stopped by the user "
+                  "\e[1;35m(SIGINT)\e[0m.\n"));
+      } else {
+        printf(TR("Signal handler... "));
+        print_signal(signum);
+      }
     }
     if (!uops.rc)
       printf(TR("Removing rules inserted... "));

@@ -1,6 +1,6 @@
 # IPFire-Wall: Consolidated Project Report
 
-*Generated on: Wed Feb 18 06:06:18 PM CET 2026*
+*Generated on: Fri Feb 20 11:47:37 AM CET 2026*
 
 # Chapter 1: Refactoring & Optimization
 
@@ -121,7 +121,7 @@ Since UDP is connectionless, the engine creates virtual states (`UDP_NEW` -> `UD
 - **Lifetimes**: Every state entry has an associated kernel timer. If no traffic is seen for a specific duration (e.g., 3600s for ESTABLISHED TCP, or ~30s for UDP), the entry is automatically purged to free resources.
 - **Allocation**: State entries are allocated from a dedicated `kmem_cache` slab (`ipfi_state`), ensuring low-latency access and optimized memory layout.
 - **Namespaces**: In the current implementation, state tables are shared across all network namespaces (even with `per_net=1`).
-- **Capacity**: The firewall enforces a `max_state_entries` limit to prevent resource exhaustion attacks. Technical bounds are also applied to loginfo entries ([64, 65536]).
+- **Capacity**: The firewall enforces a `max_state_entries` limit to prevent resource exhaustion attacks.
 
 ## 3.4. FTP Support
 The engine includes a specialized parser for the FTP protocol. It monitors the "control" channel for `PASV` commands and dynamically injects "Data Channel" states, allowing passive FTP to function through the NAT without requiring manual rule openings for high-numbered ports.
@@ -135,19 +135,54 @@ The `ipfire` utility is the primary administrative tool for interacting with the
 ## 4.1. Core Usage & CLI Flags
 The application communicates with the kernel via Netlink sockets using the `IPFI_CONTROL` and `IPFI_DATA` protocols.
 
-| Flag | Action | Description |
-|------|--------|-------------|
-| `-v` | Version / Status | Shows if the module is loaded and current global settings. |
-| `-s` | Statistics | Displays a combined report of kernel per-CPU counters and userspace logging counts. |
-| `-X` | Flush | Clears all current filtering rules and resets the state table. |
-| `-p <policy>` | Set Policy | Changes the default policy to `accept` or `drop`. |
-| `-a <rule>` | Add Rule | Inserts a new rule into the appropriate chain. |
+### General Options
+| Flag | Description |
+|------|-------------|
+| `-h, --help` | Show the help message and exit. |
+| `-quiet` | Do not print packets to the console. |
+| `-daemon` | Run the application as a background daemon. |
+| `-quiet_daemon` | Run as a background daemon and redirect standard output/error to `/dev/null`. |
+| `-lang <file>` | Specify a language file (detected automatically by default). |
+
+### Initialization & Cleanup (Root Only)
+| Flag | Description |
+|------|-------------|
+| `-load, -rc` | Load all rules from configuration files and run in the background. |
+| `-flush` | Flush all rules from the kernel and exit immediately. |
+| `-noflush` | Prevent the automatic flushing of rules when the userspace process exits. |
+| `-rmmod` | Unload the `ipfire` kernel module upon exit. |
+| `-clearlog` | Truncate the log file at startup. |
+
+### Configuration Paths
+| Flag | Description |
+|------|-------------|
+| `-allowed <file>` | Override the path for the permission rules file. |
+| `-blacklist <file>` | Override the path for the denial rules file. |
+| `-blacksites <file>`| Override the path for the blocked sites list. |
+| `-translation <file>`| Override the path for the NAT rules file. |
+| `-logfile <file>` | Override the path for the system log file (Root only). |
+
+### Advanced Features & Tuning
+| Flag | Description |
+|------|-------------|
+| `-kloglevel <0-7>` | Set the kernel-space log level (0=Emergency, 7=Debug). |
+| `-loguser <0-7>` | Set the userspace interface log level. |
+| `-log <0-7>` | Set the logging level for the file-based logger. |
+| `-dns <seconds>` | Enable the DNS resolver with a specific refresh interval. |
+| `-nodns` | Disable the background DNS resolver. |
+| `-services` | Enable resolution of port numbers to service names (via `/etc/services`). |
+| `-noservices` | Disable port-to-service name resolution. |
+| `-allstate` | Enable stateful tracking for ALL traffic, regardless of rule flags. |
+| `-mailer <V> <U>` | Send email summaries every `<V>` units of `<U>` (sec, min, hour, days). |
+| `-user` | Run with user-level privileges (Root only). |
+| `-nouser` | Disable user-level privilege mode. |
 
 ## 4.2. Configuration Files
-The application behavior can be customized via config files, typically located in `/etc/ipfire/`.
+The application behavior can be customized via config files. For the root user, these are located in `/etc/ipfire/`. For normal users, they are in `~/.IPFIRE/`.
 
-- `allowed.base`: List of rules to be automatically loaded on startup.
-- `ipfi/IPFIRE/options`: Global configuration file (compatible with IqFIREwall) using a simple `KEY=VALUE` format.
+- `allowed`: List of rules to be automatically loaded on startup.
+- `options`: Global configuration file (compatible with IqFIREwall) using a simple `KEY=VALUE` format.
+- Shared assets (default rules, documentation, help) are stored in `/usr/share/ipfire/`.
 
 ## 4.3. Interpreting Statistics
 The `-s` (Statistics) output is divided into three sections:
@@ -160,7 +195,6 @@ When running, `ipfire` can act as a listener, printing headers for every packet 
 - Timestamp and user ID.
 - Hook location and verdict (ACCEPT/DROP).
 - Detailed IP/TCP/UDP header information.
-
 ## 4.5. Logging Deduplication & Technical Bounds
 To prevent system instability and terminal flooding, the kernel enforces technical bounds on logging configuration. These values control the **deduplication window**: a packet hitting a rule for the first time is logged, and subsequent identical packets are suppressed until the lifetime expires.
 
@@ -170,6 +204,46 @@ To prevent system instability and terminal flooding, the kernel enforces technic
 | `MAX_LOGINFO_ENTRIES` | 256 | 64 – 65536 | The maximum number of distinct flows to track for deduplication. |
 
 If a user attempts to set values outside these bounds via the Netlink interface, the kernel will automatically adjust them to the nearest limit and print a warning in `dmesg`.
+
+## 4.6. Installation & Systemd Integration
+
+### Building the Project
+IPFire-Wall relies on two distinct compilation processes: one for the kernel module and one for the userspace application.
+
+1.  **Kernel Module (`ipfi.ko`)**:
+    Navigate to the `kernel/` directory and use the provided `Makefile`. You will need the Linux headers for your currently running kernel installed.
+    ```bash
+    cd kernel/
+    make
+    ```
+    This produces the `ipfi.ko` module, which must be loaded by the `sysadmin` or automatically via the system service before starting the userspace application.
+
+2.  **Userspace Application (`ipfire`)**:
+    The userspace tools and configuration libraries are built using CMake from the `ipfi/` subdirectory.
+    ```bash
+    cd ipfi/
+    cmake -B build -DCMAKE_INSTALL_PREFIX=/usr
+    sudo cmake --build build --target install
+    ```
+    *Note: The `CMAKE_INSTALL_PREFIX` dictates where the binaries (`/bin/`), configuration files (`/etc/ipfire/`), and shared language assets (`/share/ipfire/`) will be installed. If omitted, it defaults to `/usr/local`.*
+
+### Systemd Service Setup
+When the userspace project is installed via `make install`, a Systemd unit file (`ipfire.service`) is automatically placed into `${CMAKE_INSTALL_PREFIX}/etc/systemd/system/`.
+
+This service automates the lifecycle of both the kernel module and the userspace daemon:
+
+- **Start (`systemctl start ipfire`)**:
+  The service executes `/usr/bin/ipfire -rc -user`. This tells the userspace application to load all configuration rules (`-rc`) and immediately detach into the background as a user-privilege daemon (`-user`).
+
+- **Stop (`systemctl stop ipfire`)**:
+  Systemd automatically sends a `SIGTERM` signal to all processes in the service's cgroup. The `ipfire` application intercepts this signal, frees its memory, cleanly unloads from the kernel socket, and prints a comforting exit message:
+  *"The application has been closed due to a service stop (SIGTERM)."*
+  Afterward, the service runs `modprobe -r ipfi` to safely remove the kernel module. If a user is currently running a foreground `ipfire` instance (outside Systemd), the module removal will fail gracefully, ensuring active sessions are not interrupted.
+
+- **Reload (`systemctl reload ipfire`)**:
+  Systemd sends a `SIGHUP` signal to the `ipfire` main process. The application catches the `SIGHUP` and prints:
+  *"The application has been closed due to a service reload (SIGHUP)."*
+  The service then removes the kernel module, clearing all state, and re-executes the startup sequence (`ipfire -rc -user`) to apply fresh configurations.
 
 ---
 
@@ -703,42 +777,191 @@ To add support for a new protocol (like FTP), developers should:
 
 # Chapter 10: Lifecycle & Synchronization
 
-This chapter describes how the IPFire-Wall manages the memory and concurrency of its internal tables using the unified `ipfi_entry` framework.
+This chapter describes how IPFire-Wall manages memory and concurrency for its
+internal tables using the unified `ipfi_entry` framework.
 
-## 10.1. The Unified Entry Framework
-To avoid fragmented logic and potential race conditions, all dynamic table entries (State, NAT, and LogInfo) share a common header:
+---
+
+## 10.1. The Unified Entry Header
+
+All dynamic table entries (State, NAT, LogInfo) embed `ipfi_entry_head` as
+their **first** member. This layout is mandated: `container_of` relies on the
+head being at offset 0 so that `kfree(h)` frees the whole object.
 
 ```c
 struct ipfi_entry_head {
-    struct list_head lnode;      /* RCU-safe linked list node */
-    struct timer_list timer;     /* Entry expiration timer */
-    struct work_struct cleanup_work; /* Deferred deletion work */
-    struct rcu_head rcuh;        /* RCU callback node */
-    refcount_t refcnt;           /* Reference counter */
-    unsigned long status;        /* Removal status bits */
-    unsigned long last_timer_update; /* Throttling timestamp */
+    struct timer_list    timer;          /* per-entry expiry timer */
+    struct work_struct   cleanup_work;   /* deferred-delete work item */
+    struct rcu_head      rcuh;           /* RCU callback node */
+    struct list_head     lnode;          /* list linkage (NAT; loginfo LRU) */
+    struct hlist_node    hnode;          /* primary hash linkage */
+    refcount_t           refcnt;         /* reference counter */
+    unsigned long        status;         /* IPFI_ENTRY_REMOVED bit */
+    unsigned long        last_timer_update; /* throttle timestamp */
 };
 ```
 
-## 10.2. The Deletion Chain
-IPFire-Wall uses a multi-stage deferred-free mechanism to ensure that memory is only released when it is no longer being accessed by any CPU.
+---
 
-1.  **Logical Removal**: `ipfi_entry_remove()` marks the entry as removed and unlinks it from the RCU list. No new lookups will find it.
-2.  **Reference Drop**: `ipfi_entry_put()` reduces the reference count. If it reach zero, it queues the `cleanup_work`.
-3.  **Synchronization**: The worker runs `timer_delete_sync()` to ensure the entry's timer is not running on any other CPU.
-4.  **RCU Barrier**: `call_rcu()` is invoked to wait for a quiet period (ensuring no RCU readers are active).
-5.  **Physical Free**: `free_entry_rcu()` finally calls `kfree()`, which releases the memory to its specific slab cache.
+## 10.2. Entry Lifecycle — Full Chain
 
-## 10.3. Safe Module Shutdown
-Unloading a stateful kernel module is risky due to pending timers and RCU callbacks. IPFire-Wall implements a strict 7-step sequence:
+Every entry starts with `refcount = 1` (the **container reference**).
 
-1.  **Exit Signal**: `we_are_exiting = true` prevents new entries from being created.
-2.  **Hook Synchronization**: `synchronize_net()` waits for in-flight packets to finish.
-3.  **Unregistration**: Netfilter hooks are removed.
-4.  **Table Flush**: Every entry is logically removed and its reference count dropped.
-5.  **Workqueue Drain**: `destroy_workqueue()` waits for all `cleanup_work` items (step 3 of the deletion chain).
-6.  **Callback Barrier**: `rcu_barrier()` waits for all `kfree` callbacks to finish.
-7.  **Cache Destruction**: `kmem_cache_destroy()` safely tears down the slabs.
+```
+ALLOCATED (refcnt = 1)
+    │
+    ▼  added to hash table + timer armed
+LIVE
+    │
+    ├─── timer fires ──────────────────────────────────────────┐
+    │                                                          │
+    └─── eviction (loginfo only, capacity-based) ─────────────┤
+                                                               │
+                                                               ▼
+                                               [under table spinlock]
+                                                ipfi_entry_remove(h, &counter)
+                                                  │
+                                                ├─ test_and_set_bit(REMOVED)
+                                                  │     WINNER proceeds ──────▶ hlist del_rcu
+                                                  │     LOSER returns (no-op)        counter−−
+                                                  │                                  ipfi_entry_put(h)
+                                                  │                                        │
+                                                  │                              refcount → 0
+                                                  │                                        │
+                                                  │                              queue_work(ipfire_wq)
+                                                  │
+                                                  ▼    [workqueue / process context]
+                                              free_entry_work()
+                                                  ├─ timer_delete_sync()      ← wait for timer
+                                                  └─ call_rcu(free_entry_rcu) ← wait for readers
+                                                              │
+                                                              ▼  [RCU callback]
+                                                          kfree(h)              ← object freed
+```
+
+### Key invariants
+
+| Invariant | Enforcement |
+|-----------|-------------|
+| REMOVED set **exactly once** | `test_and_set_bit` atomicity |
+| `ipfi_entry_put` called **exactly once** | only the bit winner calls it |
+| `kfree` happens after timer is **fully dead** | `timer_delete_sync` before `call_rcu` |
+| `kfree` happens after all **RCU readers** are done | `call_rcu` grace period |
+| `queue_work` is safe under `spin_lock_bh` | `queue_work` uses `spin_lock_irqsave`, never sleeps |
+
+---
+
+## 10.3. loginfo — The Dual-Link Special Case
+
+`ipfire_loginfo` is the **only** entry type carrying two simultaneous links:
+
+```
+active_logi_list  ◄─── lnode ───► ipfire_loginfo ◄─── hnode ───► loginfo_hashtable
+     (LRU eviction, O(1) tail)              (dedup lookup, O(1))
+```
+
+This is necessary because:
+- `active_logi_list` (lnode) enables O(1) LRU eviction: oldest entry is
+  always at the tail, removed when the table reaches `max_loginfo_entries`.
+  The kernel enforces a capacity bound of **[64, 65536]** to ensure both
+  deduplication effectiveness and memory safety.
+- `loginfo_hashtable` (hnode) enables O(1) duplicate detection lookups.
+
+`ipfi_entry_remove` handles **only hnode**. The loginfo lnode must be
+managed separately, under `loginfo_list_lock`, by **both** the timer
+callback and the eviction path.
+
+### The evict-vs-timer race and its fix
+
+Two paths can try to remove the same lnode from `active_logi_list`:
+
+```
+Path A (timer callback)         Path B (loginfo_evict_oldest)
+─────────────────────           ────────────────────────────
+spin_lock_bh(lock)              spin_lock_bh(lock)   ← serialised by lock
+if (!REMOVED)                   list_del_rcu(lnode)
+  list_del_rcu(lnode)           ipfi_entry_remove()  ← sets REMOVED, puts
+ipfi_entry_remove()             timer_delete()
+spin_unlock_bh(lock)            spin_unlock_bh(lock)
+```
+
+Because both paths hold `loginfo_list_lock`, they are **serialised**.
+The REMOVED pre-check in path A ensures that if eviction already ran,
+the timer callback skips `list_del_rcu` (which would otherwise write to
+`LIST_POISON` addresses → silent hard panic).
+
+`timer_delete()` in path B deflects any **pending** timer fire. If the
+timer is already running (blocked on the lock), the REMOVED check will
+cause it to skip lnode removal and be a no-op in `ipfi_entry_remove`.
+
+---
+
+## 10.4. Safe Module Shutdown (7-Step Sequence)
+
+Unloading a stateful kernel module requires draining all pending timers,
+work items, and RCU callbacks before freeing the slab caches.
+
+```
+Step 1  we_are_exiting = true         ← no new allocations
+Step 2  unregister_hooks()            ← no new packets enter
+Step 3  synchronize_net()             ← wait for in-flight packets
+Step 4  fini_machine / fini_log /     ← flush tables:
+        fini_translation                ipfi_entry_put chains → queue_work
+Step 5  destroy_workqueue(ipfire_wq)  ← drain work items:
+                                        each runs timer_delete_sync + call_rcu
+Step 6  rcu_barrier()                 ← wait for all call_rcu callbacks
+                                        (i.e., all kfree calls) to complete
+Step 7  kmem_cache_destroy()          ← safe: all objects are freed
+
+> [!WARNING]
+> The order of Step 2 and Step 3 is critical. If `synchronize_net()` is called *before* unregistering hooks, new packets can still enter the system immediately after the synchronization finishes, leading to potential use-after-free conditions during `kmem_cache_destroy()`.
+
+---
+
+During shutdown or when bulk-flushing elements from a state or NAT table, it is necessary to clear all active entries without disrupting concurrent RCU readers (e.g., in-flight packets traversing the filter hooks).
+
+The module uses `ipfi_table_flush_hash()` to safely drain hash buckets. For the loginfo LRU list, it uses `ipfi_table_flush_all()`. Both ensure that any concurrent lockless readers traversing a node will still be safely directed to the next valid element through the RCU grace period.
+
+### The Correct Flush Pattern (Hash)
+```c
+hash_for_each_possible_rcu(ht, h, hnode, key) {
+    if (!test_and_set_bit(IPFI_ENTRY_REMOVED, &h->status)) {
+        hlist_del_rcu(&h->hnode);
+        ipfi_entry_put(h);
+    }
+}
+```
+
+By using `test_and_set_bit()`, we establish an atomic "winner" for the removal of the entry. If a timer callback is simultaneously trying to expire the same entry, only one will successfully set the bit and proceed to the deletion and `ipfi_entry_put()`. The loser safely skips the element.
+```
+
+> [!WARNING]
+> If steps 5 and 6 were swapped, or if step 6 were omitted, `kfree` could
+> fire **after** `kmem_cache_destroy` — an immediate kernel panic.
+
+---
+
+## 10.5. Timer Update Path — TOCTOU Mitigation
+
+`ipfi_entry_update_timer` must not call `mod_timer` on an entry that is
+being freed. The function is **self-contained**: it takes its own
+`ipfi_entry_hold_rcu` before touching the timer, so callers do not need
+an extra hold. Flow:
+
+```
+ipfi_entry_update_timer(h, proto, state)
+    │
+    ├─ test_bit(REMOVED) → early exit if dying
+    │
+    └─ if last update was > 5s ago:
+           ipfi_entry_hold_rcu(h)    ← atomic inc-not-zero
+           test_bit(REMOVED) again   ← re-check under hold
+           mod_timer(...)            ← safe: hold prevents free
+           ipfi_entry_put(h)         ← release temporary hold
+```
+
+The 5-second throttle prevents O(N_packets) timer modifications under
+high load while keeping entries alive under sustained traffic.
 
 ---
 
@@ -785,115 +1008,272 @@ The `per_net=1` mode is optimized for local benchmarking:
 
 # Chapter 12: Concurrency & Safety Analysis
 
-This chapter provides an in-depth technical analysis of the synchronization mechanisms used in IPFire-Wall to prevent race conditions, Use-After-Free (UAF) errors, and Time-of-Check to Time-of-Use (TOCTOU) vulnerabilities.
-
-## 12.1. The Memory Safety Trinity: RCU, Refcounting, and Workqueues
-
-IPFire-Wall manages dynamically allocated table entries (State, NAT, Log) using a three-layered defense strategy.
-
-### 1. RCU (Read-Copy-Update)
-Lookups in the "hot path" (packet processing) must be lockless for performance.
-- **Mechanism**: Readers use `rcu_read_lock_bh()` to traverse lists.
-- **Safety**: RCU ensures that an object remains valid for the duration of the read-side critical section, even if another CPU unlinks it from the list.
-
-### 2. Reference Counting (`refcount_t`)
-RCU alone is not enough if a CPU needs to hold onto an object across sleepable boundaries or outside the RCU lock.
-- **Mechanism**: Every entry embeds a `refcount_t`. 
-- **Pattern**:
-  ```c
-  rcu_read_lock();
-  h = lookup_logic();
-  if (h && ipfi_entry_hold_rcu(h)) {
-      /* We now safely own a reference */
-  }
-  rcu_read_unlock();
-  ```
-- **Safety**: The `refcount_inc_not_zero` atomic operation prevents acquiring a reference to an object that has already been scheduled for deletion.
-
-### 3. Workqueues (Deferred Cleanup)
-The final `kfree` cannot happen in atomic context (like a Softirq timer callback).
-- **Mechanism**: When `refcount` hits zero, `ipfi_entry_put` queues a work item.
-- **Safety**: The work handler (`free_entry_work`) runs in process context, allowing it to call `timer_delete_sync()` to ensure no timers are running before the RCU grace period starts.
+This chapter documents the synchronization mechanisms used in IPFire-Wall to
+prevent race conditions, Use-After-Free (UAF), double-free, and
+Time-of-Check-to-Time-of-Use (TOCTOU) vulnerabilities, including the bugs
+discovered and fixed during high-load UDP flood testing.
 
 ---
 
-## 12.2. Anatomy of a Race: Timer vs. Flush
+## 12.1. The Three-Layer Safety Model
 
-A classic race condition occurs when a table entry is expiring (via timer) at the same time an administrator is flushing the table (via userspace command).
+### Layer 1 — RCU (lockless hot-path reads)
 
-### The Vulnerability: Double Unlink
-If both the timer and the flush thread tried to call `list_del_rcu()`, the linked list would become corrupted.
+Packet processing lookups use `rcu_read_lock_bh()` to traverse lists and
+hash tables without taking a lock. RCU guarantees that linked objects remain
+pointer-valid for the duration of the read-side critical section, **even if
+another CPU unlinks them concurrently**.
 
-### The Solution: Atomic Status Bits
-IPFire-Wall uses the `IPFI_ENTRY_REMOVED` bit in `h->status`.
+```c
+rcu_read_lock_bh();
+hash_for_each_possible_rcu(..., entry, hnode, key) {
+    if (matches(entry)) {
+        ipfi_entry_update_timer(&entry->h, ...);  /* self-contained, safe */
+        break;
+    }
+}
+rcu_read_unlock_bh();
+```
+
+> [!IMPORTANT]
+> RCU only guarantees **pointer validity** during the critical section, NOT
+> **object liveness** beyond it. For operations that need the object to
+> survive past the RCU lock, a refcount hold is required.
+
+### Layer 2 — Reference counting (object liveness)
+
+`refcount_t` ensures objects are freed only when **all** users have released
+them. `ipfi_entry_hold_rcu` uses `refcount_inc_not_zero`: it atomically
+increments the counter OR refuses if it is already at zero (dying object).
+
+`ipfi_entry_update_timer` is self-contained: it acquires hold, updates the
+timer, and puts — callers do not need an external hold.
+
+### Layer 3 — Spinlocks (writer serialisation)
+
+Writers (add, remove, evict) hold the table spinlock:
+- prevents concurrent `hlist_del_rcu` / `list_del_rcu` on the same bucket
+- protects plain-`unsigned int` counters from data races
+- serialises the loginfo lnode pre-check + `list_del_rcu` sequence
+
+---
+
+## 12.2. Lock Disciplines
+
+| Operation | Lock held | Locking function |
+|-----------|-----------|-----------------|
+| Add state entry | `state_list_lock` | `spin_lock_bh` |
+| Remove (timer) state | `state_list_lock` | `spin_lock_bh` |
+| Add NAT entry | `nat_locks[type]` | `spin_lock_bh` |
+| Remove (timer) NAT | `nat_locks[type]` | `spin_lock_bh` |
+| Add loginfo entry | `loginfo_list_lock` | `spin_lock_bh` |
+| Remove (timer) loginfo | `loginfo_list_lock` | `spin_lock_bh` |
+| Evict loginfo (capacity) | `loginfo_list_lock` | `spin_lock_bh` |
+| Lookup (state/NAT/log) | none (RCU) | `rcu_read_lock_bh` |
+| Timer update | none (internal hold) | `ipfi_entry_hold_rcu` |
+| Flush (module unload) | table spinlock | `spin_lock_bh` (brief) |
+
+`spin_lock_bh` disables BH (softirqs), preventing timer callbacks from
+running on the same CPU while a lock is held. This avoids the need for
+`spin_lock_irqsave` in most paths (timers run in softirq, not hard IRQ).
+
+---
+
+## 12.3. ipfi_entry_remove — Ownership Model
+
+`ipfi_entry_remove` owns the final `ipfi_entry_put`. The **winner** of the
+`test_and_set_bit(REMOVED)` race performs unlink + put; the **loser** is a
+complete no-op.
 
 ```c
 void ipfi_entry_remove(struct ipfi_entry_head *h, unsigned int *counter) {
     if (test_and_set_bit(IPFI_ENTRY_REMOVED, &h->status))
-        return; /* Someone else already unlinked it! */
+        return;           /* loser: no-op */
 
-    list_del_rcu(&h->lnode);
+    hlist_del_rcu(&h->hnode);   /* or list_del_rcu in list mode */
     (*counter)--;
+    ipfi_entry_put(h);           /* winner: sole caller of put */
 }
 ```
 
-- **Invariants**: Only the CPU that successfully transitions the bit from `0` to `1` is allowed to perform the `list_del_rcu`. This guarantees that every entry is unlinked exactly once.
+Callers must **not** call `ipfi_entry_put` after `ipfi_entry_remove`.
+`queue_work` (inside `ipfi_entry_put`) is safe from BH-disabled spinlock
+context: it uses `spin_lock_irqsave` internally and never sleeps.
 
 ---
 
-## 12.3. TOCTOU Mitigation in Timer Updates
+## 12.4. Post-Mortem: Silent Kernel Crash Under UDP Flood
 
-`ipfi_entry_update_timer` must ensure it doesn't try to re-arm a timer for an entry that is currently being deleted.
+### Symptom
 
-### The Problem
-1. CPU A checks `if (!removed)`. (True)
-2. CPU B sets `REMOVED` and unlinks the entry.
-3. CPU A calls `mod_timer()`. (The timer is now active on a "ghost" entry).
+`iperf3 -u -b 1G -P 120` crashed the machine **immediately** with no kernel
+oops, no kdump trace — a completely silent hard reset. Even a single stream
+crashed with high probability.
 
-### The Mitigation: Throttled Double-Check
+**Root cause: fault in softirq context before the oops path could execute.**
+
+---
+
+### Bug 1 — `handle_loginfo_timeout`: `list_del_rcu` on LIST_POISON (CRITICAL)
+
+**File:** `logging/log.c` — `handle_loginfo_timeout` (hash mode)
+
+```
+CPU 0 (eviction, holds loginfo_list_lock)     CPU 1 (timer fires, waits for lock)
+──────────────────────────────────────────    ────────────────────────────────────
+list_del_rcu(X.lnode)                         [blocked on lock]
+ipfi_entry_remove(X) ← sets REMOVED
+  └─ ipfi_entry_put → queue_work
+spin_unlock_bh()
+                                              spin_lock_bh() ← acquired
+                                              list_del_rcu(X.lnode)  ← X.lnode.prev
+                                                                         = LIST_POISON!
+                                              WRITE to 0x100 → page fault in softirq
+                                              → no oops printed → hard reset
+```
+
+**Fix:** Check `REMOVED` before `list_del_rcu` in the timer callback:
+
 ```c
-void ipfi_entry_update_timer(struct ipfi_entry_head *h, ...) {
-    if (unlikely(test_bit(IPFI_ENTRY_REMOVED, &h->status)))
-        return;
-
-    /* ... calculate timeout ... */
-
-    if (time_after(jiffies, h->last_timer_update + 5*HZ)) {
-        if (unlikely(test_bit(IPFI_ENTRY_REMOVED, &h->status)))
-            return; /* Re-check after the "gate" */
-
-        mod_timer(&h->timer, ...);
-        WRITE_ONCE(h->last_timer_update, jiffies);
-    }
-}
+if (!test_bit(IPFI_ENTRY_REMOVED, &h->status))
+    list_del_rcu(&h->lnode);
+ipfi_entry_remove(h, &loginfo_entry_counter); /* winner puts; loser no-op */
 ```
-By re-checking the bit inside the throttled block, the window for the race is narrowed significantly, and even if a rare race occurs, the `timer_delete_sync` in the cleanup work handler acts as the final safety net.
 
 ---
 
-## 12.4. Safe Module Shutdown Analysis
+### Bug 2 — `loginfo_evict_oldest`: no timer cancellation
 
-The module unload sequence in `ipfire.c` is carefully ordered to prevent "Delete-After-Free" of the slab caches.
+**File:** `logging/log.c` — `loginfo_evict_oldest`
 
-### The 7-Step Sequence and Why it Matters
+After eviction sets REMOVED and calls `ipfi_entry_put` (refcount → 0,
+work queued), the timer can still fire on another CPU before the workqueue
+runs `timer_delete_sync`. The timer callback then acquires the lock and
+reaches `list_del_rcu` with a poisoned lnode.
 
-1.  **`we_are_exiting = true`**: Acts as a global barrier for new allocations.
-2.  **`synchronize_net()`**: Flushes the Netfilter pipeline. Ensures no packets are currently executing the module's code.
-3.  **`unregister_hooks()`**: Blocks all future packet entry.
-4.  **`fini_tables()`**: Flushes all entries. This triggers the `ipfi_entry_put` chain.
-5.  **`destroy_workqueue(ipfire_wq)`**: **Crucial Step.** This flushes all pending cleanup work. After this returns, we know every entry has reached the `call_rcu` stage.
-6.  **`rcu_barrier()`**: Waits for all pending RCU callbacks (the `kfree` calls) to complete.
-7.  **`kmem_cache_destroy()`**: Only now is it safe to destroy the slab. 
+**Fix:** `timer_delete()` after `ipfi_entry_remove`. Non-sync is safe: if
+the timer is running it's blocked on the lock we hold; REMOVED is set so
+it becomes a no-op when it eventually acquires the lock.
 
-If step 5 and 6 were swapped, or if step 6 was missing, a `kfree` callback might fire *after* the slab cache it belongs to has been destroyed, resulting in an immediate kernel panic.
+```c
+ipfi_entry_remove(&oldest->h, &loginfo_entry_counter);
+timer_delete(&oldest->h.timer);   /* deflect pending timer fire */
+```
 
 ---
 
-## 12.5. Shared Logic: Vertical Integration
-Because `state_table`, `nat_table`, and `ipfire_loginfo` all inherit from `ipfi_entry_head`, they all benefit from this unified, battle-tested synchronization logic. 
+### Bug 3 — `add_packet_to_infolist`: arm-timer after lock release (UAF)
 
-- **Reliability**: Any improvement or fix in `table_lifecycle.c` automatically hardens the entire module.
-- **Simplicity**: Component-specific code (like `snat.c`) can focus on logic, knowing that the lifecycle is handled by a robust, non-redundant core.
+**File:** `logging/log.c` — `add_packet_to_infolist`
+
+```
+CPU 0                           CPU 1
+─────────────────────           ─────────────────────
+list_add_rcu(lnode)
+loginfo_entry_counter++
+spin_unlock_bh()                [eviction: list is at capacity]
+                                ipfi_entry_remove(new_entry) → put → work queued
+                                timer_delete_sync() → kfree(new_entry)
+ipfi_entry_arm_timer()          ← mod_timer on freed object!  UAF!
+```
+
+**Fix:** Hold an extra refcount reference spanning the lock-release →
+arm-timer gap:
+
+```c
+ipfi_entry_hold(&ipli->h);   /* arm-guard: refcount → 2 */
+spin_unlock_bh(&loginfo_list_lock);
+ipfi_entry_arm_timer(&ipli->h);  /* safe: refcount ≥ 2 */
+ipfi_entry_put(&ipli->h);    /* release arm-guard */
+```
+
+---
+
+### Bug 4 — `fini_log` (hash mode): lnode left dangling
+
+**File:** `logging/log.c` — `fini_log`
+
+`ipfi_table_flush_hash` unlinks `hnode` only. In hash mode, loginfo lnodes
+remained in `active_logi_list` after flush → UAF on any subsequent traversal.
+
+**Fix:** Always drain via `active_logi_list` (lnode-based flush works for
+both links because REMOVED prevents timer callbacks from re-entering):
+
+```c
+ipfi_table_flush_all(&active_logi_list, &loginfo_list_lock,
+                     &loginfo_entry_counter);
+```
+
+---
+
+## 12.5. Final UAF / TOCTOU / Double-Free Audit
+
+### State table
+
+| Path | Lock | Race risk | Status |
+|------|------|-----------|--------|
+| `check_state` timer update | RCU | `update_timer` is self-contained (internal hold) | ✅ safe |
+| `handle_keep_state_timeout` remove | `state_list_lock` | single removal path, no eviction | ✅ safe |
+| `lookup_state_table_n_update_timer` | RCU + `state_hold_rcu` | redundant outer hold, harmless | ✅ safe |
+| `add_state_table_to_list` | `state_list_lock` | `we_are_exiting` double-check inside lock | ✅ safe |
+
+### NAT table
+
+| Path | Lock | Race risk | Status |
+|------|------|-----------|--------|
+| `lookup_nat_forward` timer update | RCU + `nat_hold_rcu` | correct hold before `update_timer` | ✅ safe |
+| `handle_nat_entry_timeout` remove | `nat_locks[type]` | single removal path | ✅ safe |
+
+### LogInfo
+
+| Path | Lock | Race risk | Status |
+|------|------|-----------|--------|
+| `handle_loginfo_timeout` lnode | `loginfo_list_lock` | REMOVED pre-check added | ✅ fixed |
+| `loginfo_evict_oldest` timer | `loginfo_list_lock` | `timer_delete()` added | ✅ fixed |
+| `add_packet_to_infolist` arm | — | extra hold spanning gap | ✅ fixed |
+| `fini_log` lnode flush | `loginfo_list_lock` | lnode-based flush | ✅ fixed |
+| `packet_not_seen` (hash) update | RCU | `update_timer` self-contained | ✅ safe |
+| `packet_not_seen` (list) update | RCU + `ipfi_entry_hold_rcu` | outer hold redundant but safe | ✅ safe |
+
+### Module unload
+
+| Step | Safety concern | Status |
+|------|----------------|--------|
+| `fini_machine` → `free_state_tables` | entries in-flight in timers | REMOVED set, timer callback no-ops | ✅ safe |
+| `destroy_workqueue` | work items post `call_rcu` | `destroy_workqueue` drains all | ✅ safe |
+| `rcu_barrier` | `kfree` callbacks in flight | barrier waits for all | ✅ safe |
+| `kmem_cache_destroy` after `rcu_barrier` | use-after-destroy | ordering guarantees objects freed | ✅ safe |
+
+---
+
+## 12.6. Debugging Silent Panics
+
+A fault in softirq context (`list_del_rcu` → page fault at LIST_POISON)
+crashes the machine before the oops message can be serialised to any
+output. To capture such events:
+
+```bash
+# Serial console (capture before framebuffer flush):
+GRUB_CMDLINE_LINUX="... console=ttyS0,115200 earlyprintk=serial,ttyS0,115200"
+
+# Verify kdump crash kernel is loaded:
+cat /sys/kernel/kexec_crash_loaded   # must be 1
+
+# Force panic on oops + immediate reboot (trips kdump):
+echo 1 > /proc/sys/kernel/panic_on_oops
+echo 1 > /proc/sys/kernel/panic
+
+# Compile with KASAN for in-kernel UAF detection (requires source rebuild):
+# CONFIG_KASAN=y
+# CONFIG_KASAN_INLINE=y
+```
+
+With `crashkernel=256M` already set, kdump should produce a vmcore after
+the next crash. Analyse with:
+
+```bash
+crash /usr/lib/debug/boot/vmlinux-$(uname -r) /var/crash/*/vmcore
+```
 
 ---
 

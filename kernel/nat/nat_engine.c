@@ -7,12 +7,10 @@
 #include "nat.h"
 #include "nat_table.h"
 #include "netlink/ipfi_netl.h"
-#ifdef IPFI_USE_HASH
 #include <linux/hashtable.h>
-#include <linux/jhash.h>
-#endif
 #include <linux/icmp.h>
 #include <linux/ip.h>
+#include <linux/jhash.h>
 #include <linux/module.h>
 #include <linux/netfilter_ipv4.h>
 #include <linux/skbuff.h>
@@ -262,7 +260,6 @@ int lookup_dnat_table_and_getorigdst(const net_quadruplet *n4,
                                      struct sockaddr_in *sin) {
   struct nat_table *dntmp;
   rcu_read_lock_bh();
-#ifdef IPFI_USE_HASH
   {
     unsigned int bkt;
     hash_for_each_rcu(nat_hashtables[NAT_DNAT], bkt, dntmp, h.hnode) {
@@ -272,14 +269,6 @@ int lookup_dnat_table_and_getorigdst(const net_quadruplet *n4,
       }
     }
   }
-#else
-  list_for_each_entry_rcu(dntmp, &nat_lists[NAT_DNAT], h.lnode) {
-    if (get_orig_from_dnat_entry(dntmp, n4, sin) == 1) {
-      rcu_read_unlock_bh();
-      return 0;
-    }
-  }
-#endif
   rcu_read_unlock_bh();
   return -1;
 }

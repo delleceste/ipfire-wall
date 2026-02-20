@@ -95,13 +95,9 @@ extern spinlock_t nat_locks[2];
 extern unsigned int nat_counters[2];
 extern struct kmem_cache *nat_cache;
 
-#ifdef IPFI_USE_HASH
 #ifndef NAT_HASH_BITS
 #define NAT_HASH_BITS 8
 #endif
 extern struct hlist_head nat_hashtables[2][1 << NAT_HASH_BITS];
-#else
-extern struct list_head nat_lists[2];
-#endif
 
 #endif /* IPFI_NAT_TABLE_H */

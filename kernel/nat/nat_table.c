@@ -11,23 +11,17 @@
 #include "ipfi_machine.h"
 #include "ipfire.h"
 #include "nat.h"
-#include <linux/jhash.h>
-#ifdef IPFI_USE_HASH
-#include <linux/hashtable.h>
-#endif
 #include <linux/bitops.h>
+#include <linux/hashtable.h>
+#include <linux/jhash.h>
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/timer.h>
 
 /* ---- Per-type globals ---- */
 
-#ifdef IPFI_USE_HASH
 /* Hash tables: two arrays of hlist_head, one per nat_type */
 /* (defined in common/globals.c via globals.h extern) */
-#else
-struct list_head nat_lists[2];
-#endif
 spinlock_t nat_locks[2];
 unsigned int nat_counters[2];
 struct kmem_cache *nat_cache;
@@ -48,7 +42,6 @@ int init_nat_tables(void) {
     IPFI_PRINTK("IPFIRE: failed to create NAT slab cache\n");
     return -ENOMEM;
   }
-#ifdef IPFI_USE_HASH
   {
     unsigned int i;
     for (i = 0; i < (1 << NAT_HASH_BITS); i++) {
@@ -56,10 +49,6 @@ int init_nat_tables(void) {
       INIT_HLIST_HEAD(&nat_hashtables[NAT_DNAT][i]);
     }
   }
-#else
-  INIT_LIST_HEAD(&nat_lists[NAT_SNAT]);
-  INIT_LIST_HEAD(&nat_lists[NAT_DNAT]);
-#endif
   spin_lock_init(&nat_locks[NAT_SNAT]);
   spin_lock_init(&nat_locks[NAT_DNAT]);
   nat_counters[NAT_SNAT] = 0;
@@ -209,7 +198,6 @@ struct nat_table *lookup_nat_forward(const struct sk_buff *skb,
   struct nat_table *tmp;
 
   rcu_read_lock_bh();
-#ifdef IPFI_USE_HASH
   {
     struct iphdr *iph = ip_hdr(skb);
     u32 key;
@@ -239,18 +227,6 @@ struct nat_table *lookup_nat_forward(const struct sk_buff *skb,
       }
     }
   }
-#else
-  list_for_each_entry_rcu(tmp, &nat_lists[type], h.lnode) {
-    if (forward_nat_match(tmp, skb) > 0) {
-      if (nat_hold_rcu(tmp)) { // hold the entry (released by the caller)
-        tmp->state = state_machine(skb, tmp->state, 0);
-        ipfi_entry_update_timer(&tmp->h, tmp->protocol, tmp->state);
-        rcu_read_unlock_bh();
-        return tmp;
-      }
-    }
-  }
-#endif
   rcu_read_unlock_bh();
   return NULL;
 }
@@ -258,11 +234,6 @@ struct nat_table *lookup_nat_forward(const struct sk_buff *skb,
 /* ---- Flush ---- */
 
 int free_nat_tables(enum nat_type type) {
-#ifdef IPFI_USE_HASH
   return ipfi_table_flush_hash(nat_hashtables[type], 1 << NAT_HASH_BITS,
                                &nat_locks[type], &nat_counters[type]);
-#else
-  return ipfi_table_flush_all(&nat_lists[type], &nat_locks[type],
-                              &nat_counters[type]);
-#endif
 }
