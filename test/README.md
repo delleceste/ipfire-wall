@@ -471,7 +471,7 @@ Test #3 with
 
 ### UDP:
 
-iperf3 -c taeyang.elettra.eu -p 5201 -u -b 2G -t 60
+> iperf3 -c taeyang.elettra.eu -p 5201 -u -b 2G -t 60
 
 ##### without
 
@@ -487,8 +487,8 @@ Test #2
 
 ```
 [ ID] Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
-[  5]   0.00-60.00  sec  5.44 GBytes   779 Mbits/sec  0.000 ms  0/4035884 (0%)  sender
-[  5]   0.00-60.00  sec  5.44 GBytes   779 Mbits/sec  0.054 ms  777/4035838 (0.019%)  receiver
+[  5]   0.00-60.00  sec  5.43 GBytes   777 Mbits/sec  0.000 ms  0/4026911 (0%)  sender
+[  5]   0.00-60.00  sec  5.43 GBytes   777 Mbits/sec  0.026 ms  1074/4026911 (0.027%)  receiver
 ```
 
 Test #3
@@ -501,28 +501,30 @@ Test #3
 
 ##### With ipfire
 
+> iperf3 -c taeyang.elettra.eu -p 5201 -u -b 2G -t 60
+
 Test #1
 
 ```
 [ ID] Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
-[  5]   0.00-60.00  sec  5.34 GBytes   765 Mbits/sec  0.000 ms  0/3962189 (0%)  sender
-[  5]   0.00-60.00  sec  5.34 GBytes   765 Mbits/sec  0.012 ms  91/3962173 (0.0023%)  receiver
+[  5]   0.00-60.00  sec  5.39 GBytes   772 Mbits/sec  0.000 ms  0/3998833 (0%)  sender
+[  5]   0.00-60.00  sec  5.39 GBytes   772 Mbits/sec  0.029 ms  0/3998804 (0%)  receiver
 ```
 
 Test #2
 
 ```
 [ ID] Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
-[  5]   0.00-60.00  sec  5.34 GBytes   765 Mbits/sec  0.000 ms  0/3963185 (0%)  sender
-[  5]   0.00-60.00  sec  5.34 GBytes   765 Mbits/sec  0.013 ms  798/3963185 (0.02%)  receiver
+[  5]   0.00-60.00  sec  5.38 GBytes   771 Mbits/sec  0.000 ms  0/3992038 (0%)  sender
+[  5]   0.00-60.00  sec  5.38 GBytes   771 Mbits/sec  0.013 ms  0/3992036 (0%)  receiver
 ```
 
 Test #3
 
 ```
 [ ID] Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
-[  5]   0.00-60.00  sec  5.36 GBytes   767 Mbits/sec  0.000 ms  0/3974821 (0%)  sender
-[  5]   0.00-60.00  sec  5.36 GBytes   767 Mbits/sec  0.028 ms  1324/3974821 (0.033%)  receiver
+[  5]   0.00-60.00  sec  5.43 GBytes   777 Mbits/sec  0.000 ms  0/4027081 (0%)  sender
+[  5]   0.00-60.00  sec  5.43 GBytes   777 Mbits/sec  0.040 ms  1133/4027038 (0.028%)  receiver
 ```
 
 ## Optional test
@@ -587,33 +589,25 @@ Test #3
 #### With
 
 ```
-[OK] FWD: [veth1->veth2] |TCP| 10.0.1.2:58270-->10.0.2.2:targus-getdata1 |S| [all FWD to iperf3]
-[OK] IN:  [veth2-ns] |TCP| 10.0.1.2:58270-->10.0.2.2:targus-getdata1 |S|STATE: 68 [all out to iperf3 (P5201)]
-[OK] OUT: [veth2-ns] |TCP| 10.0.2.2:targus-getdata1-->10.0.1.2:58270 |S|A|STATE: 67 [all out to iperf3 (P5201)]
-[OK] FWD: [veth2->veth1] |TCP| 10.0.2.2:targus-getdata1-->10.0.1.2:58270 |S|A|STATE: 69 [all FWD to iperf3]
-[OK] IN:  [veth1-ns] |TCP| 10.0.2.2:targus-getdata1-->10.0.1.2:58270 |S|A|STATE: 64 [all out to iperf3 (P5201)]
-[OK] OUT: [veth1-ns] |TCP| 10.0.1.2:58270-->10.0.2.2:targus-getdata1 |A|EST? [all out to iperf3 (P5201)]
-[OK] FWD: [veth1->veth2] |TCP| 10.0.1.2:58270-->10.0.2.2:targus-getdata1 |A|EST [all FWD to iperf3]
-[OK] IN:  [veth2-ns] |TCP| 10.0.1.2:58270-->10.0.2.2:targus-getdata1 |A|STATE: 70 [all out to iperf3 (P5201)]
-[OK] OUT: [veth1-ns] |TCP| 10.0.1.2:58270-->10.0.2.2:targus-getdata1 |P|A|EST [all out to iperf3 (P5201)]
-[OK] FWD: [veth1->veth2] |TCP| 10.0.1.2:58270-->10.0.2.2:targus-getdata1 |P|A|EST [all FWD to iperf3]
-[OK] IN:  [veth2-ns] |TCP| 10.0.1.2:58270-->10.0.2.2:targus-getdata1 |P|A|STATE: 70 [all out to iperf3 (P5201)]
+[OK] FWD: [veth1->veth2] |TCP| 10.0.1.2:46860-->10.0.2.2:targus-getdata1 |S| [all FWD to iperf3]
+[OK] FWD: [veth2->veth1] |TCP| 10.0.2.2:targus-getdata1-->10.0.1.2:46860 |S|A|SETUP OK [all FWD to iperf3]
+[OK] FWD: [veth1->veth2] |TCP| 10.0.1.2:46860-->10.0.2.2:targus-getdata1 |A|EST [all FWD to iperf3]
 ```
 
 Test #1
 
 ```
 [ ID] Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
-[  5]   0.00-10.00  sec   596 MBytes   500 Mbits/sec  0.000 ms  0/431636 (0%)  sender
-[  5]   0.00-10.00  sec   596 MBytes   500 Mbits/sec  0.001 ms  0/431636 (0%)  receiver
+[  5]   0.00-10.00  sec   596 MBytes   500 Mbits/sec  0.000 ms  0/431676 (0%)  sender
+[  5]   0.00-10.00  sec   596 MBytes   500 Mbits/sec  0.001 ms  0/431676 (0%)  receiver
 ```
 
 Test #2
 
 ```
 [ ID] Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
-[  5]   0.00-10.00  sec   596 MBytes   500 Mbits/sec  0.000 ms  0/431678 (0%)  sender
-[  5]   0.00-10.00  sec   596 MBytes   500 Mbits/sec  0.000 ms  0/431678 (0%)  receiver
+[  5]   0.00-10.00  sec   596 MBytes   500 Mbits/sec  0.000 ms  0/431631 (0%)  sender
+[  5]   0.00-10.00  sec   596 MBytes   500 Mbits/sec  0.001 ms  0/431631 (0%)  receiver
 ```
 
 Test #3
@@ -621,8 +615,8 @@ Test #3
 ```
 - - - - - - - - - - - - - - - - - - - - - - - - -
 [ ID] Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
-[  5]   0.00-10.00  sec   596 MBytes   500 Mbits/sec  0.000 ms  0/431668 (0%)  sender
-[  5]   0.00-10.00  sec   596 MBytes   500 Mbits/sec  0.000 ms  0/431668 (0%)  receiver
+[  5]   0.00-10.00  sec   596 MBytes   500 Mbits/sec  0.000 ms  0/431666 (0%)  sender
+[  5]   0.00-10.00  sec   596 MBytes   500 Mbits/sec  0.001 ms  0/431666 (0%)  receiver
 ```
 
 
@@ -663,33 +657,42 @@ Run #1
 
 ```
 [ ID] Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
-[  5]   0.00-60.00  sec  3.79 GBytes   542 Mbits/sec  0.000 ms  0/63552091 (0%)  sender
-[  5]   0.00-60.00  sec  3.79 GBytes   542 Mbits/sec  0.001 ms  15362/63552091 (0.024%)  receiver
+[  5]   0.00-60.00  sec  3.82 GBytes   546 Mbits/sec  0.000 ms  0/64012956 (0%)  sender
+[  5]   0.00-60.00  sec  3.81 GBytes   546 Mbits/sec  0.001 ms  10580/64012956 (0.017%)  receiver
 ```
 
 Run #2
 
 ```
 [ ID] Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
-[  5]   0.00-60.00  sec  3.80 GBytes   543 Mbits/sec  0.000 ms  0/63677077 (0%)  sender
-[  5]   0.00-60.00  sec  3.80 GBytes   543 Mbits/sec  0.001 ms  6722/63677077 (0.011%)  receiver
+[ ID] Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
+[  5]   0.00-60.00  sec  3.86 GBytes   553 Mbits/sec  0.000 ms  0/64792801 (0%)  sender
+[  5]   0.00-60.00  sec  3.86 GBytes   553 Mbits/sec  0.001 ms  4801/64792801 (0.0074%)  receiver
 ```
 
 #### With
 
+Module has been loadad with the default option *per_net=0*. 
+
+> systemctl start ipfire
+
+As normal user
+
+> ipfire
+
 Run #1
 ```
 [ ID] Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
-[  5]   0.00-60.00  sec   810 MBytes   113 Mbits/sec  0.000 ms  0/13270399 (0%)  sender
-[  5]   0.00-60.00  sec   810 MBytes   113 Mbits/sec  0.001 ms  45/13270399 (0.00034%)  receiver
+[  5]   0.00-60.00  sec  3.48 GBytes   498 Mbits/sec  0.000 ms  0/58416594 (0%)  sender
+[  5]   0.00-60.00  sec  3.48 GBytes   498 Mbits/sec  0.001 ms  6910/58416594 (0.012%)  receiver
 ```
 
 Run #2
 
 ```
 [ ID] Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
-[  5]   0.00-60.00  sec   806 MBytes   113 Mbits/sec  0.000 ms  0/13209027 (0%)  sender
-[  5]   0.00-60.00  sec   806 MBytes   113 Mbits/sec  0.001 ms  1655/13209027 (0.013%)  receiver
+[  5]   0.00-60.00  sec  3.46 GBytes   496 Mbits/sec  0.000 ms  0/58115741 (0%)  sender
+[  5]   0.00-60.00  sec  3.46 GBytes   496 Mbits/sec  0.001 ms  3078/58115741 (0.0053%)  receiver
 ```
 
 
@@ -697,8 +700,114 @@ Run #3
 
 ```
 [ ID] Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
-[  5]   0.00-60.00  sec   826 MBytes   115 Mbits/sec  0.000 ms  0/13532077 (0%)  sender
-[  5]   0.00-60.00  sec   826 MBytes   115 Mbits/sec  0.001 ms  0/13532077 (0%)  receiver
+[  5]   0.00-60.00  sec  3.48 GBytes   498 Mbits/sec  0.000 ms  0/58353590 (0%)  sender
+[  5]   0.00-60.00  sec  3.48 GBytes   498 Mbits/sec  0.001 ms  3080/58353590 (0.0053%)  receiver
+```
+
+##### With per_net=1
+
+> modprobe ipfi per_net=1
+
+With *per net netfilter hook registration* (which is just partially supported and does not support namespaces at all,
+being *ipfire-wall* a host based simple academic software), we can observe the *iperf3* traffic cross the output, 
+the fwd and the input chain.
+
+Note the `RELAXED` state match in the reverse flow (see the documentation).
+
+Since the packets now hit the *input, fwd and output* paths, the bitrate drops
+
+```
+[...]
+[OK] OUT: [veth1-ns] |UDP| 10.0.1.2:54283-->10.0.2.2:targus-getdata1  [all out to iperf3 (P5201)]
+[OK] FWD: [veth1->veth2] |UDP| 10.0.1.2:54283-->10.0.2.2:targus-getdata1  [all FWD to iperf3]
+[OK] IN:   [RELAXED][veth2-ns] |UDP| 10.0.1.2:54283-->10.0.2.2:targus-getdata1 STREAM [all out to iperf3 (P5201)]
+[OK] OUT:  [RELAXED][veth2-ns] |UDP| 10.0.2.2:targus-getdata1-->10.0.1.2:54283 STREAM [all out to iperf3 (P5201)]
+[OK] FWD: [veth2->veth1] |UDP| 10.0.2.2:targus-getdata1-->10.0.1.2:54283 STREAM [all FWD to iperf3]
+[OK] IN:  [veth1-ns] |UDP| 10.0.2.2:targus-getdata1-->10.0.1.2:54283 STREAM [all out to iperf3 (P5201)]
+[OK] OUT: [veth1-ns] |UDP| 10.0.1.2:54283-->10.0.2.2:targus-getdata1 STREAM [all out to iperf3 (P5201)]
+[OK] FWD: [veth1->veth2] |UDP| 10.0.1.2:54283-->10.0.2.2:targus-getdata1 STREAM [all FWD to iperf3]
+```
+
+```
+[ ID] Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
+[  5]   0.00-60.00  sec  2.98 GBytes   426 Mbits/sec  0.000 ms  0/49973752 (0%)  sender
+[  5]   0.00-60.00  sec  2.98 GBytes   426 Mbits/sec  0.001 ms  1846/49973752 (0.0037%)  receiver
+```
+
+#### nftables
+
+> cd ~/devel/ipfire-wall/test
+
+> nft -f rules.nft
+
+We created a ruleset that matches the current rules loaded in *ipfire-wall*:
+
+> nft list ruleset
+
+```
+table inet filter {
+	chain input {
+		type filter hook input priority filter; policy drop;
+		iif "lo" accept
+		ct state established,related accept
+		ct state invalid drop
+	}
+
+	chain forward {
+		type filter hook forward priority filter; policy drop;
+		ct state established,related accept
+		tcp dport 5201 ct state new accept
+		udp dport 5201 ct state new accept
+		meta l4proto tcp ct state new accept
+		meta l4proto udp ct state new accept
+		ip protocol icmp accept
+	}
+
+	chain output {
+		type filter hook output priority filter; policy drop;
+		oif "lo" accept
+		ct state established,related accept
+		tcp dport 80 ct state new accept
+		udp dport 53 ct state new accept
+		tcp dport 110 ct state new accept
+		tcp dport 25 ct state new accept
+		tcp dport 21 ct state new accept
+		ip protocol icmp accept
+		tcp dport 443 ct state new accept
+		tcp dport 22 ct state new accept
+		tcp dport 631 ct state new accept
+		tcp dport 5201 ct state new accept
+		udp dport 5201 ct state new accept
+		meta l4proto tcp ct state new accept
+		meta l4proto udp ct state new accept
+	}
+}
+```
+
+Same command for UDP apocalypse:
+
+> sudo ip netns exec ns1 iperf3 -c 10.0.2.2 -u -b 1G -l 64 -t 60
+
+```
+[ ID] Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
+[  5]   0.00-60.00  sec  3.42 GBytes   490 Mbits/sec  0.000 ms  0/57384669 (0%)  sender
+[  5]   0.00-60.00  sec  3.42 GBytes   490 Mbits/sec  0.001 ms  9849/57384669 (0.017%)  receiver
+```
+
+> nft flush ruleset
+> nft list ruleset
+
+```
+```
+
+##### ipfire-wall without the userspace app running
+
+Starting only the service, without launching the *userspace ipfire app*, we get these results:
+
+```
+[ ID] Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
+[  5]   0.00-60.00  sec  3.51 GBytes   502 Mbits/sec  0.000 ms  0/58860413 (0%)  sender
+[  5]   0.00-60.00  sec  3.51 GBytes   502 Mbits/sec  0.001 ms  5939/58860413 (0.01%)  received
 ```
 
 #### Legacy IPFIRE-wall
@@ -709,26 +818,5 @@ Run #3
 [  5]   0.00-60.00  sec  2.48 GBytes   356 Mbits/sec  0.001 ms  739/41689765 (0.0018%)  receiver
 ```
 
-# Firewall Test Summary – Visual
 
-| Test Type | Protocol | Load / Params | Without Firewall | With Firewall | Notes / Observations |
-|-----------|----------|---------------|-----------------|---------------|--------------------|
-| **Base** | TCP | 1 stream, 10s | ✅ ~100% link | ✅ ~100% link | Minimal overhead |
-| **Base** | UDP | 100 Mbit/s, 10s | ✅ 0–0.005% loss | ✅ 0–0.006% loss | Low jitter/loss |
-| **Moderate** | TCP | 4 streams, 30s | ✅ 929 Mbit/s | ✅ 928–931 Mbit/s | Firewall almost invisible |
-| **Moderate** | UDP | 500 Mbit/s, 30s | ✅ 0.0056% loss | ⚪ 0.0009–0.023% loss | Slight jitter increase |
-| **Stress** | TCP | 8 streams, 60s | ⚪ 920–928 Mbit/s | ⚪ 924–925 Mbit/s | CPU spikes, high retransmits |
-| **Stress** | UDP | 2 Gbit/s, 60s | ⚪ 775–779 Mbit/s | ⚠️ 765–767 Mbit/s | Small drop due to firewall |
-| **PPS Apocalypse** | UDP | 1 Gbit/s, 64B packets | ⚪ 542–543 Mbit/s | ❌ 113–115 Mbit/s | CPU-bound per-packet bottleneck |
-| **Local NS Forwarding** | TCP | 500 Mbit/s, 10s | ✅ 500 Mbit/s | ✅ 500 Mbit/s | Transparent |
-| **Local NS Forwarding** | UDP | 500 Mbit/s, 10s | ✅ ~0–0.03% loss | ⚪ 0–0.023% loss | Minor packet loss |
-
-## Legend
-
-- ✅ Excellent / negligible impact  
-- ⚪ Minor impact / slight throttling  
-- ⚠️ Noticeable degradation / CPU spikes  
-- ❌ Severe bottleneck / throughput collapse  
-
-> ⚡ PPS Apocalypse clearly shows the firewall’s per-packet limits. Even at 1 Gbit/s link, 64-byte packets saturate CPU before bandwidth.
 
