@@ -185,10 +185,21 @@ enum son_message {
   LIST_CHANGED,
 };
 
-#define VERSION "1.99.9"
+#ifdef _BUILD_VERSION
+#define VERSION _BUILD_VERSION
+#else
+#define VERSION "2.0.0-alpha"
+#endif
+
 #define LATEST_KERNEL_SUPPORTED "linux-6.12"
-#define CODENAME "\e[0;31mlin\e[0m"
+
+#ifdef _BUILD_CODENAME
+#define CODENAME _BUILD_CODENAME
+#define _CODENAME _BUILD_CODENAME
+#else
+#define CODENAME "lin"
 #define _CODENAME "lin"
+#endif
 #define AUTHOR "Giacomo S."
 #define AUTHOR_MAIL "\e[4mdelleceste@gmail.com\e[0m"
 #define FIREDATE "June 2005 -  Jan 2026"

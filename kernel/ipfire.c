@@ -184,15 +184,28 @@ static struct pernet_operations ipfire_net_ops = {
  *            overhead, without sending any traffic on the physical network.
  */
 
-#define KERNEL_MODULE_VERSION "1.99.5"
+#ifdef _BUILD_VERSION
+#define KERNEL_MODULE_VERSION _BUILD_VERSION
+#else
+#define KERNEL_MODULE_VERSION "2.0.0-alpha"
+#endif
+
+#ifdef _BUILD_CODENAME
+#define KERNEL_MODULE_CODENAME _BUILD_CODENAME
+#else
+#define KERNEL_MODULE_CODENAME "lin"
+#endif
+
 #define BUILD_DATE _BUILD_DATE
 #define BUILD_SYS _BUILD_SYS
 
 int welcome(void) {
   struct timespec64 tv_load_time;
-  IPFI_PRINTK("IPFIRE: MODULE INITIALIZED [%s] built on %s, %s - Giacomo S. "
+  IPFI_PRINTK("IPFIRE: MODULE INITIALIZED [%s] codename %s built on %s, %s - "
+              "Giacomo S. "
               "<delleceste@gmail.com>\n",
-              KERNEL_MODULE_VERSION, BUILD_DATE, BUILD_SYS);
+              KERNEL_MODULE_VERSION, KERNEL_MODULE_CODENAME, BUILD_DATE,
+              BUILD_SYS);
 
   /* set loading time into kernel stats struct */
   ktime_get_real_ts64(&tv_load_time);
