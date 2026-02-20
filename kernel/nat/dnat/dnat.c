@@ -16,6 +16,7 @@
 #include <linux/skbuff.h>
 #include <linux/slab.h>
 #include <linux/stddef.h>
+#include <linux/string.h>
 #include <linux/tcp.h>
 #include <linux/udp.h>
 
@@ -219,12 +220,11 @@ struct nat_table *add_dnatted_entry(const struct sk_buff *skb,
                                     struct info_flags *flags,
                                     const ipfire_rule *dnat_rule) {
   struct nat_table *newtable;
-  unsigned int timeout;
 
   if (unlikely(READ_ONCE(we_are_exiting)))
     return NULL;
 
-  if (nat_counters[NAT_DNAT] == fwopts.max_nat_entries) {
+  if (percpu_counter_read(&nat_counters[NAT_DNAT]) >= fwopts.max_nat_entries) {
     struct info_flags warn_flags = *flags;
     warn_flags.nat_max_entries = 1;
     struct response warn_resp = *resp;
@@ -245,26 +245,42 @@ struct nat_table *add_dnatted_entry(const struct sk_buff *skb,
 
   refcount_set(&newtable->h.refcnt, 1);
 
-  spin_lock_bh(&nat_locks[NAT_DNAT]);
-  if (unlikely(we_are_exiting)) {
-    spin_unlock_bh(&nat_locks[NAT_DNAT]);
-    kmem_cache_free(nat_cache, newtable);
-    return NULL;
-  }
-  timeout = get_timeout_by_state(newtable->protocol, newtable->state);
-  ipfi_entry_init(&newtable->h, timeout, handle_nat_entry_timeout);
-
-  ipfi_entry_hold(&newtable->h); /* table ref */
   {
     u32 key = get_dnat_hash(newtable->old_saddr, newtable->old_sport,
                             newtable->new_addr, newtable->new_port,
                             newtable->protocol);
-    hlist_add_head_rcu(
-        &newtable->h.hnode,
-        &nat_hashtables[NAT_DNAT][key & ((1 << NAT_HASH_BITS) - 1)]);
+    unsigned int bkt = key & ((1 << NAT_HASH_BITS) - 1);
+
+    spin_lock_bh(&nat_bucket_locks[NAT_DNAT][bkt]);
+
+    if (unlikely(we_are_exiting)) {
+      spin_unlock_bh(&nat_bucket_locks[NAT_DNAT][bkt]);
+      kmem_cache_free(nat_cache, newtable);
+      return NULL;
+    }
+
+    if (unlikely(percpu_counter_read(&nat_counters[NAT_DNAT]) >=
+                 fwopts.max_nat_entries)) {
+      spin_unlock_bh(&nat_bucket_locks[NAT_DNAT][bkt]);
+      kmem_cache_free(nat_cache, newtable);
+      struct info_flags warn_flags = *flags;
+      warn_flags.nat_max_entries = 1;
+      struct response warn_resp = *resp;
+      int err;
+      struct sk_buff *skb_to_user =
+          build_info_t_nlmsg(skb, flow, &warn_resp, &warn_flags, &err);
+      if (skb_to_user)
+        skb_send_to_user(skb_to_user, LISTENER_DATA);
+      return NULL;
+    }
+
+    ipfi_entry_hold(&newtable->h); /* table ref */
+    hlist_add_head_rcu(&newtable->h.hnode, &nat_hashtables[NAT_DNAT][bkt]);
+    percpu_counter_inc(&nat_counters[NAT_DNAT]);
+
+    spin_unlock_bh(&nat_bucket_locks[NAT_DNAT][bkt]);
   }
-  nat_counters[NAT_DNAT]++;
-  spin_unlock_bh(&nat_locks[NAT_DNAT]);
+
   ipfi_entry_arm_timer(&newtable->h);
   return newtable;
 }

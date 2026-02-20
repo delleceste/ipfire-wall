@@ -301,15 +301,26 @@ int lookup_state_table_n_update_timer(const struct state_table *stt) {
 
 int add_state_table_to_list(struct state_table *newtable) {
   unsigned int timeout;
+  __u32 key;
+  unsigned int bkt;
 
   if (unlikely(READ_ONCE(we_are_exiting)))
     return -EBUSY;
 
-  spin_lock_bh(&state_list_lock);
+  key = get_state_hash(newtable->saddr, newtable->daddr, newtable->sport,
+                       newtable->dport, newtable->protocol);
+  bkt = key & ((1 << STATE_HASH_BITS) - 1);
+
+  spin_lock_bh(&state_bucket_locks[bkt]);
 
   if (unlikely(we_are_exiting)) {
-    spin_unlock_bh(&state_list_lock);
+    spin_unlock_bh(&state_bucket_locks[bkt]);
     return -EBUSY;
+  }
+
+  if (percpu_counter_read(&state_tables_counter) >= max_state_entries) {
+    spin_unlock_bh(&state_bucket_locks[bkt]);
+    return -ENOMEM;
   }
 
   timeout = get_timeout_by_state(newtable->protocol, newtable->state.state);
@@ -317,13 +328,11 @@ int add_state_table_to_list(struct state_table *newtable) {
 
   state_hold(newtable); /* container ref */
 
-  hash_add_rcu(state_hashtable, &newtable->h.hnode,
-               get_state_hash(newtable->saddr, newtable->daddr, newtable->sport,
-                              newtable->dport, newtable->protocol));
+  hash_add_rcu(state_hashtable, &newtable->h.hnode, key);
 
-  state_tables_counter++;
+  percpu_counter_inc(&state_tables_counter);
   table_id++;
-  spin_unlock_bh(&state_list_lock);
+  spin_unlock_bh(&state_bucket_locks[bkt]);
 
   /* arm timer after releasing lock to reduce lock hold time */
   ipfi_entry_arm_timer(&newtable->h);
@@ -333,15 +342,19 @@ int add_state_table_to_list(struct state_table *newtable) {
 void handle_keep_state_timeout(struct timer_list *t) {
   struct state_table *st = timer_container_of(st, t, h.timer);
   struct ipfi_entry_head *h = &st->h;
+  __u32 key =
+      get_state_hash(st->saddr, st->daddr, st->sport, st->dport, st->protocol);
+  unsigned int bkt = key & ((1 << STATE_HASH_BITS) - 1);
 
-  spin_lock_bh(&state_list_lock);
+  spin_lock_bh(&state_bucket_locks[bkt]);
   ipfi_entry_remove(h, &state_tables_counter); /* puts internally if winner */
-  spin_unlock_bh(&state_list_lock);
+  spin_unlock_bh(&state_bucket_locks[bkt]);
 }
 
 int free_state_tables(void) {
-  return ipfi_table_flush_hash(state_hashtable, ARRAY_SIZE(state_hashtable),
-                               &state_list_lock, &state_tables_counter);
+  return ipfi_table_flush_hash_bucketed(
+      state_hashtable, ARRAY_SIZE(state_hashtable), state_bucket_locks,
+      &state_tables_counter);
 }
 
 inline void update_timer_of_state_entry(struct state_table *sttable) {
@@ -349,6 +362,7 @@ inline void update_timer_of_state_entry(struct state_table *sttable) {
 }
 
 int init_machine(void) {
+  int i;
   state_cache = kmem_cache_create("ipfi_state", sizeof(struct state_table), 0,
                                   SLAB_HWCACHE_ALIGN, NULL);
   if (!state_cache) {
@@ -356,12 +370,16 @@ int init_machine(void) {
     return -ENOMEM;
   }
   hash_init(state_hashtable);
+  for (i = 0; i < ARRAY_SIZE(state_hashtable); i++)
+    spin_lock_init(&state_bucket_locks[i]);
+  percpu_counter_init(&state_tables_counter, 0, GFP_KERNEL);
   return 0;
 }
 
 void fini_machine(void) {
   int ret;
   ret = free_state_tables();
+  percpu_counter_destroy(&state_tables_counter);
   IPFI_PRINTK("IPFIRE: state tables freed: %d.\n", ret);
   /* kmem_cache_destroy deferred to ipfire.c::fini() after
    * destroy_workqueue + rcu_barrier ensure all kfree callbacks ran. */

@@ -9,8 +9,10 @@
 
 #include "logging/log.h"
 #include "globals.h"
+#include <linux/gfp.h>
 #include <linux/hashtable.h>
 #include <linux/jhash.h>
+#include <linux/percpu_counter.h>
 #include <linux/slab.h>
 
 /*
@@ -253,7 +255,7 @@ inline int add_packet_to_infolist(const struct sk_buff *skb,
   }
 
   /* Enforce max entries cap */
-  if (READ_ONCE(loginfo_entry_counter) >= max_loginfo_entries) {
+  if (percpu_counter_read(&loginfo_entry_counter) >= max_loginfo_entries) {
     loginfo_evict_oldest();
   }
 
@@ -266,7 +268,7 @@ inline int add_packet_to_infolist(const struct sk_buff *skb,
                      ipli->info.packet.ip.protocol);
     hash_add_rcu(loginfo_hashtable, &ipli->h.hnode, key);
   }
-  loginfo_entry_counter++;
+  percpu_counter_inc(&loginfo_entry_counter);
 
   /*
    * BUG FIX: hold an extra reference across the lock → arm-timer gap.
@@ -410,7 +412,7 @@ inline int packet_not_seen(const struct sk_buff *skb,
   struct ipfire_loginfo *loginfo;
 
   /* Short circuit */
-  if (READ_ONCE(loginfo_entry_counter) == 0)
+  if (percpu_counter_read(&loginfo_entry_counter) == 0)
     return 1;
 
   rcu_read_lock_bh();
@@ -460,6 +462,7 @@ int init_log(void) {
     IPFI_PRINTK("IPFIRE: failed to create loginfo slab cache\n");
     return -ENOMEM;
   }
+  percpu_counter_init(&loginfo_entry_counter, 0, GFP_KERNEL);
   return 0;
 }
 
@@ -475,6 +478,7 @@ void fini_log(void) {
    */
   ipfi_table_flush_all(&active_logi_list, &loginfo_list_lock,
                        &loginfo_entry_counter);
+  percpu_counter_destroy(&loginfo_entry_counter);
   /* kmem_cache_destroy deferred to ipfire.c::fini() after
    * destroy_workqueue + rcu_barrier ensure all kfree callbacks ran. */
 }

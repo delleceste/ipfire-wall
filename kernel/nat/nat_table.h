@@ -11,6 +11,7 @@
 #include "nat.h"
 #include <common/ipfi_structures.h>
 #include <linux/netdevice.h>
+#include <linux/percpu_counter.h>
 
 enum nat_type { NAT_SNAT = 0, NAT_DNAT = 1 };
 
@@ -91,13 +92,13 @@ void fini_nat_tables(void);
  * In list mode, entries are stored in nat_lists and nat_counters.
  * Locks and counters are always present.
  */
-extern spinlock_t nat_locks[2];
-extern unsigned int nat_counters[2];
-extern struct kmem_cache *nat_cache;
-
 #ifndef NAT_HASH_BITS
 #define NAT_HASH_BITS 8
 #endif
+
+extern spinlock_t nat_bucket_locks[2][1 << NAT_HASH_BITS];
+extern struct percpu_counter nat_counters[2];
+extern struct kmem_cache *nat_cache;
 extern struct hlist_head nat_hashtables[2][1 << NAT_HASH_BITS];
 
 #endif /* IPFI_NAT_TABLE_H */

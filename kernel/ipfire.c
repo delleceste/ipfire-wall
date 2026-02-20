@@ -324,10 +324,12 @@ static void __exit fini(void) {
   kmem_cache_destroy(nat_cache);
   kmem_cache_destroy(loginfo_cache);
 
-  IPFI_PRINTK(
-      "IPFIRE: unloaded: tables freed: state: %u, nat: %u, log info: %u\n",
-      state_tables_counter, nat_counters[NAT_DNAT] + nat_counters[NAT_SNAT],
-      loginfo_entry_counter);
+  IPFI_PRINTK("IPFIRE: unloaded: tables freed: state: %lld, nat: %lld, log "
+              "info: %lld\n",
+              percpu_counter_read(&state_tables_counter),
+              percpu_counter_read(&nat_counters[NAT_DNAT]) +
+                  percpu_counter_read(&nat_counters[NAT_SNAT]),
+              percpu_counter_read(&loginfo_entry_counter));
 
   if (ipfi_counters)
     free_percpu(ipfi_counters);
@@ -540,8 +542,7 @@ unsigned int process(void *priv, struct sk_buff *skb,
   // malformed packet or unsupported protocol
   if (check_headers(skb) < 0)
     return NF_DROP;
-  bool no_nat = (READ_ONCE(dnatted_entry_counter) == 0 &&
-                 READ_ONCE(snatted_entry_counter) == 0) ||
+  bool no_nat = (get_dnatted_count() == 0 && get_snatted_count() == 0) ||
                 (fwopts.masquerade == 0 && fwopts.nat == 0);
 
   switch (hooknum) {
@@ -628,8 +629,7 @@ int ipfi_pre_process(struct sk_buff *skb, const ipfi_flow *flow) {
   verdict = NF_ACCEPT;
   /* nat and masquerade options disabled: return NF_ACCEPT in pre process */
   if ((fwopts.masquerade == 0) && (fwopts.nat == 0) &&
-      READ_ONCE(dnatted_entry_counter) == 0 &&
-      READ_ONCE(snatted_entry_counter) == 0) {
+      get_dnatted_count() == 0 && get_snatted_count() == 0) {
     return NF_ACCEPT;
   }
 
@@ -646,7 +646,7 @@ int ipfi_pre_process(struct sk_buff *skb, const ipfi_flow *flow) {
    * i.e. has been forwarded, we must de dnat it. Dynamic
    * rules are checked in this case.
    */
-  if (READ_ONCE(dnatted_entry_counter) > 0) {
+  if (get_dnatted_count() > 0) {
     ret = pre_de_dnat(skb, flow, &resp, &flags);
 
     /* implements pre processing of the packets: DNAT.
@@ -669,7 +669,7 @@ int ipfi_pre_process(struct sk_buff *skb, const ipfi_flow *flow) {
 
   /* now let's de-snat, or de-masquerade, if no match has previously succeeded
    */
-  if (ret < 0 && READ_ONCE(snatted_entry_counter) > 0)
+  if (ret < 0 && get_snatted_count() > 0)
     ret = pre_de_snat(skb, flow, &resp, &flags);
 
   /* checksum is calculated inside set_pairs_in_skb(), ipfi_translation.c */
@@ -718,8 +718,7 @@ int ipfi_post_process(struct sk_buff *skb, const ipfi_flow *flow) {
   kstats.post_rcv++;
   /* masquerade and NAT disabled: nothing to do. We accept here */
   if ((fwopts.masquerade == 0) && (fwopts.nat == 0) &&
-      READ_ONCE(dnatted_entry_counter) == 0 &&
-      READ_ONCE(snatted_entry_counter) == 0)
+      get_dnatted_count() == 0 && get_snatted_count() == 0)
     return NF_ACCEPT;
 
   /* No more kmalloc for ipfire_info_t. */
@@ -727,7 +726,7 @@ int ipfi_post_process(struct sk_buff *skb, const ipfi_flow *flow) {
   /* MASQUERADE and SNAT now take components directly. No
    * build_ipfire_info_from_skb needed here. */
 
-  if (READ_ONCE(dnatted_entry_counter) > 0) {
+  if (get_dnatted_count() > 0) {
     if ((snat_done = post_snat_dynamic(skb, flow, &resp, &flags)) >= 0)
       goto send_touser;
 
@@ -745,7 +744,7 @@ int ipfi_post_process(struct sk_buff *skb, const ipfi_flow *flow) {
   /* check if we already have a translation for this session
    * (early lookup consolidated here, covers both SNAT and Masquerade)
    */
-  if (READ_ONCE(snatted_entry_counter) > 0) {
+  if (get_snatted_count() > 0) {
     struct nat_table *snt = lookup_nat_forward(skb, NAT_SNAT);
     if (snt != NULL) {
       snat_done = snat_packet(skb, snt);
@@ -850,9 +849,8 @@ int ipfi_response(const struct nf_hook_state *state, struct sk_buff *skb,
      * ipfi_translation: set_pairs_in_skb().
      */
     if (fwopts.nat != 0 && flow->direction == IPFI_OUTPUT) {
-      struct nat_table *dnt = READ_ONCE(nat_counters[NAT_DNAT]) > 0
-                                  ? lookup_nat_forward(skb, NAT_DNAT)
-                                  : NULL;
+      struct nat_table *dnt =
+          get_dnatted_count() > 0 ? lookup_nat_forward(skb, NAT_DNAT) : NULL;
       int dnat_ret = -1;
       if (dnt != NULL) {
         /*

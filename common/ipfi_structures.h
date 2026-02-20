@@ -554,6 +554,8 @@ struct ktables_usage {
   unsigned int snat_tables;
   unsigned int dnat_tables;
   unsigned int loginfo_tables;
+  unsigned int loguser;
+  unsigned int state_lifetime;
 };
 
 /* structure to keep per-cpu counters */

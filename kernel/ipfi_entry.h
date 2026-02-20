@@ -10,6 +10,7 @@
 #include <linux/hashtable.h>
 #include <linux/jhash.h>
 #include <linux/list.h>
+#include <linux/percpu_counter.h>
 #include <linux/rcupdate.h>
 #include <linux/refcount.h>
 #include <linux/spinlock.h>
@@ -106,7 +107,8 @@ void ipfi_entry_update_timer(struct ipfi_entry_head *h, int proto, int state);
  * ipfi_entry_put() calls queue_work(), which is safe from BH-disabled
  * spinlock context (queue_work takes an internal irqsave lock, never sleeps).
  */
-void ipfi_entry_remove(struct ipfi_entry_head *h, unsigned int *counter);
+void ipfi_entry_remove(struct ipfi_entry_head *h,
+                       struct percpu_counter *counter);
 
 /**
  * ipfi_table_flush_all - Remove and put all lnode-linked entries.
@@ -115,7 +117,7 @@ void ipfi_entry_remove(struct ipfi_entry_head *h, unsigned int *counter);
  * Process-context only (sleepable).
  */
 int ipfi_table_flush_all(struct list_head *list, spinlock_t *lock,
-                         unsigned int *counter);
+                         struct percpu_counter *counter);
 
 /**
  * ipfi_table_flush_hash - Remove and put all hnode-linked entries.
@@ -124,7 +126,18 @@ int ipfi_table_flush_all(struct list_head *list, spinlock_t *lock,
  * Process-context only (sleepable).
  */
 int ipfi_table_flush_hash(struct hlist_head *ht, unsigned int nbuckets,
-                          spinlock_t *lock, unsigned int *counter);
+                          spinlock_t *lock, struct percpu_counter *counter);
+
+/**
+ * ipfi_table_flush_hash_bucketed - Remove and put all hnode-linked entries
+ * using per-bucket spinlocks.
+ *
+ * Process-context only (sleepable).
+ */
+int ipfi_table_flush_hash_bucketed(struct hlist_head *ht, unsigned int nbuckets,
+                                   spinlock_t *locks,
+                                   struct percpu_counter *counter);
+
 #endif
 
 /* IPFI_ENTRY_H */

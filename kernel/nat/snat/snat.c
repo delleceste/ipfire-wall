@@ -48,12 +48,11 @@ struct nat_table *add_snatted_entry(const struct sk_buff *skb,
                                     struct info_flags *flags,
                                     const ipfire_rule *snat_rule) {
   struct nat_table *entry;
-  unsigned int timeout;
 
   if (unlikely(READ_ONCE(we_are_exiting)))
     return NULL;
 
-  if (nat_counters[NAT_SNAT] == fwopts.max_nat_entries) {
+  if (percpu_counter_read(&nat_counters[NAT_SNAT]) >= fwopts.max_nat_entries) {
     int err;
     struct response warn_resp = *resp;
     struct info_flags warn_flags = *flags;
@@ -74,25 +73,42 @@ struct nat_table *add_snatted_entry(const struct sk_buff *skb,
 
   refcount_set(&entry->h.refcnt, 1);
 
-  spin_lock_bh(&nat_locks[NAT_SNAT]);
-  if (unlikely(we_are_exiting)) {
-    spin_unlock_bh(&nat_locks[NAT_SNAT]);
-    kmem_cache_free(nat_cache, entry);
-    return NULL;
-  }
-  timeout = get_timeout_by_state(entry->protocol, entry->state);
-  ipfi_entry_init(&entry->h, timeout, handle_nat_entry_timeout);
-
-  ipfi_entry_hold(&entry->h); /* table ref */
   {
     u32 key = get_snat_hash(entry->new_addr, entry->new_port, entry->old_daddr,
                             entry->old_dport, entry->protocol);
-    hlist_add_head_rcu(
-        &entry->h.hnode,
-        &nat_hashtables[NAT_SNAT][key & ((1 << NAT_HASH_BITS) - 1)]);
+    unsigned int bkt = key & ((1 << NAT_HASH_BITS) - 1);
+
+    spin_lock_bh(&nat_bucket_locks[NAT_SNAT][bkt]);
+
+    if (unlikely(we_are_exiting)) {
+      spin_unlock_bh(&nat_bucket_locks[NAT_SNAT][bkt]);
+      kmem_cache_free(nat_cache, entry);
+      return NULL;
+    }
+
+    if (unlikely(percpu_counter_read(&nat_counters[NAT_SNAT]) >=
+                 fwopts.max_nat_entries)) {
+      spin_unlock_bh(&nat_bucket_locks[NAT_SNAT][bkt]);
+      kmem_cache_free(nat_cache, entry);
+      /* Warn the user on allocation failure */
+      int err;
+      struct response warn_resp = *resp;
+      struct info_flags warn_flags = *flags;
+      warn_flags.nat_max_entries = 1;
+      struct sk_buff *skb_to_user =
+          build_info_t_nlmsg(skb, flow, &warn_resp, &warn_flags, &err);
+      if (skb_to_user)
+        skb_send_to_user(skb_to_user, LISTENER_DATA);
+      return NULL;
+    }
+
+    ipfi_entry_hold(&entry->h); /* table ref */
+    hlist_add_head_rcu(&entry->h.hnode, &nat_hashtables[NAT_SNAT][bkt]);
+    percpu_counter_inc(&nat_counters[NAT_SNAT]);
+
+    spin_unlock_bh(&nat_bucket_locks[NAT_SNAT][bkt]);
   }
-  nat_counters[NAT_SNAT]++;
-  spin_unlock_bh(&nat_locks[NAT_SNAT]);
+
   ipfi_entry_arm_timer(&entry->h);
   return entry;
 }

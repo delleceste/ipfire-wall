@@ -12,6 +12,7 @@
 #include "ipfire.h"
 #include "nat.h"
 #include <linux/bitops.h>
+#include <linux/gfp.h>
 #include <linux/hashtable.h>
 #include <linux/jhash.h>
 #include <linux/module.h>
@@ -22,14 +23,16 @@
 
 /* Hash tables: two arrays of hlist_head, one per nat_type */
 /* (defined in common/globals.c via globals.h extern) */
-spinlock_t nat_locks[2];
-unsigned int nat_counters[2];
+spinlock_t nat_bucket_locks[2][1 << NAT_HASH_BITS];
+struct percpu_counter nat_counters[2];
 struct kmem_cache *nat_cache;
 
 void fini_nat_tables(void) {
   int s, d;
   s = free_nat_tables(NAT_SNAT);
   d = free_nat_tables(NAT_DNAT);
+  percpu_counter_destroy(&nat_counters[NAT_SNAT]);
+  percpu_counter_destroy(&nat_counters[NAT_DNAT]);
   IPFI_PRINTK("IPFIRE: NAT tables freed: snat=%d dnat=%d\n", s, d);
   /* kmem_cache_destroy deferred to ipfire.c::fini() after
    * destroy_workqueue + rcu_barrier ensure all kfree callbacks ran. */
@@ -49,10 +52,15 @@ int init_nat_tables(void) {
       INIT_HLIST_HEAD(&nat_hashtables[NAT_DNAT][i]);
     }
   }
-  spin_lock_init(&nat_locks[NAT_SNAT]);
-  spin_lock_init(&nat_locks[NAT_DNAT]);
-  nat_counters[NAT_SNAT] = 0;
-  nat_counters[NAT_DNAT] = 0;
+  {
+    unsigned int i;
+    for (i = 0; i < (1 << NAT_HASH_BITS); i++) {
+      spin_lock_init(&nat_bucket_locks[NAT_SNAT][i]);
+      spin_lock_init(&nat_bucket_locks[NAT_DNAT][i]);
+    }
+  }
+  percpu_counter_init(&nat_counters[NAT_SNAT], 0, GFP_KERNEL);
+  percpu_counter_init(&nat_counters[NAT_DNAT], 0, GFP_KERNEL);
   return 0;
 }
 
@@ -111,7 +119,7 @@ int fill_nat_entry_fields(struct nat_table *entry, const struct sk_buff *skb,
   entry->nolog = rule->nflags.nolog;
   entry->external = flags->external;
   entry->rule_id = resp->rule_id;
-  entry->position = nat_counters[type];
+  entry->position = percpu_counter_read(&nat_counters[type]);
 
   if (flow->in)
     strncpy(entry->in_devname, flow->in->name, IFNAMSIZ);
@@ -160,10 +168,21 @@ void handle_nat_entry_timeout(struct timer_list *t) {
   struct nat_table *nt = timer_container_of(nt, t, h.timer);
   struct ipfi_entry_head *h = &nt->h;
   enum nat_type type = nt->type;
+  u32 key;
+  unsigned int bkt;
 
-  spin_lock_bh(&nat_locks[type]);
+  if (type == NAT_SNAT) {
+    key = get_snat_hash(nt->new_addr, nt->new_port, nt->old_daddr,
+                        nt->old_dport, nt->protocol);
+  } else {
+    key = get_dnat_hash(nt->old_saddr, nt->old_sport, nt->new_addr,
+                        nt->new_port, nt->protocol);
+  }
+  bkt = key & ((1 << NAT_HASH_BITS) - 1);
+
+  spin_lock_bh(&nat_bucket_locks[type][bkt]);
   ipfi_entry_remove(h, &nat_counters[type]); /* puts internally if winner */
-  spin_unlock_bh(&nat_locks[type]);
+  spin_unlock_bh(&nat_bucket_locks[type][bkt]);
 }
 
 /* ---- Forward match (for early lookup in existing sessions) ---- */
@@ -234,6 +253,7 @@ struct nat_table *lookup_nat_forward(const struct sk_buff *skb,
 /* ---- Flush ---- */
 
 int free_nat_tables(enum nat_type type) {
-  return ipfi_table_flush_hash(nat_hashtables[type], 1 << NAT_HASH_BITS,
-                               &nat_locks[type], &nat_counters[type]);
+  return ipfi_table_flush_hash_bucketed(
+      nat_hashtables[type], 1 << NAT_HASH_BITS, nat_bucket_locks[type],
+      &nat_counters[type]);
 }

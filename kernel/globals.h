@@ -80,7 +80,7 @@ extern struct hlist_head state_hashtable[1 << STATE_HASH_BITS];
 #endif
 extern struct hlist_head nat_hashtables[2][1 << NAT_HASH_BITS];
 /* Counters shared between list and hash modes */
-extern unsigned int nat_counters[2];
+extern struct percpu_counter nat_counters[2];
 
 /* Log info — active_logi_list kept for LRU eviction even in hash mode */
 extern struct list_head active_logi_list;
@@ -91,10 +91,11 @@ extern struct hlist_head loginfo_hashtable[1 << LOG_HASH_BITS];
 
 /* Counters */
 extern unsigned int table_id;
-extern unsigned int state_tables_counter;
-#define dnatted_entry_counter nat_counters[NAT_DNAT]
-#define snatted_entry_counter nat_counters[NAT_SNAT]
-extern unsigned int loginfo_entry_counter;
+extern struct percpu_counter state_tables_counter;
+/* Inline macros to directly read for conditionals */
+#define get_dnatted_count() percpu_counter_read(&nat_counters[NAT_DNAT])
+#define get_snatted_count() percpu_counter_read(&nat_counters[NAT_SNAT])
+extern struct percpu_counter loginfo_entry_counter;
 
 /* Timeouts and Limits */
 extern unsigned int state_lifetime;
@@ -112,10 +113,8 @@ extern unsigned int moderate_print_limit[MAXMODERATE_ARGS];
 
 /* Locks */
 extern spinlock_t rulelist_lock;
-extern spinlock_t state_list_lock;
+extern spinlock_t state_bucket_locks[1 << STATE_HASH_BITS];
 extern spinlock_t loginfo_list_lock;
-#define snat_list_lock nat_locks[NAT_SNAT]
-#define dnat_list_lock nat_locks[NAT_DNAT]
 extern struct workqueue_struct *ipfire_wq;
 
 /* Other */

@@ -60,6 +60,7 @@
 #include <linux/bitops.h>
 #include <linux/jiffies.h>
 #include <linux/list.h>
+#include <linux/percpu_counter.h>
 #include <linux/rculist.h>
 #include <linux/slab.h>
 #include <linux/spinlock.h>
@@ -152,13 +153,14 @@ void ipfi_entry_update_timer(struct ipfi_entry_head *h, int proto, int state) {
  * CRITICAL: test_and_set_bit(REMOVED) MUST happen BEFORE the del_rcu call.
  * Only the thread that successfully sets the bit unlinks the entry.
  */
-void ipfi_entry_remove(struct ipfi_entry_head *h, unsigned int *counter) {
+void ipfi_entry_remove(struct ipfi_entry_head *h,
+                       struct percpu_counter *counter) {
   if (test_and_set_bit(IPFI_ENTRY_REMOVED, &h->status))
     return; /* loser: complete no-op */
 
   /* Entries are tracked by hnode in hash mode */
   hlist_del_rcu(&h->hnode);
-  (*counter)--;
+  percpu_counter_dec(counter);
 
   /*
    * Winner always puts. queue_work() is safe from BH-disabled spinlock
@@ -173,13 +175,13 @@ void ipfi_entry_remove(struct ipfi_entry_head *h, unsigned int *counter) {
  * ============================================================ */
 
 int ipfi_table_flush_all(struct list_head *list, spinlock_t *lock,
-                         unsigned int *counter) {
+                         struct percpu_counter *counter) {
   struct ipfi_entry_head *h, *tmp;
   int count = 0;
 
   spin_lock_bh(lock);
-  count = *counter;
-  *counter = 0;
+  count = percpu_counter_sum(counter);
+  percpu_counter_set(counter, 0);
 
   list_for_each_entry_safe(h, tmp, list, lnode) {
     if (!test_and_set_bit(IPFI_ENTRY_REMOVED, &h->status)) {
@@ -207,7 +209,7 @@ int ipfi_table_flush_all(struct list_head *list, spinlock_t *lock,
  * Process-context only (sleepable, calls queue_work via ipfi_entry_put).
  */
 int ipfi_table_flush_hash(struct hlist_head *ht, unsigned int nbuckets,
-                          spinlock_t *lock, unsigned int *counter) {
+                          spinlock_t *lock, struct percpu_counter *counter) {
   struct ipfi_entry_head *h;
   struct hlist_node *tmp;
   unsigned int bkt;
@@ -226,9 +228,37 @@ int ipfi_table_flush_hash(struct hlist_head *ht, unsigned int nbuckets,
       }
     }
   }
-  count = *counter;
-  *counter = 0;
+  count = percpu_counter_sum(counter);
+  percpu_counter_set(counter, 0);
   spin_unlock_bh(lock);
+
+  return count;
+}
+
+int ipfi_table_flush_hash_bucketed(struct hlist_head *ht, unsigned int nbuckets,
+                                   spinlock_t *locks,
+                                   struct percpu_counter *counter) {
+  struct ipfi_entry_head *h;
+  struct hlist_node *tmp;
+  unsigned int bkt;
+  int count;
+
+  for (bkt = 0; bkt < nbuckets; bkt++) {
+    spin_lock_bh(&locks[bkt]);
+    hlist_for_each_entry_safe(h, tmp, &ht[bkt], hnode) {
+      if (!test_and_set_bit(IPFI_ENTRY_REMOVED, &h->status)) {
+        hlist_del_rcu(&h->hnode);
+        ipfi_entry_put(h);
+      }
+    }
+    spin_unlock_bh(&locks[bkt]);
+  }
+
+  /* Since we don't have a global lock during flush, we just sum up what's left
+   * and reset. This is typically used during unload where traffic flow is
+   * stopped anyway. */
+  count = percpu_counter_sum(counter);
+  percpu_counter_set(counter, 0);
 
   return count;
 }

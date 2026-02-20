@@ -111,9 +111,9 @@ LIST_HEAD(active_logi_list);
 
 /* Counters */
 unsigned int table_id = 0;
-unsigned int state_tables_counter = 0;
+struct percpu_counter state_tables_counter;
 /* NAT counters now in nat_table.c: nat_counters[] */
-unsigned int loginfo_entry_counter = 0;
+struct percpu_counter loginfo_entry_counter;
 
 /* Timeouts and Limits */
 unsigned int state_lifetime = 432000; /* 5 days in seconds */
@@ -137,7 +137,7 @@ unsigned int moderate_print_limit[MAXMODERATE_ARGS];
 // This is the blessed way to define a global or file-scope spinlock.
 //
 DEFINE_SPINLOCK(rulelist_lock);
-DEFINE_SPINLOCK(state_list_lock);
+spinlock_t state_bucket_locks[1 << STATE_HASH_BITS];
 DEFINE_SPINLOCK(loginfo_list_lock);
 /* NAT locks now in nat_table.c: nat_locks[] */
 struct workqueue_struct *ipfire_wq = NULL;
