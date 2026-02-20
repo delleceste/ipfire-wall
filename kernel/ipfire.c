@@ -542,8 +542,11 @@ unsigned int process(void *priv, struct sk_buff *skb,
   // malformed packet or unsupported protocol
   if (check_headers(skb) < 0)
     return NF_DROP;
-  bool no_nat = (get_dnatted_count() == 0 && get_snatted_count() == 0) ||
-                (fwopts.masquerade == 0 && fwopts.nat == 0);
+  bool no_nat = (fwopts.masquerade == 0 && fwopts.nat == 0) ||
+                (list_empty(&translation_pre.list) &&
+                 list_empty(&translation_post.list) &&
+                 list_empty(&translation_out.list) &&
+                 get_dnatted_count() == 0 && get_snatted_count() == 0);
 
   switch (hooknum) {
   case NF_IP_PRE_ROUTING:
@@ -627,12 +630,6 @@ int ipfi_pre_process(struct sk_buff *skb, const ipfi_flow *flow) {
    * errors
    */
   verdict = NF_ACCEPT;
-  /* nat and masquerade options disabled: return NF_ACCEPT in pre process */
-  if ((fwopts.masquerade == 0) && (fwopts.nat == 0) &&
-      get_dnatted_count() == 0 && get_snatted_count() == 0) {
-    return NF_ACCEPT;
-  }
-
   /* MASQUERADE or NAT are enabled: go on! */
 
   /* No more kmalloc for ipfire_info_t. We use stack-based flags and response.
@@ -716,11 +713,6 @@ int ipfi_post_process(struct sk_buff *skb, const ipfi_flow *flow) {
    * So don't call update_kernel_stats().
    */
   kstats.post_rcv++;
-  /* masquerade and NAT disabled: nothing to do. We accept here */
-  if ((fwopts.masquerade == 0) && (fwopts.nat == 0) &&
-      get_dnatted_count() == 0 && get_snatted_count() == 0)
-    return NF_ACCEPT;
-
   /* No more kmalloc for ipfire_info_t. */
 
   /* MASQUERADE and SNAT now take components directly. No
