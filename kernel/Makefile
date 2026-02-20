@@ -93,16 +93,20 @@ $(info  )
 
 ccflags-y += -I$(src) -I$(src)/../..
 
-
 else
 KDIR	:= /lib/modules/$(shell uname -r)/build
+
+# Read version and codename from project root
+MODULE_VERSION = $(shell cat $(PWD)/../VERSION)
+MODULE_CODENAME = $(shell cat $(PWD)/../CODENAME)
+
 PWD	:= $(shell pwd)
 BUILD_DIR_ABS := $(PWD)/$(BUILD_DIR)
 
 all:
 	@mkdir -p $(BUILD_DIR)
 	@for dir in $(SUBDIRS); do mkdir -p $(BUILD_DIR)/$$dir; done
-	@printf "/* Compilation system and compilation date.\n * Written by Makefile */\n#define _BUILD_DATE \"%s\"\n#define _BUILD_SYS \"%s\"\n\n" "`date`" "`uname -sro`" > build.h
+	@printf "/* Compilation system and compilation date.\n * Written by Makefile */\n#define _BUILD_VERSION \"%s\"\n#define _BUILD_CODENAME \"%s\"\n#define _BUILD_DATE \"%s\"\n#define _BUILD_SYS \"%s\"\n\n" "$(MODULE_VERSION)" "$(MODULE_CODENAME)" "`date`" "`uname -sro`" > build.h
 	@# Create symlinks for root .c and .h files
 	@for f in *.[ch]; do \
 		if [ -f "$$f" ]; then \
