@@ -28,35 +28,7 @@ UDP:
 
 on host `dal`
 
-> iperf3 -c dal.elettra.eu  -p 5201 -u -b 100M -t 10
-
-##### without 
-
-```
-[ ID] Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
-[  5]   0.00-10.00  sec   119 MBytes   100 Mbits/sec  0.000 ms  0/86336 (0%)  sender
-[  5]   0.00-10.00  sec   119 MBytes   100 Mbits/sec  0.005 ms  0/86336 (0%)  receiver
-```
-
-##### with
-
-```
-[ ID] Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
-[  5]   0.00-10.00  sec   119 MBytes   100 Mbits/sec  0.000 ms  0/86336 (0%)  sender
-[  5]   0.00-10.00  sec   119 MBytes   100 Mbits/sec  0.006 ms  0/86336 (0%)  receiver
-```
-
-Test #2
-
-```
-[ ID] Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
-[  5]   0.00-10.00  sec   119 MBytes   100 Mbits/sec  0.000 ms  0/86336 (0%)  sender
-[  5]   0.00-10.00  sec   119 MBytes   100 Mbits/sec  0.001 ms  0/86336 (0%)  receiver
-```
-
-What to measure: throughput, packet loss (UDP), jitter (UDP), basic CPU usage.
-
-## 2 MODERATE TEST – multiple streams / bigger bandwidth
+## 1 MODERATE TEST – multiple streams / somehow big bandwidth
 
 Goal: simulate heavier use, closer to real-world load.
 
@@ -75,6 +47,8 @@ Sender:
 -P 4 → 4 parallel TCP streams; better saturates link
 
 ##### without 
+
+Three tests have been made, with equivalent results:
 
 Test #1
 
@@ -128,42 +102,59 @@ Test #3
 
 > iperf3 -c taeyang.elettra.eu  -p 5201 -t 30 -P 4
 
-Test #1
+You can see the four parallel flows (look for SYN flag)
 
 ```
-[OK] OUT: [eno1] |TCP| 192.168.205.245:42278-->192.168.205.25:targus-getdata1 |S| [me -> all the world!]
-[OK] IN:  [eno1] |TCP| 192.168.205.25:targus-getdata1-->192.168.205.245:42278 |S|A|SETUP OK [me -> all the world!]
-[OK] OUT: [eno1] |TCP| 192.168.205.245:42278-->192.168.205.25:targus-getdata1 |A|EST [me -> all the world!]
-[OK] OUT: [eno1] |TCP| 192.168.205.245:42278-->192.168.205.25:targus-getdata1 |P|A|EST [me -> all the world!]
-[OK] IN:  [eno1] |TCP| 192.168.205.25:targus-getdata1-->192.168.205.245:42278 |A|EST [me -> all the world!]
-[OK] OUT: [eno1] |TCP| 192.168.205.245:42294-->192.168.205.25:targus-getdata1 |S| [me -> all the world!]
-[OK] IN:  [eno1] |TCP| 192.168.205.25:targus-getdata1-->192.168.205.245:42294 |S|A|SETUP OK [me -> all the world!]
-[OK] OUT: [eno1] |TCP| 192.168.205.245:42294-->192.168.205.25:targus-getdata1 |A|EST [me -> all the world!]
-[OK] OUT: [eno1] |TCP| 192.168.205.245:42294-->192.168.205.25:targus-getdata1 |P|A|EST [me -> all the world!]
-[OK] IN:  [eno1] |TCP| 192.168.205.25:targus-getdata1-->192.168.205.245:42294 |A|EST [me -> all the world!]
-[OK] OUT: [eno1] |TCP| 192.168.205.245:42296-->192.168.205.25:targus-getdata1 |S| [me -> all the world!]
-[OK] IN:  [eno1] |TCP| 192.168.205.25:targus-getdata1-->192.168.205.245:42296 |S|A|SETUP OK [me -> all the world!]
-[OK] OUT: [eno1] |TCP| 192.168.205.245:42296-->192.168.205.25:targus-getdata1 |A|EST [me -> all the world!]
-[OK] OUT: [eno1] |TCP| 192.168.205.245:42296-->192.168.205.25:targus-getdata1 |P|A|EST [me -> all the world!]
-[OK] IN:  [eno1] |TCP| 192.168.205.25:targus-getdata1-->192.168.205.245:42296 |A|EST [me -> all the world!]
-[OK] OUT: [eno1] |TCP| 192.168.205.245:42308-->192.168.205.25:targus-getdata1 |S| [me -> all the world!]
+[OK] OUT: [eno1] |TCP| 192.168.205.245:41576-->192.168.205.25:targus-getdata1 |S| [me -> all the world!]
+[OK] IN:  [eno1] |TCP| 192.168.205.25:targus-getdata1-->192.168.205.245:41576 |S|A|SETUP OK [me -> all the world!]
+[OK] OUT: [eno1] |TCP| 192.168.205.245:41576-->192.168.205.25:targus-getdata1 |A|EST [me -> all the world!]
+[OK] OUT: [eno1] |TCP| 192.168.205.245:41576-->192.168.205.25:targus-getdata1 |P|A|EST [me -> all the world!]
+[OK] IN:  [eno1] |TCP| 192.168.205.25:targus-getdata1-->192.168.205.245:41576 |A|EST [me -> all the world!]
+[OK] IN:  [eno1] |TCP| 192.168.205.25:targus-getdata1-->192.168.205.245:41576 |P|A|EST [me -> all the world!]
+[OK] OUT: [eno1] |TCP| 192.168.205.245:41588-->192.168.205.25:targus-getdata1 |S| [me -> all the world!]
+[OK] IN:  [eno1] |TCP| 192.168.205.25:targus-getdata1-->192.168.205.245:41588 |S|A|SETUP OK [me -> all the world!]
+[OK] OUT: [eno1] |TCP| 192.168.205.245:41588-->192.168.205.25:targus-getdata1 |A|EST [me -> all the world!]
+[OK] OUT: [eno1] |TCP| 192.168.205.245:41588-->192.168.205.25:targus-getdata1 |P|A|EST [me -> all the world!]
+[OK] IN:  [eno1] |TCP| 192.168.205.25:targus-getdata1-->192.168.205.245:41588 |A|EST [me -> all the world!]
+[OK] OUT: [eno1] |TCP| 192.168.205.245:41602-->192.168.205.25:targus-getdata1 |S| [me -> all the world!]
+[OK] IN:  [eno1] |TCP| 192.168.205.25:targus-getdata1-->192.168.205.245:41602 |S|A|SETUP OK [me -> all the world!]
+[OK] OUT: [eno1] |TCP| 192.168.205.245:41602-->192.168.205.25:targus-getdata1 |A|EST [me -> all the world!]
+[OK] OUT: [eno1] |TCP| 192.168.205.245:41602-->192.168.205.25:targus-getdata1 |P|A|EST [me -> all the world!]
+[OK] IN:  [eno1] |TCP| 192.168.205.25:targus-getdata1-->192.168.205.245:41602 |A|EST [me -> all the world!]
+[OK] OUT: [eno1] |TCP| 192.168.205.245:41608-->192.168.205.25:targus-getdata1 |S| [me -> all the world!]
 ```
-
 
 Test #1
 
 ```
 [ ID] Interval           Transfer     Bitrate         Retr
-[  5]   0.00-30.00  sec   832 MBytes   233 Mbits/sec    0            sender
-[  5]   0.00-30.00  sec   830 MBytes   232 Mbits/sec                  receiver
-[  7]   0.00-30.00  sec   832 MBytes   233 Mbits/sec    0            sender
-[  7]   0.00-30.00  sec   830 MBytes   232 Mbits/sec                  receiver
-[  9]   0.00-30.00  sec   832 MBytes   233 Mbits/sec    0            sender
-[  9]   0.00-30.00  sec   830 MBytes   232 Mbits/sec                  receiver
-[ 11]   0.00-30.00  sec   832 MBytes   233 Mbits/sec    0            sender
-[ 11]   0.00-30.00  sec   830 MBytes   232 Mbits/sec                  receiver
-[SUM]   0.00-30.00  sec  3.25 GBytes   930 Mbits/sec    0             sender
-[SUM]   0.00-30.00  sec  3.24 GBytes   929 Mbits/sec                  receiver
+[  5]   0.00-30.00  sec   833 MBytes   233 Mbits/sec    0            sender
+[  5]   0.00-30.00  sec   832 MBytes   233 Mbits/sec                  receiver
+[  7]   0.00-30.00  sec   833 MBytes   233 Mbits/sec    0            sender
+[  7]   0.00-30.00  sec   832 MBytes   233 Mbits/sec                  receiver
+[  9]   0.00-30.00  sec   833 MBytes   233 Mbits/sec    0            sender
+[  9]   0.00-30.00  sec   832 MBytes   233 Mbits/sec                  receiver
+[ 11]   0.00-30.00  sec   833 MBytes   233 Mbits/sec    0            sender
+[ 11]   0.00-30.00  sec   832 MBytes   233 Mbits/sec                  receiver
+[SUM]   0.00-30.00  sec  3.25 GBytes   932 Mbits/sec    0             sender
+[SUM]   0.00-30.00  sec  3.25 GBytes   930 Mbits/sec                  receiver
+```
+
+
+Test #2
+
+```
+[ ID] Interval           Transfer     Bitrate         Retr
+[  5]   0.00-30.00  sec   833 MBytes   233 Mbits/sec    0            sender
+[  5]   0.00-30.00  sec   832 MBytes   233 Mbits/sec                  receiver
+[  7]   0.00-30.00  sec   833 MBytes   233 Mbits/sec    0            sender
+[  7]   0.00-30.00  sec   832 MBytes   233 Mbits/sec                  receiver
+[  9]   0.00-30.00  sec   833 MBytes   233 Mbits/sec    0            sender
+[  9]   0.00-30.00  sec   832 MBytes   233 Mbits/sec                  receiver
+[ 11]   0.00-30.00  sec   833 MBytes   233 Mbits/sec    0            sender
+[ 11]   0.00-30.00  sec   832 MBytes   233 Mbits/sec                  receiver
+[SUM]   0.00-30.00  sec  3.25 GBytes   932 Mbits/sec    0             sender
+[SUM]   0.00-30.00  sec  3.25 GBytes   930 Mbits/sec                  receiver
 ```
 
 Test #2
@@ -186,16 +177,16 @@ Test #3
 
 ```
 [ ID] Interval           Transfer     Bitrate         Retr
-[  5]   0.00-30.00  sec   832 MBytes   233 Mbits/sec    0            sender
-[  5]   0.00-30.00  sec   831 MBytes   232 Mbits/sec                  receiver
-[  7]   0.00-30.00  sec   832 MBytes   233 Mbits/sec    0            sender
-[  7]   0.00-30.00  sec   831 MBytes   232 Mbits/sec                  receiver
-[  9]   0.00-30.00  sec   832 MBytes   233 Mbits/sec    0            sender
-[  9]   0.00-30.00  sec   831 MBytes   232 Mbits/sec                  receiver
-[ 11]   0.00-30.00  sec   832 MBytes   233 Mbits/sec    0            sender
-[ 11]   0.00-30.00  sec   831 MBytes   232 Mbits/sec                  receiver
-[SUM]   0.00-30.00  sec  3.25 GBytes   931 Mbits/sec    0             sender
-[SUM]   0.00-30.00  sec  3.24 GBytes   929 Mbits/sec                  receiver
+[  5]   0.00-30.00  sec   833 MBytes   233 Mbits/sec    0            sender
+[  5]   0.00-30.00  sec   832 MBytes   233 Mbits/sec                  receiver
+[  7]   0.00-30.00  sec   833 MBytes   233 Mbits/sec    0            sender
+[  7]   0.00-30.00  sec   832 MBytes   233 Mbits/sec                  receiver
+[  9]   0.00-30.00  sec   833 MBytes   233 Mbits/sec    0            sender
+[  9]   0.00-30.00  sec   832 MBytes   233 Mbits/sec                  receiver
+[ 11]   0.00-30.00  sec   833 MBytes   233 Mbits/sec    0            sender
+[ 11]   0.00-30.00  sec   832 MBytes   233 Mbits/sec                  receiver
+[SUM]   0.00-30.00  sec  3.25 GBytes   932 Mbits/sec    0             sender
+[SUM]   0.00-30.00  sec  3.25 GBytes   931 Mbits/sec                  receiver
 ```
 
 ##### Old legacy version
@@ -223,12 +214,12 @@ UDP bandwidth -b increased; watch for packet drops
 
 ```
 [ ID] Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
-[  5]   0.00-30.00  sec  1.75 GBytes   500 Mbits/sec  0.000 ms  0/1294936 (0%)  sender
-[  5]   0.00-31.63  sec  1.60 GBytes   436 Mbits/sec  0.012 ms  67/1189648 (0.0056%)  receiver
+[  5]   0.00-30.00  sec  1.75 GBytes   500 Mbits/sec  0.000 ms  0/1294938 (0%)  sender
+[  5]   0.00-30.00  sec  1.75 GBytes   500 Mbits/sec  0.013 ms  0/1294938 (0%)  receiver
 ```
 
 
-Test #2
+###### Test #2
 
 ```
 [ ID] Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
@@ -236,7 +227,7 @@ Test #2
 [  5]   0.00-30.00  sec  1.75 GBytes   500 Mbits/sec  0.013 ms  0/1294937 (0%)  receiver
 ```
 
-Test #3
+###### Test #3
 
 ```
 [ ID] Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
@@ -246,33 +237,34 @@ Test #3
 
 ##### with
 
-```
-[OK] OUT: [eno1] |UDP| 192.168.205.245:34283-->192.168.205.25:targus-getdata1  [me -> the UDP world]
-[OK] IN:  [eno1] |UDP| 192.168.205.25:targus-getdata1-->192.168.205.245:34283 STREAM [me -> the UDP world]
-[OK] OUT: [eno1] |UDP| 192.168.205.245:34283-->192.168.205.25:targus-getdata1 STREAM [me -> the UDP world]
-```
+###### Test #1
 
 ```
-[ ID] Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
-[  5]   0.00-30.00  sec  1.75 GBytes   500 Mbits/sec  0.000 ms  0/1294921 (0%)  sender
-[  5]   0.00-30.00  sec  1.75 GBytes   500 Mbits/sec  0.011 ms  295/1294921 (0.023%)  receiver
+[OK] OUT: [eno1] |UDP| 192.168.205.245:41026-->192.168.205.25:targus-getdata1  [me -> the UDP world]
+[OK] IN:  [eno1] |UDP| 192.168.205.25:targus-getdata1-->192.168.205.245:41026 STREAM [me -> the UDP world]
+[OK] OUT: [eno1] |UDP| 192.168.205.245:41026-->192.168.205.25:targus-getdata1 STREAM [me -> the UDP world]
 ```
-
-
-Test #2
-
-```
-[ ID] Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
-[  5]   0.00-30.00  sec  1.75 GBytes   500 Mbits/sec  0.000 ms  0/1294940 (0%)  sender
-[  5]   0.00-30.00  sec  1.75 GBytes   500 Mbits/sec  0.032 ms  12/1294940 (0.00093%)  receiver
-```
-
-Test #3
 
 ```
 [ ID] Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
 [  5]   0.00-30.00  sec  1.75 GBytes   500 Mbits/sec  0.000 ms  0/1294935 (0%)  sender
-[  5]   0.00-30.00  sec  1.75 GBytes   500 Mbits/sec  0.019 ms  55/1294935 (0.0042%)  receiver
+[  5]   0.00-30.00  sec  1.75 GBytes   500 Mbits/sec  0.042 ms  0/1294933 (0%)  receiver
+```
+
+###### Test #2
+
+```
+[ ID] Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
+[  5]   0.00-30.00  sec  1.75 GBytes   500 Mbits/sec  0.000 ms  0/1294939 (0%)  sender
+[  5]   0.00-30.00  sec  1.75 GBytes   500 Mbits/sec  0.016 ms  0/1294939 (0%)  receiver
+```
+
+###### Test #3
+
+```
+[ ID] Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
+[  5]   0.00-30.00  sec  1.75 GBytes   500 Mbits/sec  0.000 ms  0/1294937 (0%)  sender
+[  5]   0.00-30.00  sec  1.75 GBytes   500 Mbits/sec  0.011 ms  0/1294937 (0%)  receiver
 ```
 
 #### Legacy IPFIRE-wall
@@ -301,24 +293,24 @@ Test #1
 
 ```
 [ ID] Interval           Transfer     Bitrate         Retr
-[  5]   0.00-60.00  sec   824 MBytes   115 Mbits/sec  4547            sender
-[  5]   0.00-60.00  sec   823 MBytes   115 Mbits/sec                  receiver
-[  7]   0.00-60.00  sec   824 MBytes   115 Mbits/sec  4562            sender
-[  7]   0.00-60.00  sec   823 MBytes   115 Mbits/sec                  receiver
-[  9]   0.00-60.00  sec   824 MBytes   115 Mbits/sec  4583            sender
-[  9]   0.00-60.00  sec   823 MBytes   115 Mbits/sec                  receiver
-[ 11]   0.00-60.00  sec   824 MBytes   115 Mbits/sec  4720            sender
-[ 11]   0.00-60.00  sec   823 MBytes   115 Mbits/sec                  receiver
-[ 13]   0.00-60.00  sec   824 MBytes   115 Mbits/sec  4539            sender
-[ 13]   0.00-60.00  sec   823 MBytes   115 Mbits/sec                  receiver
-[ 15]   0.00-60.00  sec   824 MBytes   115 Mbits/sec  4712            sender
-[ 15]   0.00-60.00  sec   823 MBytes   115 Mbits/sec                  receiver
-[ 17]   0.00-60.00  sec   824 MBytes   115 Mbits/sec  4495            sender
-[ 17]   0.00-60.00  sec   823 MBytes   115 Mbits/sec                  receiver
-[ 19]   0.00-60.00  sec   824 MBytes   115 Mbits/sec  4581            sender
-[ 19]   0.00-60.00  sec   823 MBytes   115 Mbits/sec                  receiver
-[SUM]   0.00-60.00  sec  6.44 GBytes   921 Mbits/sec  36739             sender
-[SUM]   0.00-60.00  sec  6.43 GBytes   920 Mbits/sec                  receiver
+[  5]   0.00-60.00  sec   834 MBytes   117 Mbits/sec  4505            sender
+[  5]   0.00-60.00  sec   833 MBytes   116 Mbits/sec                  receiver
+[  7]   0.00-60.00  sec   834 MBytes   117 Mbits/sec  4424            sender
+[  7]   0.00-60.00  sec   833 MBytes   116 Mbits/sec                  receiver
+[  9]   0.00-60.00  sec   834 MBytes   117 Mbits/sec  4602            sender
+[  9]   0.00-60.00  sec   833 MBytes   116 Mbits/sec                  receiver
+[ 11]   0.00-60.00  sec   834 MBytes   117 Mbits/sec  4538            sender
+[ 11]   0.00-60.00  sec   833 MBytes   116 Mbits/sec                  receiver
+[ 13]   0.00-60.00  sec   834 MBytes   117 Mbits/sec  4590            sender
+[ 13]   0.00-60.00  sec   833 MBytes   116 Mbits/sec                  receiver
+[ 15]   0.00-60.00  sec   833 MBytes   117 Mbits/sec  4522            sender
+[ 15]   0.00-60.00  sec   833 MBytes   116 Mbits/sec                  receiver
+[ 17]   0.00-60.00  sec   833 MBytes   116 Mbits/sec  4461            sender
+[ 17]   0.00-60.00  sec   833 MBytes   116 Mbits/sec                  receiver
+[ 19]   0.00-60.00  sec   834 MBytes   117 Mbits/sec  4525            sender
+[ 19]   0.00-60.00  sec   833 MBytes   116 Mbits/sec                  receiver
+[SUM]   0.00-60.00  sec  6.51 GBytes   932 Mbits/sec  36167             sender
+[SUM]   0.00-60.00  sec  6.50 GBytes   931 Mbits/sec                  receiver
 ```
 
 Test #2
@@ -349,98 +341,107 @@ Test #3
 
 ```
 [ ID] Interval           Transfer     Bitrate         Retr
-[  5]   0.00-60.00  sec   828 MBytes   116 Mbits/sec  4703            sender
-[  5]   0.00-60.00  sec   827 MBytes   116 Mbits/sec                  receiver
-[  7]   0.00-60.00  sec   828 MBytes   116 Mbits/sec  4672            sender
-[  7]   0.00-60.00  sec   827 MBytes   116 Mbits/sec                  receiver
-[  9]   0.00-60.00  sec   827 MBytes   116 Mbits/sec  4700            sender
-[  9]   0.00-60.00  sec   827 MBytes   116 Mbits/sec                  receiver
-[ 11]   0.00-60.00  sec   828 MBytes   116 Mbits/sec  4797            sender
-[ 11]   0.00-60.00  sec   827 MBytes   116 Mbits/sec                  receiver
-[ 13]   0.00-60.00  sec   828 MBytes   116 Mbits/sec  4604            sender
-[ 13]   0.00-60.00  sec   827 MBytes   116 Mbits/sec                  receiver
-[ 15]   0.00-60.00  sec   828 MBytes   116 Mbits/sec  4764            sender
-[ 15]   0.00-60.00  sec   827 MBytes   116 Mbits/sec                  receiver
-[ 17]   0.00-60.00  sec   828 MBytes   116 Mbits/sec  4690            sender
-[ 17]   0.00-60.00  sec   827 MBytes   116 Mbits/sec                  receiver
-[ 19]   0.00-60.00  sec   828 MBytes   116 Mbits/sec  4733            sender
-[ 19]   0.00-60.00  sec   827 MBytes   116 Mbits/sec                  receiver
-[SUM]   0.00-60.00  sec  6.47 GBytes   926 Mbits/sec  37663             sender
-[SUM]   0.00-60.00  sec  6.46 GBytes   925 Mbits/sec                  receiver
+[ ID] Interval           Transfer     Bitrate         Retr
+[  5]   0.00-60.00  sec   829 MBytes   116 Mbits/sec  4558            sender
+[  5]   0.00-60.00  sec   829 MBytes   116 Mbits/sec                  receiver
+[  7]   0.00-60.00  sec   830 MBytes   116 Mbits/sec  4579            sender
+[  7]   0.00-60.00  sec   829 MBytes   116 Mbits/sec                  receiver
+[  9]   0.00-60.00  sec   830 MBytes   116 Mbits/sec  4533            sender
+[  9]   0.00-60.00  sec   829 MBytes   116 Mbits/sec                  receiver
+[ 11]   0.00-60.00  sec   830 MBytes   116 Mbits/sec  4554            sender
+[ 11]   0.00-60.00  sec   829 MBytes   116 Mbits/sec                  receiver
+[ 13]   0.00-60.00  sec   830 MBytes   116 Mbits/sec  4491            sender
+[ 13]   0.00-60.00  sec   829 MBytes   116 Mbits/sec                  receiver
+[ 15]   0.00-60.00  sec   830 MBytes   116 Mbits/sec  4560            sender
+[ 15]   0.00-60.00  sec   829 MBytes   116 Mbits/sec                  receiver
+[ 17]   0.00-60.00  sec   830 MBytes   116 Mbits/sec  4494            sender
+[ 17]   0.00-60.00  sec   829 MBytes   116 Mbits/sec                  receiver
+[ 19]   0.00-60.00  sec   830 MBytes   116 Mbits/sec  4375            sender
+[ 19]   0.00-60.00  sec   829 MBytes   116 Mbits/sec                  receiver
+[SUM]   0.00-60.00  sec  6.48 GBytes   928 Mbits/sec  36144             sender
+[SUM]   0.00-60.00  sec  6.47 GBytes   927 Mbits/sec                  receiver
+
 ```
 
 ##### with
 
-Test #1
+> rc.ipfire start
+
+```
+starting IPFIRE: IPFIRE 1.99.9 "lin".
+```
+
+Test #1 with
 
 ```
 [ ID] Interval           Transfer     Bitrate         Retr
-[  5]   0.00-60.00  sec   827 MBytes   116 Mbits/sec  4711            sender
-[  5]   0.00-60.00  sec   826 MBytes   115 Mbits/sec                  receiver
-[  7]   0.00-60.00  sec   827 MBytes   116 Mbits/sec  4469            sender
-[  7]   0.00-60.00  sec   826 MBytes   115 Mbits/sec                  receiver
-[  9]   0.00-60.00  sec   827 MBytes   116 Mbits/sec  4577            sender
-[  9]   0.00-60.00  sec   826 MBytes   115 Mbits/sec                  receiver
-[ 11]   0.00-60.00  sec   827 MBytes   116 Mbits/sec  4639            sender
-[ 11]   0.00-60.00  sec   826 MBytes   115 Mbits/sec                  receiver
-[ 13]   0.00-60.00  sec   827 MBytes   116 Mbits/sec  4617            sender
-[ 13]   0.00-60.00  sec   826 MBytes   115 Mbits/sec                  receiver
-[ 15]   0.00-60.00  sec   827 MBytes   116 Mbits/sec  4696            sender
-[ 15]   0.00-60.00  sec   826 MBytes   115 Mbits/sec                  receiver
-[ 17]   0.00-60.00  sec   827 MBytes   116 Mbits/sec  4591            sender
-[ 17]   0.00-60.00  sec   826 MBytes   115 Mbits/sec                  receiver
-[ 19]   0.00-60.00  sec   827 MBytes   116 Mbits/sec  4759            sender
-[ 19]   0.00-60.00  sec   826 MBytes   115 Mbits/sec                  receiver
-[SUM]   0.00-60.00  sec  6.46 GBytes   925 Mbits/sec  37059             sender
-[SUM]   0.00-60.00  sec  6.45 GBytes   924 Mbits/sec                  receiver
+[  5]   0.00-60.00  sec   832 MBytes   116 Mbits/sec  4527            sender
+[  5]   0.00-60.00  sec   831 MBytes   116 Mbits/sec                  receiver
+[  7]   0.00-60.00  sec   832 MBytes   116 Mbits/sec  4501            sender
+[  7]   0.00-60.00  sec   831 MBytes   116 Mbits/sec                  receiver
+[  9]   0.00-60.00  sec   832 MBytes   116 Mbits/sec  4566            sender
+[  9]   0.00-60.00  sec   831 MBytes   116 Mbits/sec                  receiver
+[ 11]   0.00-60.00  sec   832 MBytes   116 Mbits/sec  4545            sender
+[ 11]   0.00-60.00  sec   831 MBytes   116 Mbits/sec                  receiver
+[ 13]   0.00-60.00  sec   832 MBytes   116 Mbits/sec  4589            sender
+[ 13]   0.00-60.00  sec   831 MBytes   116 Mbits/sec                  receiver
+[ 15]   0.00-60.00  sec   832 MBytes   116 Mbits/sec  4368            sender
+[ 15]   0.00-60.00  sec   831 MBytes   116 Mbits/sec                  receiver
+[ 17]   0.00-60.00  sec   832 MBytes   116 Mbits/sec  4486            sender
+[ 17]   0.00-60.00  sec   831 MBytes   116 Mbits/sec                  receiver
+[ 19]   0.00-60.00  sec   832 MBytes   116 Mbits/sec  4659            sender
+[ 19]   0.00-60.00  sec   831 MBytes   116 Mbits/sec                  receiver
+[SUM]   0.00-60.00  sec  6.50 GBytes   931 Mbits/sec  36241             sender
+[SUM]   0.00-60.00  sec  6.49 GBytes   930 Mbits/sec                  receiver
 ```
 
-Test #2
-
-```
-[ ID] Interval           Transfer     Bitrate         Retr
-[  5]   0.00-60.00  sec   828 MBytes   116 Mbits/sec  4626            sender
-[  5]   0.00-60.00  sec   826 MBytes   116 Mbits/sec                  receiver
-[  7]   0.00-60.00  sec   827 MBytes   116 Mbits/sec  4633            sender
-[  7]   0.00-60.00  sec   826 MBytes   116 Mbits/sec                  receiver
-[  9]   0.00-60.00  sec   827 MBytes   116 Mbits/sec  4753            sender
-[  9]   0.00-60.00  sec   826 MBytes   116 Mbits/sec                  receiver
-[ 11]   0.00-60.00  sec   828 MBytes   116 Mbits/sec  4693            sender
-[ 11]   0.00-60.00  sec   826 MBytes   116 Mbits/sec                  receiver
-[ 13]   0.00-60.00  sec   828 MBytes   116 Mbits/sec  4529            sender
-[ 13]   0.00-60.00  sec   826 MBytes   116 Mbits/sec                  receiver
-[ 15]   0.00-60.00  sec   827 MBytes   116 Mbits/sec  4622            sender
-[ 15]   0.00-60.00  sec   826 MBytes   116 Mbits/sec                  receiver
-[ 17]   0.00-60.00  sec   828 MBytes   116 Mbits/sec  4700            sender
-[ 17]   0.00-60.00  sec   826 MBytes   116 Mbits/sec                  receiver
-[ 19]   0.00-60.00  sec   827 MBytes   116 Mbits/sec  4612            sender
-[ 19]   0.00-60.00  sec   826 MBytes   116 Mbits/sec                  receiver
-[SUM]   0.00-60.00  sec  6.46 GBytes   925 Mbits/sec  37168             sender
-[SUM]   0.00-60.00  sec  6.46 GBytes   924 Mbits/sec                  receiver
-```
-
-Test #3
+Test #2 with
 
 ```
 [ ID] Interval           Transfer     Bitrate         Retr
-[  5]   0.00-60.00  sec   824 MBytes   115 Mbits/sec  4663            sender
-[  5]   0.00-60.00  sec   823 MBytes   115 Mbits/sec                  receiver
-[  7]   0.00-60.00  sec   824 MBytes   115 Mbits/sec  4776            sender
-[  7]   0.00-60.00  sec   823 MBytes   115 Mbits/sec                  receiver
-[  9]   0.00-60.00  sec   824 MBytes   115 Mbits/sec  4711            sender
-[  9]   0.00-60.00  sec   823 MBytes   115 Mbits/sec                  receiver
-[ 11]   0.00-60.00  sec   824 MBytes   115 Mbits/sec  4719            sender
-[ 11]   0.00-60.00  sec   823 MBytes   115 Mbits/sec                  receiver
-[ 13]   0.00-60.00  sec   824 MBytes   115 Mbits/sec  4688            sender
-[ 13]   0.00-60.00  sec   823 MBytes   115 Mbits/sec                  receiver
-[ 15]   0.00-60.00  sec   824 MBytes   115 Mbits/sec  4624            sender
-[ 15]   0.00-60.00  sec   823 MBytes   115 Mbits/sec                  receiver
-[ 17]   0.00-60.00  sec   824 MBytes   115 Mbits/sec  4624            sender
-[ 17]   0.00-60.00  sec   823 MBytes   115 Mbits/sec                  receiver
-[ 19]   0.00-60.00  sec   824 MBytes   115 Mbits/sec  4645            sender
-[ 19]   0.00-60.00  sec   823 MBytes   115 Mbits/sec                  receiver
-[SUM]   0.00-60.00  sec  6.44 GBytes   921 Mbits/sec  37450             sender
-[SUM]   0.00-60.00  sec  6.43 GBytes   920 Mbits/sec                  receiver
+[  5]   0.00-60.00  sec   832 MBytes   116 Mbits/sec  4563            sender
+[  5]   0.00-60.00  sec   831 MBytes   116 Mbits/sec                  receiver
+[  7]   0.00-60.00  sec   832 MBytes   116 Mbits/sec  4498            sender
+[  7]   0.00-60.00  sec   831 MBytes   116 Mbits/sec                  receiver
+[  9]   0.00-60.00  sec   832 MBytes   116 Mbits/sec  4527            sender
+[  9]   0.00-60.00  sec   831 MBytes   116 Mbits/sec                  receiver
+[ 11]   0.00-60.00  sec   832 MBytes   116 Mbits/sec  4479            sender
+[ 11]   0.00-60.00  sec   831 MBytes   116 Mbits/sec                  receiver
+[ 13]   0.00-60.00  sec   832 MBytes   116 Mbits/sec  4434            sender
+[ 13]   0.00-60.00  sec   831 MBytes   116 Mbits/sec                  receiver
+[ 15]   0.00-60.00  sec   832 MBytes   116 Mbits/sec  4542            sender
+[ 15]   0.00-60.00  sec   831 MBytes   116 Mbits/sec                  receiver
+[ 17]   0.00-60.00  sec   832 MBytes   116 Mbits/sec  4404            sender
+[ 17]   0.00-60.00  sec   831 MBytes   116 Mbits/sec                  receiver
+[ 19]   0.00-60.00  sec   832 MBytes   116 Mbits/sec  4609            sender
+[ 19]   0.00-60.00  sec   831 MBytes   116 Mbits/sec                  receiver
+[SUM]   0.00-60.00  sec  6.50 GBytes   930 Mbits/sec  36056             sender
+[SUM]   0.00-60.00  sec  6.49 GBytes   929 Mbits/sec                  receiver
+```
+
+Test #3 with
+
+```
+[ ID] Interval           Transfer     Bitrate         Retr
+[  5]   0.00-60.00  sec   950 MBytes   133 Mbits/sec  4427            sender
+[  5]   0.00-60.00  sec   949 MBytes   133 Mbits/sec                  receiver
+[  7]   0.00-60.00  sec   950 MBytes   133 Mbits/sec  4398            sender
+[  7]   0.00-60.00  sec   949 MBytes   133 Mbits/sec                  receiver
+[  9]   0.00-60.00  sec   950 MBytes   133 Mbits/sec  4375            sender
+[  9]   0.00-60.00  sec   949 MBytes   133 Mbits/sec                  receiver
+[ 11]   0.00-60.00  sec   950 MBytes   133 Mbits/sec  4476            sender
+[ 11]   0.00-60.00  sec   949 MBytes   133 Mbits/sec                  receiver
+[ 13]   0.00-60.00  sec   950 MBytes   133 Mbits/sec  4457            sender
+[ 13]   0.00-60.00  sec   949 MBytes   133 Mbits/sec                  receiver
+[ 15]   0.00-60.00  sec   950 MBytes   133 Mbits/sec  4458            sender
+[ 15]   0.00-60.00  sec   949 MBytes   133 Mbits/sec                  receiver
+[ 17]   0.00-60.00  sec   431 MBytes  60.2 Mbits/sec  3564            sender
+[ 17]   0.00-60.00  sec   430 MBytes  60.1 Mbits/sec                  receiver
+[ 19]   0.00-60.00  sec   520 MBytes  72.7 Mbits/sec  3970            sender
+[ 19]   0.00-60.00  sec   519 MBytes  72.6 Mbits/sec                  receiver
+[SUM]   0.00-60.00  sec  6.50 GBytes   930 Mbits/sec  34125             sender
+[SUM]   0.00-60.00  sec  6.49 GBytes   929 Mbits/sec                  receiver
+
 ```
 
 ##### Legacy ipfire-wall
@@ -470,7 +471,7 @@ Test #3
 
 ### UDP:
 
-iperf3 -c <receiver_ip> -p 5201 -u -b 2G -t 60
+iperf3 -c taeyang.elettra.eu -p 5201 -u -b 2G -t 60
 
 ##### without
 
@@ -478,8 +479,8 @@ Test #1
 
 ```
 [ ID] Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
-[  5]   0.00-60.00  sec  5.42 GBytes   776 Mbits/sec  0.000 ms  0/4021475 (0%)  sender
-[  5]   0.00-60.00  sec  5.42 GBytes   776 Mbits/sec  0.047 ms  1010/4021431 (0.025%)  receiver
+[  5]   0.00-60.00  sec  5.37 GBytes   768 Mbits/sec  0.000 ms  0/3980185 (0%)  sender
+[  5]   0.00-60.00  sec  5.37 GBytes   768 Mbits/sec  0.030 ms  520/3980151 (0.013%)  receiver
 ```
 
 Test #2
@@ -494,18 +495,18 @@ Test #3
 
 ```
 [ ID] Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
-[  5]   0.00-60.00  sec  5.41 GBytes   775 Mbits/sec  0.000 ms  0/4015225 (0%)  sender
-[  5]   0.00-60.00  sec  5.41 GBytes   775 Mbits/sec  0.019 ms  1209/4015220 (0.03%)  receiver
+[  5]   0.00-60.00  sec  5.46 GBytes   781 Mbits/sec  0.000 ms  0/4047697 (0%)  sender
+[  5]   0.00-60.00  sec  5.46 GBytes   781 Mbits/sec  0.031 ms  0/4047656 (0%)  receiver
 ```
 
-##### With
+##### With ipfire
 
 Test #1
 
 ```
 [ ID] Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
-[  5]   0.00-60.00  sec  5.35 GBytes   765 Mbits/sec  0.000 ms  0/3963938 (0%)  sender
-[  5]   0.00-60.00  sec  5.34 GBytes   765 Mbits/sec  0.013 ms  774/3963925 (0.02%)  receiver
+[  5]   0.00-60.00  sec  5.34 GBytes   765 Mbits/sec  0.000 ms  0/3962189 (0%)  sender
+[  5]   0.00-60.00  sec  5.34 GBytes   765 Mbits/sec  0.012 ms  91/3962173 (0.0023%)  receiver
 ```
 
 Test #2
