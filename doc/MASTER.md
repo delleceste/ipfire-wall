@@ -49,8 +49,8 @@ Welcome to the comprehensive technical documentation for the IPFire-Wall kernel 
 15. **[Sample Scenarios](15_Sample_Scenarios.md)**  
     *Network Address Translation, transparent proxying, and DNS interception flows.*
 
-16. **[Performance Benchmarks](16_Performance_Benchmarks.md)**  
-    *Latency and throughput overhead testing via bare-metal comparisons.*
+16. **[Performance Benchmarks & Test Setup](../test/README.md)**  
+    *Modern `iperf3` throughput testing, PPS (Small Packet Storm) apocalypse benchmarks, and network namespace lab setup.*
 
 ---
 
