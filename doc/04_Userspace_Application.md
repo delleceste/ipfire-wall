@@ -44,8 +44,8 @@ The application communicates with the kernel via Netlink sockets using the `IPFI
 | `-noservices` | Disable port-to-service name resolution. |
 | `-allstate` | Enable stateful tracking for ALL traffic, regardless of rule flags. |
 | `-mailer <V> <U>` | Send email summaries every `<V>` units of `<U>` (sec, min, hour, days). |
-| `-user` | Run with user-level privileges (Root only). |
-| `-nouser` | Disable user-level privilege mode. |
+| `-user` | Allow normal unprivileged users to define their own rules and interact with the firewall (Root only). |
+| `-nouser` | Restrict all firewall operations to the Root user. |
 
 ## 4.2. Configuration Files
 The application behavior can be customized via config files. For the root user, these are located in `/etc/ipfire/`. For normal users, they are in `~/.IPFIRE/`.
@@ -103,7 +103,7 @@ When the userspace project is installed via `make install`, a Systemd unit file 
 This service automates the lifecycle of both the kernel module and the userspace daemon:
 
 - **Start (`systemctl start ipfire`)**:
-  The service executes `/usr/bin/ipfire -rc -user`. This tells the userspace application to load all configuration rules (`-rc`) and immediately detach into the background as a user-privilege daemon (`-user`).
+  The service executes `/usr/bin/ipfire -rc -user`. This tells the userspace application to load all Root configuration rules (`-rc`) into the kernel immediately securely setting them at the highest priority. It then detaches into the background and simultaneously allows standard users (`-user`) to begin defining and managing their personal packet filtering rules.
 
 - **Stop (`systemctl stop ipfire`)**:
   Systemd automatically sends a `SIGTERM` signal to all processes in the service's cgroup. The `ipfire` application intercepts this signal, frees its memory, cleanly unloads from the kernel socket, and prints a comforting exit message:

@@ -40,6 +40,12 @@ Welcome to the comprehensive technical documentation for the IPFire-Wall kernel 
 12. **[Concurrency & Safety Analysis](12_Concurrency_and_Safety_Analysis.md)**  
     *In-depth analysis of Race Conditions, Use-After-Free, and TOCTOU.*
 
+13. **[Privileges & Policies](13_Privileges_and_Policies.md)**  
+    *Root vs. User privileges, rule loading chronology, and the `-user` flag.*
+
+14. **[Port Scanning Tests](14_Port_Scanning_Tests.md)**  
+    *Firewall responses to NMAP stealth scans (SYN, ACK, FIN, NULL, XMAS, UDP).*
+
 ---
 
 ## How to use this documentation
