@@ -62,8 +62,12 @@ The `-s` (Statistics) output is divided into three sections:
 
 ## 4.4. Logging and Real-time Monitoring
 When running, `ipfire` can act as a listener, printing headers for every packet matched by a rule with the `NOTIFY` flag. These logs include:
+- **Verdict Markers**:
+  - `<span style="color:violet">[?X]</span>`: No matching rule was found (packet fallback to default policy).
+  - `<span style="color:green">[OK N]</span>`: Packet accepted by permission rule number `N`.
+  - `<span style="color:red">[X M]</span>`: Packet dropped by denial rule number `M`.
 - Timestamp and user ID.
-- Hook location and verdict (ACCEPT/DROP).
+- Hook location and verdict (`ACCEPT`/`DROP`).
 - Detailed IP/TCP/UDP header information.
 ## 4.5. Logging Deduplication & Technical Bounds
 To prevent system instability and terminal flooding, the kernel enforces technical bounds on logging configuration. These values control the **deduplication window**: a packet hitting a rule for the first time is logged, and subsequent identical packets are suppressed until the lifetime expires.

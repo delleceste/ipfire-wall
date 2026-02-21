@@ -57,7 +57,23 @@ All stateful entries use a standardized lifecycle API.
 
 IPFire uses a custom Netlink protocol to communicate with the `ipfire` userspace utility.
 
-### 3.1. Message Structure
+### 3.1. Application-to-Kernel Interfaces
+
+### The /proc Interface (`/proc/IPFIRE/policy`)
+For rapid default policy adjustments without restarting or using Netlink, IPFire-Wall exposes a `/proc` entry at `/proc/IPFIRE/policy`.
+- **Reading**: `cat /proc/IPFIRE/policy` returns the current default verdict (`accept` or `denial`) applied to packets that do not match any explicit rule.
+- **Writing**: `echo "accept" > /proc/IPFIRE/policy` or `echo "denial" > /proc/IPFIRE/policy` instantly updates the default filtering fallback policy. This is automatically cleaned up when the kernel module is safely unloaded.
+
+### Transparent Proxying via `getsockopt()`
+To support transparent proxying (such as redirecting POP3 traffic to a local virus scanner like `p3scan`), IPFire-Wall registers a custom socket option. When traffic is `DNAT`'ed locally, the listening proxy application needs to know the *original* destination IP address and port to complete the connection to the final server.
+- **Constant**: `SO_IPFI_GETORIG_DST` (`200`)
+- **Usage**: The userspace proxy calls `getsockopt(fd, IPPROTO_IP, SO_IPFI_GETORIG_DST, &orig_addr, &len)`.
+- **Kernel Behavior**: The NAT engine looks up the associated translation entry and copies the pre-DNAT destination address back to the userspace application buffer.
+
+### Netlink Sockets
+When advanced control is required, the `ipfi_netl.c` driver provides socket-based communication. It allocates multiple message families:
+
+### 3.2. Message Structure
 Messages are sent using the `send_data_to_user()` function in `kernel/netlink/`.
 
 | Field | Size | Description |

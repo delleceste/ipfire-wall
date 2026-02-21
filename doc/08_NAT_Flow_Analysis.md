@@ -64,6 +64,10 @@ When a packet's destination is changed to an internal server (e.g., Load Balanci
 2.  **Path Change**: The packet is now destined for an internal network, so it enters the `FORWARD` hook.
 3.  **State Logic**: In the `FORWARD` hook, `check_state` misses (because it was just created/NATted), and the packet hits the FORWARDing permission rules.
 
+### 3.3. Output DNAT and Filtering Order
+When DNAT is applied in the `OUTPUT` direction (e.g., redirecting local web traffic to a transparent proxy cache), IPFire-Wall evaluates the packet against the filtering rules **before** the destination address is translated.
+- **Why?**: This allows the administrator to still write `DROP` rules based on the original intended destination. If filtering happened *after* translation, the packet's destination would be the proxy, making it impossible to specifically drop traffic bound for a restricted external site without also blocking the proxy itself.
+
 ---
 
 ## 4. Checksum Corner Cases

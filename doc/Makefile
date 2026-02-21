@@ -15,7 +15,9 @@ CHAPTERS = 01_Refactoring_Optimization.md \
            11_Network_Namespace_Support.md \
            12_Concurrency_and_Safety_Analysis.md \
            13_Privileges_and_Policies.md \
-           14_Port_Scanning_Tests.md
+           14_Port_Scanning_Tests.md \
+           15_Sample_Scenarios.md \
+           16_Performance_Benchmarks.md
 
 all: $(REPORT)
 

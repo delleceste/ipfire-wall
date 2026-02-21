@@ -46,6 +46,12 @@ Welcome to the comprehensive technical documentation for the IPFire-Wall kernel 
 14. **[Port Scanning Tests](14_Port_Scanning_Tests.md)**  
     *Firewall responses to NMAP stealth scans (SYN, ACK, FIN, NULL, XMAS, UDP).*
 
+15. **[Sample Scenarios](15_Sample_Scenarios.md)**  
+    *Network Address Translation, transparent proxying, and DNS interception flows.*
+
+16. **[Performance Benchmarks](16_Performance_Benchmarks.md)**  
+    *Latency and throughput overhead testing via bare-metal comparisons.*
+
 ---
 
 ## How to use this documentation
