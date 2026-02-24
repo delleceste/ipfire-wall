@@ -188,7 +188,7 @@ struct state_table *keep_state(const struct sk_buff *skb,
   if (p_rule == NULL)
     return NULL;
 
-  if (percpu_counter_read(&state_tables_counter) >= max_state_entries) {
+  if (percpu_counter_sum_positive(&state_tables_counter) >= max_state_entries) {
     ipfi_info_warn =
         (ipfire_info_t *)kmalloc(sizeof(ipfire_info_t), GFP_ATOMIC);
     if (ipfi_info_warn != NULL) {
@@ -207,7 +207,7 @@ struct state_table *keep_state(const struct sk_buff *skb,
           "IPFIRE: memory allocation error in keep_state, ipfi_machine.c\n");
 
     IPFI_PRINTK("IPFIRE: reached maximum count for STATE entries: %lld\n",
-                (long long)percpu_counter_read(&state_tables_counter));
+                (long long)percpu_counter_sum_positive(&state_tables_counter));
     return NULL;
   }
   struct state_table *state_t =
@@ -319,10 +319,10 @@ int get_ifaddr_by_name(const char *ifname, __u32 *addr) {
 }
 
 int add_ftp_dynamic_rule(struct state_table *ftpt) {
-  if (percpu_counter_read(&state_tables_counter) >= max_state_entries) {
+  if (percpu_counter_sum_positive(&state_tables_counter) >= max_state_entries) {
     IPFI_PRINTK("IPFIRE: reached maximum count for STATE entries "
                 "(adding FTP rule): %lld\n",
-                (long long)percpu_counter_read(&state_tables_counter));
+                (long long)percpu_counter_sum_positive(&state_tables_counter));
     return -1;
   }
   ftpt->state.state = FTP_NEW;
