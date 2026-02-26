@@ -157,7 +157,7 @@ int fill_nat_entry_fields(struct nat_table *entry, const struct sk_buff *skb,
   entry->nolog = rule->nflags.nolog;
   entry->external = flags->external;
   entry->rule_id = resp->rule_id;
-  entry->position = percpu_counter_sum_positive(&nat_counters[type]);
+  entry->position = percpu_counter_read(&nat_counters[type]);
 
   /* Initialize index metadata for NAT_IDX_ORIG */
   entry->active_indices = (1 << NAT_IDX_ORIG);
@@ -263,7 +263,7 @@ void handle_nat_entry_timeout(struct timer_list *t) {
     }
   }
 
-  percpu_counter_dec(&nat_counters[type]);
+  percpu_counter_add_batch(&nat_counters[type], -1, 1);
   ipfi_entry_put(&nt->h);
 
 unlock:

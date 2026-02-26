@@ -132,31 +132,37 @@ int skb_matches_state_table(const struct sk_buff *skb,
 
   *reverse = -1;
 
-  /* Handle ICMP/IGMP/GRE/PIM first, as they might match payloads of other
-   * protocols */
-  if (iph->protocol == IPPROTO_ICMP || iph->protocol == IPPROTO_IGMP ||
-      iph->protocol == IPPROTO_GRE || iph->protocol == IPPROTO_PIM) {
+  /* Fast path for TCP and UDP (bulk of traffic) */
+  if (likely(iph->protocol == IPPROTO_TCP || iph->protocol == IPPROTO_UDP)) {
+    if (iph->protocol != entry->protocol)
+      return -1;
+  } else {
+    if (iph->protocol != entry->protocol && iph->protocol != IPPROTO_ICMP)
+      return -1;
 
-    /* First try standard protocol match if they are the same protocol */
-    if (iph->protocol == entry->protocol) {
-      int l2_ret = l2l3match(skb, entry, reverse, flow);
-      if (l2_ret > 0)
-        return l2_ret;
-    }
+    /* Handle ICMP/IGMP/GRE/PIM first, as they might match payloads of other
+     * protocols */
+    if (iph->protocol == IPPROTO_ICMP || iph->protocol == IPPROTO_IGMP ||
+        iph->protocol == IPPROTO_GRE || iph->protocol == IPPROTO_PIM) {
 
-    /* If it's an ICMP packet, check if it's an error for THIS entry's protocol
-     */
-    if (iph->protocol == IPPROTO_ICMP) {
-      if (match_icmp_error_payload(skb, entry, reverse) > 0) {
-        return 1;
+      /* First try standard protocol match if they are the same protocol */
+      if (iph->protocol == entry->protocol) {
+        int l2_ret = l2l3match(skb, entry, reverse, flow);
+        if (l2_ret > 0)
+          return l2_ret;
       }
-    }
-    return -1;
-  }
 
-  /* For all other protocols, they must strictly match */
-  if (iph->protocol != entry->protocol)
-    return -1;
+      /* If it's an ICMP packet, check if it's an error for THIS entry's
+       * protocol
+       */
+      if (iph->protocol == IPPROTO_ICMP) {
+        if (match_icmp_error_payload(skb, entry, reverse) > 0) {
+          return 1;
+        }
+      }
+      return -1;
+    }
+  }
 
   /* Try direct 5-tuple match */
   if ((tr_match = direct_state_match(skb, entry, flow)) > 0) {
@@ -336,7 +342,7 @@ int add_state_table_to_list(struct state_table *newtable) {
     return -EBUSY;
   }
 
-  if (percpu_counter_sum_positive(&state_tables_counter) >= max_state_entries) {
+  if (percpu_counter_read(&state_tables_counter) >= max_state_entries) {
     spin_unlock_bh(&state_bucket_locks[bkt]);
     return -ENOMEM;
   }
@@ -348,7 +354,7 @@ int add_state_table_to_list(struct state_table *newtable) {
 
   hash_add_rcu(state_hashtable, &newtable->h.hnode, key);
 
-  percpu_counter_inc(&state_tables_counter);
+  percpu_counter_add_batch(&state_tables_counter, 1, 1);
   table_id++;
   spin_unlock_bh(&state_bucket_locks[bkt]);
 

@@ -614,11 +614,11 @@ unsigned int process(void *priv, struct sk_buff *skb,
     daddr = ip_hdr(skb)->daddr; /* save original destination address */
     flow.direction = IPFI_INPUT_PRE;
     ret = ipfi_pre_process(skb, &flow);
-    if (ret != NF_DROP && ret != NF_STOLEN && daddr != ip_hdr(skb)->daddr) {
-      // destination nat applied and destination address changed in pre routing
-      // dst_release(skb_dst(skb));
-      // skb_dst_set(skb, NULL);
-    }
+    // if (ret != NF_DROP && ret != NF_STOLEN && daddr != ip_hdr(skb)->daddr) {
+    // destination nat applied and destination address changed in pre routing
+    // dst_release(skb_dst(skb));
+    // skb_dst_set(skb, NULL);
+    // }
     return ret;
   case NF_IP_LOCAL_IN:
     IPFI_STAT_INC(in_rcv);
@@ -635,7 +635,7 @@ unsigned int process(void *priv, struct sk_buff *skb,
       return ret;
 
     /* 2. Apply OUTPUT DNAT (which modifies the destination) */
-    if (local_output_dnat(state, skb, &flow) == NF_DROP)
+    if (!no_nat && local_output_dnat(state, skb, &flow) == NF_DROP)
       return NF_DROP;
 
     return NF_ACCEPT;

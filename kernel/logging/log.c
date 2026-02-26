@@ -255,8 +255,7 @@ inline int add_packet_to_infolist(const struct sk_buff *skb,
   }
 
   /* Enforce max entries cap */
-  if (percpu_counter_sum_positive(&loginfo_entry_counter) >=
-      max_loginfo_entries) {
+  if (percpu_counter_read(&loginfo_entry_counter) >= max_loginfo_entries) {
     loginfo_evict_oldest();
   }
 
@@ -269,7 +268,7 @@ inline int add_packet_to_infolist(const struct sk_buff *skb,
                      ipli->info.packet.ip.protocol);
     hash_add_rcu(loginfo_hashtable, &ipli->h.hnode, key);
   }
-  percpu_counter_inc(&loginfo_entry_counter);
+  percpu_counter_add_batch(&loginfo_entry_counter, 1, 1);
 
   /*
    * BUG FIX: hold an extra reference across the lock → arm-timer gap.
@@ -413,7 +412,7 @@ inline int packet_not_seen(const struct sk_buff *skb,
   struct ipfire_loginfo *loginfo;
 
   /* Short circuit */
-  if (percpu_counter_sum_positive(&loginfo_entry_counter) == 0)
+  if (percpu_counter_read(&loginfo_entry_counter) == 0)
     return 1;
 
   rcu_read_lock_bh();

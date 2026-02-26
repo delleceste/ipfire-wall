@@ -160,7 +160,7 @@ void ipfi_entry_remove(struct ipfi_entry_head *h,
 
   /* Entries are tracked by hnode in hash mode */
   hlist_del_rcu(&h->hnode);
-  percpu_counter_dec(counter);
+  percpu_counter_add_batch(counter, -1, 1);
 
   /*
    * Winner always puts. queue_work() is safe from BH-disabled spinlock

@@ -204,8 +204,7 @@ struct nat_table *add_dnatted_entry(const struct sk_buff *skb,
   if (unlikely(READ_ONCE(we_are_exiting)))
     return NULL;
 
-  if (percpu_counter_sum_positive(&nat_counters[NAT_DNAT]) >=
-      fwopts.max_nat_entries) {
+  if (percpu_counter_read(&nat_counters[NAT_DNAT]) >= fwopts.max_nat_entries) {
     struct info_flags warn_flags = *flags;
     warn_flags.nat_max_entries = 1;
     struct response warn_resp = *resp;
@@ -282,7 +281,7 @@ struct nat_table *add_dnatted_entry(const struct sk_buff *skb,
     spin_unlock_bh(&nat_bucket_locks[NAT_DNAT][NAT_IDX_REPLY]
                                     [newtable->bkts[NAT_IDX_REPLY]]);
 
-    percpu_counter_inc(&nat_counters[NAT_DNAT]);
+    percpu_counter_add_batch(&nat_counters[NAT_DNAT], 1, 1);
   }
 
   ipfi_entry_arm_timer(&newtable->h);

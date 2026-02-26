@@ -95,8 +95,8 @@ extern struct hlist_head loginfo_hashtable[1 << LOG_HASH_BITS];
 extern unsigned int table_id;
 extern struct percpu_counter state_tables_counter;
 /* Inline macros to directly read for conditionals */
-#define get_dnatted_count() percpu_counter_sum_positive(&nat_counters[NAT_DNAT])
-#define get_snatted_count() percpu_counter_sum_positive(&nat_counters[NAT_SNAT])
+#define get_dnatted_count() percpu_counter_read(&nat_counters[NAT_DNAT])
+#define get_snatted_count() percpu_counter_read(&nat_counters[NAT_SNAT])
 extern struct percpu_counter loginfo_entry_counter;
 
 /* Timeouts and Limits */

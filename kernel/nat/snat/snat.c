@@ -53,8 +53,7 @@ struct nat_table *add_snatted_entry(const struct sk_buff *skb,
   if (unlikely(READ_ONCE(we_are_exiting)))
     return NULL;
 
-  if (percpu_counter_sum_positive(&nat_counters[NAT_SNAT]) >=
-      fwopts.max_nat_entries) {
+  if (percpu_counter_read(&nat_counters[NAT_SNAT]) >= fwopts.max_nat_entries) {
     int err;
     struct response warn_resp = *resp;
     struct info_flags warn_flags = *flags;
@@ -90,7 +89,7 @@ struct nat_table *add_snatted_entry(const struct sk_buff *skb,
       return NULL;
     }
 
-    if (unlikely(percpu_counter_sum_positive(&nat_counters[NAT_SNAT]) >=
+    if (unlikely(percpu_counter_read(&nat_counters[NAT_SNAT]) >=
                  fwopts.max_nat_entries)) {
       spin_unlock_bh(&nat_bucket_locks[NAT_SNAT][NAT_IDX_ORIG][bkt]);
       kmem_cache_free(nat_cache, entry);
@@ -109,7 +108,7 @@ struct nat_table *add_snatted_entry(const struct sk_buff *skb,
     ipfi_entry_hold(&entry->h); /* table ref */
     hlist_add_head_rcu(&entry->h.hnode,
                        &nat_hashtables[NAT_SNAT][NAT_IDX_ORIG][bkt]);
-    percpu_counter_inc(&nat_counters[NAT_SNAT]);
+    percpu_counter_add_batch(&nat_counters[NAT_SNAT], 1, 1);
 
     spin_unlock_bh(&nat_bucket_locks[NAT_SNAT][NAT_IDX_ORIG][bkt]);
   }
