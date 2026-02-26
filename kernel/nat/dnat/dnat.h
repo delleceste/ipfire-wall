@@ -17,8 +17,7 @@ struct nat_table *add_dnatted_entry(const struct sk_buff *skb,
 int dest_translate(struct sk_buff *skb, const struct nat_table *dnt);
 
 int de_dnat(struct sk_buff *skb, const struct nat_table *dnatt);
-int de_dnat_table_match(const struct nat_table *dnt,
-                        const struct sk_buff *skb);
+int de_dnat_table_match(const struct nat_table *dnt, const struct sk_buff *skb);
 int de_dnat_translation(struct sk_buff *skb, const ipfi_flow *flow,
                         struct response *resp, struct info_flags *flags);
 

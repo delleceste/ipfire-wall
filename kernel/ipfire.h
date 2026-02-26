@@ -17,6 +17,10 @@
 #include <linux/netfilter_ipv4.h> /* for hook registering */
 #include <linux/rcupdate.h>
 #include <linux/version.h>
+
+#include <net/tcp.h>
+#include <net/udp.h>
+
 extern pid_t userspace_control_pid;
 extern pid_t userspace_data_pid;
 extern uid_t userspace_uid;
@@ -179,5 +183,49 @@ void print_check(struct sk_buff *skb);
 
 /* Callback to free a rule removed from the linked list. */
 void free_rule_rcu_call(struct rcu_head *head);
+
+static inline void log_skb_tuple(const struct sk_buff *skb) {
+  const struct iphdr *iph;
+  __be32 saddr, daddr;
+  if (!skb)
+    return;
+  iph = ip_hdr(skb);
+  if (!iph)
+    return;
+
+  saddr = iph->saddr;
+  daddr = iph->daddr;
+
+  /* TCP */
+  if (iph->protocol == IPPROTO_TCP) {
+    const struct tcphdr *tcph;
+
+    if (!pskb_may_pull((struct sk_buff *)skb,
+                       ip_hdrlen(skb) + sizeof(struct tcphdr)))
+      return;
+
+    tcph = tcp_hdr(skb);
+
+    pr_info("TCP %pI4:%u -> %pI4:%u\n", &saddr, ntohs(tcph->source), &daddr,
+            ntohs(tcph->dest));
+  }
+  /* UDP */
+  else if (iph->protocol == IPPROTO_UDP) {
+    const struct udphdr *udph;
+
+    if (!pskb_may_pull((struct sk_buff *)skb,
+                       ip_hdrlen(skb) + sizeof(struct udphdr)))
+      return;
+
+    udph = udp_hdr(skb);
+
+    pr_info("UDP %pI4:%u -> %pI4:%u\n", &saddr, ntohs(udph->source), &daddr,
+            ntohs(udph->dest));
+  }
+  /* Other protocols */
+  else {
+    pr_info("IP proto=%u %pI4 -> %pI4\n", iph->protocol, &saddr, &daddr);
+  }
+}
 
 #endif

@@ -98,11 +98,12 @@ ipfire_rule translation_out;
 ipfire_rule masquerade_post;
 
 /* State tables (NAT lists/locks/counters now in nat_table.c) */
+struct kmem_cache *nat_cache;
 
 /* State table storage */
 struct hlist_head state_hashtable[1 << STATE_HASH_BITS];
-/* NAT hash tables */
-struct hlist_head nat_hashtables[2][1 << NAT_HASH_BITS];
+/* NAT hash tables (Type, Index, Bucket) */
+struct hlist_head nat_hashtables[2][NAT_IDX_COUNT][1 << NAT_HASH_BITS];
 /* Loginfo hash table (list still used for LRU eviction) */
 struct hlist_head loginfo_hashtable[1 << LOG_HASH_BITS];
 
@@ -112,7 +113,7 @@ LIST_HEAD(active_logi_list);
 /* Counters */
 unsigned int table_id = 0;
 struct percpu_counter state_tables_counter;
-/* NAT counters now in nat_table.c: nat_counters[] */
+struct percpu_counter nat_counters[2];
 struct percpu_counter loginfo_entry_counter;
 
 /* Timeouts and Limits */
@@ -137,9 +138,10 @@ unsigned int moderate_print_limit[MAXMODERATE_ARGS];
 // This is the blessed way to define a global or file-scope spinlock.
 //
 DEFINE_SPINLOCK(rulelist_lock);
-spinlock_t state_bucket_locks[1 << STATE_HASH_BITS];
 DEFINE_SPINLOCK(loginfo_list_lock);
-/* NAT locks now in nat_table.c: nat_locks[] */
+/* NAT locks (Type, Index, Bucket) */
+spinlock_t nat_bucket_locks[2][NAT_IDX_COUNT][1 << NAT_HASH_BITS];
+spinlock_t state_bucket_locks[1 << STATE_HASH_BITS];
 struct workqueue_struct *ipfire_wq = NULL;
 
 bool we_are_exiting = false;

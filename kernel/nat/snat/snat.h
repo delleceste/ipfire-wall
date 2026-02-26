@@ -1,6 +1,7 @@
 #ifndef IPFI_SNAT_H
 #define IPFI_SNAT_H
 
+#include "../../ipfire.h"
 #include "../nat_table.h"
 
 /* ---- SNAT-specific logic (snat.c) ---- */
@@ -21,7 +22,8 @@ int de_snat_table_match(struct nat_table *snt, struct sk_buff *skb);
 int pre_de_snat(struct sk_buff *skb, const ipfi_flow *flow,
                 struct response *resp, struct info_flags *flags);
 
-int snat_dynamic_translate(struct sk_buff *skb, struct nat_table *dnt);
+int snat_dynamic_translate(struct sk_buff *skb, struct nat_table *dnt,
+                           const ipfi_flow *flow);
 int snat_dynamic_table_match(const struct nat_table *dnt,
                              const struct sk_buff *skb);
 int post_snat_dynamic(struct sk_buff *skb, const ipfi_flow *flow,

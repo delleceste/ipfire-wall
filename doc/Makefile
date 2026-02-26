@@ -17,7 +17,9 @@ CHAPTERS = 01_Refactoring_Optimization.md \
            13_Privileges_and_Policies.md \
            14_Port_Scanning_Tests.md \
            15_Sample_Scenarios.md \
-           ../test/README.md
+           16_ICMP_Error_NAT_Translation.md
+
+# Optionally add MASTER_MD back over here      ../test/README.md
 
 all: $(REPORT)
 

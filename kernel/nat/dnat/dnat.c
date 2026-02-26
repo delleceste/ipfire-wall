@@ -20,6 +20,9 @@
 #include <linux/tcp.h>
 #include <linux/udp.h>
 
+/* Main DNAT entry point.
+ * Internally handles rcu_read_lock_bh() for rule list traversal.
+ */
 int dnat_translation(struct sk_buff *skb, const ipfi_flow *flow,
                      struct response *resp, struct info_flags *flags) {
   ipfire_rule *transrule;
@@ -74,35 +77,23 @@ int de_dnat(struct sk_buff *skb, const struct nat_table *dnatt) {
                    dnatt->old_sport, mi);
 }
 
+/* De-DNAT entry point (POSTROUTING).
+ * Uses lookup_nat_idx which handles RCU internally.
+ */
 int de_dnat_translation(struct sk_buff *skb, const ipfi_flow *flow,
                         struct response *resp, struct info_flags *flags) {
-  struct nat_table *dntmp;
-  net_quadruplet netq;
-
-  netq = get_quad_from_skb(skb);
-  if (!netq.valid)
-    return -1;
-
-  rcu_read_lock_bh();
-  {
-    struct iphdr *iph = ip_hdr(skb);
-    u32 key;
-    if (iph->protocol == IPPROTO_TCP || iph->protocol == IPPROTO_UDP)
-      key = get_dnat_hash(netq.saddr, netq.sport, netq.daddr, netq.dport,
-                          iph->protocol);
-    else
-      key = jhash_2words(iph->saddr, iph->daddr, iph->protocol);
-    hash_for_each_possible_rcu(nat_hashtables[NAT_DNAT], dntmp, h.hnode, key) {
-      if (de_dnat_table_match(dntmp, skb) > 0) {
-        dntmp->state = state_machine(skb, dntmp->state, 1);
-        ipfi_entry_update_timer(&dntmp->h, dntmp->protocol, dntmp->state);
-        int ret = de_dnat(skb, dntmp);
-        rcu_read_unlock_bh();
-        return ret;
-      }
+  struct nat_table *dntmp =
+      lookup_nat_idx(NAT_DNAT, NAT_IDX_POSTNAT, skb); // POSTNAT!
+  if (dntmp) {
+    if (de_dnat_table_match(dntmp, skb) > 0) {
+      dntmp->state = state_machine(skb, dntmp->state, 1);
+      ipfi_entry_update_timer(&dntmp->h, dntmp->protocol, dntmp->state);
+      int ret = de_dnat(skb, dntmp);
+      nat_put(dntmp);
+      return ret;
     }
+    nat_put(dntmp);
   }
-  rcu_read_unlock_bh();
   return -1;
 }
 
@@ -130,34 +121,23 @@ int de_dnat_table_match(const struct nat_table *dnt,
   return -1;
 }
 
+/* Destination de-NAT (PREROUTING).
+ * Uses lookup_nat_idx which handles RCU internally.
+ */
 int pre_de_dnat(struct sk_buff *skb, const ipfi_flow *flow,
                 struct response *resp, struct info_flags *flags) {
-  struct nat_table *dntmp;
-  rcu_read_lock_bh();
-  {
-    struct iphdr *iph = ip_hdr(skb);
-    net_quadruplet netq = get_quad_from_skb(skb);
-    u32 key;
-    if (!netq.valid) {
-      rcu_read_unlock_bh();
-      return -1;
+  struct nat_table *dntmp = lookup_nat_idx(NAT_DNAT, NAT_IDX_REPLY, skb);
+
+  if (dntmp) {
+    if (pre_denat_table_match(dntmp, skb) > 0) {
+      dntmp->state = state_machine(skb, dntmp->state, 1);
+      ipfi_entry_update_timer(&dntmp->h, dntmp->protocol, dntmp->state);
+      int ret = pre_de_dnat_translate(skb, dntmp);
+      nat_put(dntmp);
+      return ret;
     }
-    if (iph->protocol == IPPROTO_TCP || iph->protocol == IPPROTO_UDP)
-      key = get_dnat_hash(netq.saddr, netq.sport, netq.daddr, netq.dport,
-                          iph->protocol);
-    else
-      key = jhash_2words(iph->saddr, iph->daddr, iph->protocol);
-    hash_for_each_possible_rcu(nat_hashtables[NAT_DNAT], dntmp, h.hnode, key) {
-      if (pre_denat_table_match(dntmp, skb) > 0) {
-        dntmp->state = state_machine(skb, dntmp->state, 1);
-        ipfi_entry_update_timer(&dntmp->h, dntmp->protocol, dntmp->state);
-        int ret = pre_de_dnat_translate(skb, dntmp);
-        rcu_read_unlock_bh();
-        return ret;
-      }
-    }
+    nat_put(dntmp);
   }
-  rcu_read_unlock_bh();
   return -1;
 }
 
@@ -224,7 +204,8 @@ struct nat_table *add_dnatted_entry(const struct sk_buff *skb,
   if (unlikely(READ_ONCE(we_are_exiting)))
     return NULL;
 
-  if (percpu_counter_read(&nat_counters[NAT_DNAT]) >= fwopts.max_nat_entries) {
+  if (percpu_counter_sum_positive(&nat_counters[NAT_DNAT]) >=
+      fwopts.max_nat_entries) {
     struct info_flags warn_flags = *flags;
     warn_flags.nat_max_entries = 1;
     struct response warn_resp = *resp;
@@ -243,42 +224,65 @@ struct nat_table *add_dnatted_entry(const struct sk_buff *skb,
   fill_nat_entry_fields(newtable, skb, flow, resp, flags, dnat_rule, NAT_DNAT);
   newtable->state = state_machine(skb, newtable->state, 0);
 
+  ipfi_entry_init(&newtable->h,
+                  get_timeout_by_state(newtable->protocol, newtable->state),
+                  handle_nat_entry_timeout);
+
   refcount_set(&newtable->h.refcnt, 1);
 
   {
-    u32 key = get_dnat_hash(newtable->old_saddr, newtable->old_sport,
-                            newtable->new_addr, newtable->new_port,
-                            newtable->protocol);
-    unsigned int bkt = key & ((1 << NAT_HASH_BITS) - 1);
-
-    spin_lock_bh(&nat_bucket_locks[NAT_DNAT][bkt]);
-
+    /* 1. Add ORIG index (A -> B) - already calculated in fill_nat_entry_fields
+     */
+    unsigned int bkt_orig = newtable->bkts[NAT_IDX_ORIG];
+    spin_lock_bh(&nat_bucket_locks[NAT_DNAT][NAT_IDX_ORIG][bkt_orig]);
     if (unlikely(we_are_exiting)) {
-      spin_unlock_bh(&nat_bucket_locks[NAT_DNAT][bkt]);
+      spin_unlock_bh(&nat_bucket_locks[NAT_DNAT][NAT_IDX_ORIG][bkt_orig]);
       kmem_cache_free(nat_cache, newtable);
       return NULL;
     }
+    ipfi_entry_hold(&newtable->h);
+    hlist_add_head_rcu(&newtable->h.hnode,
+                       &nat_hashtables[NAT_DNAT][NAT_IDX_ORIG][bkt_orig]);
+    spin_unlock_bh(&nat_bucket_locks[NAT_DNAT][NAT_IDX_ORIG][bkt_orig]);
 
-    if (unlikely(percpu_counter_read(&nat_counters[NAT_DNAT]) >=
-                 fwopts.max_nat_entries)) {
-      spin_unlock_bh(&nat_bucket_locks[NAT_DNAT][bkt]);
-      kmem_cache_free(nat_cache, newtable);
-      struct info_flags warn_flags = *flags;
-      warn_flags.nat_max_entries = 1;
-      struct response warn_resp = *resp;
-      int err;
-      struct sk_buff *skb_to_user =
-          build_info_t_nlmsg(skb, flow, &warn_resp, &warn_flags, &err);
-      if (skb_to_user)
-        skb_send_to_user(skb_to_user, LISTENER_DATA);
-      return NULL;
+    /* 2. Add POSTNAT index (A -> C) */
+    newtable->keys[NAT_IDX_POSTNAT] = get_nat_tuple_hash(
+        newtable->old_saddr, newtable->old_sport, newtable->new_addr,
+        newtable->new_port, newtable->protocol);
+    newtable->bkts[NAT_IDX_POSTNAT] =
+        newtable->keys[NAT_IDX_POSTNAT] & ((1 << NAT_HASH_BITS) - 1);
+    spin_lock_bh(&nat_bucket_locks[NAT_DNAT][NAT_IDX_POSTNAT]
+                                  [newtable->bkts[NAT_IDX_POSTNAT]]);
+    hlist_add_head_rcu(&newtable->h_indices[NAT_IDX_POSTNAT - 1],
+                       &nat_hashtables[NAT_DNAT][NAT_IDX_POSTNAT]
+                                      [newtable->bkts[NAT_IDX_POSTNAT]]);
+    newtable->active_indices |= (1 << NAT_IDX_POSTNAT);
+    spin_unlock_bh(&nat_bucket_locks[NAT_DNAT][NAT_IDX_POSTNAT]
+                                    [newtable->bkts[NAT_IDX_POSTNAT]]);
+
+    /* 3. Add REPLY index (C -> B) */
+    /* Note: B is old_daddr. C is new_addr. */
+    if (flags->direction == IPFI_OUTPUT) {
+      newtable->keys[NAT_IDX_REPLY] = get_nat_tuple_hash(
+          newtable->new_addr, newtable->new_port, newtable->old_saddr,
+          newtable->old_sport, newtable->protocol);
+    } else {
+      newtable->keys[NAT_IDX_REPLY] = get_nat_tuple_hash(
+          newtable->new_addr, newtable->new_port, newtable->old_daddr,
+          newtable->old_dport, newtable->protocol);
     }
+    newtable->bkts[NAT_IDX_REPLY] =
+        newtable->keys[NAT_IDX_REPLY] & ((1 << NAT_HASH_BITS) - 1);
+    spin_lock_bh(&nat_bucket_locks[NAT_DNAT][NAT_IDX_REPLY]
+                                  [newtable->bkts[NAT_IDX_REPLY]]);
+    hlist_add_head_rcu(&newtable->h_indices[NAT_IDX_REPLY - 1],
+                       &nat_hashtables[NAT_DNAT][NAT_IDX_REPLY]
+                                      [newtable->bkts[NAT_IDX_REPLY]]);
+    newtable->active_indices |= (1 << NAT_IDX_REPLY);
+    spin_unlock_bh(&nat_bucket_locks[NAT_DNAT][NAT_IDX_REPLY]
+                                    [newtable->bkts[NAT_IDX_REPLY]]);
 
-    ipfi_entry_hold(&newtable->h); /* table ref */
-    hlist_add_head_rcu(&newtable->h.hnode, &nat_hashtables[NAT_DNAT][bkt]);
     percpu_counter_inc(&nat_counters[NAT_DNAT]);
-
-    spin_unlock_bh(&nat_bucket_locks[NAT_DNAT][bkt]);
   }
 
   ipfi_entry_arm_timer(&newtable->h);

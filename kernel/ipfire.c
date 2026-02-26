@@ -3,6 +3,7 @@
 #include "build.h"
 #include "filter/defrag.h"
 #include "globals.h"
+#include "helpers/icmp_nat.h"
 #include "ipfi_machine.h"
 #include "mangle/tcpmss.h"
 #include "module_init.h"
@@ -233,6 +234,13 @@ int welcome(void) {
   /* Initialize ruleset lists before any potential notifier event */
   init_ruleset_heads();
 
+  /* Allocate global workqueue for entry cleanup (before component init) */
+  ipfire_wq = alloc_workqueue("ipfire_wq", WQ_MEM_RECLAIM, 0);
+  if (!ipfire_wq) {
+    IPFI_PRINTK("IPFIRE: failed to allocate workqueue\n");
+    return -ENOMEM;
+  }
+
   init_translation();
   init_log();
   if (init_netl() == 0) {
@@ -336,13 +344,6 @@ static void __exit fini(void) {
   kmem_cache_destroy(state_cache);
   kmem_cache_destroy(nat_cache);
   kmem_cache_destroy(loginfo_cache);
-
-  IPFI_PRINTK("IPFIRE: unloaded: tables freed: state: %lld, nat: %lld, log "
-              "info: %lld\n",
-              percpu_counter_sum(&state_tables_counter),
-              percpu_counter_sum(&nat_counters[NAT_DNAT]) +
-                  percpu_counter_sum(&nat_counters[NAT_SNAT]),
-              percpu_counter_sum(&loginfo_entry_counter));
 
   if (ipfi_counters)
     free_percpu(ipfi_counters);
@@ -564,7 +565,8 @@ static unsigned int local_output_dnat(const struct nf_hook_state *state,
 
     if (dnat_ret >= 0) {
       flags.nat = 1;
-      if (ip_route_me_harder(state->net, state->sk, skb, RTN_UNSPEC)) {
+      struct sock *routing_sk = skb->sk ? skb->sk : state->sk;
+      if (ip_route_me_harder(state->net, routing_sk, skb, RTN_UNSPEC)) {
         IPFI_PRINTK("IPFIRE: ip_route_me_harder failed after OUTPUT DNAT\n");
         return NF_DROP;
       }
@@ -606,17 +608,16 @@ unsigned int process(void *priv, struct sk_buff *skb,
 
   switch (hooknum) {
   case NF_IP_PRE_ROUTING:
-    IPFI_STAT_INC(pre_rcv); // stats
     if (no_nat)
       return NF_ACCEPT;
-
+    IPFI_STAT_INC(pre_rcv);     // stats
     daddr = ip_hdr(skb)->daddr; /* save original destination address */
     flow.direction = IPFI_INPUT_PRE;
     ret = ipfi_pre_process(skb, &flow);
     if (ret != NF_DROP && ret != NF_STOLEN && daddr != ip_hdr(skb)->daddr) {
       // destination nat applied and destination address changed in pre routing
-      dst_release(skb_dst(skb));
-      skb_dst_set(skb, NULL);
+      // dst_release(skb_dst(skb));
+      // skb_dst_set(skb, NULL);
     }
     return ret;
   case NF_IP_LOCAL_IN:
@@ -626,18 +627,26 @@ unsigned int process(void *priv, struct sk_buff *skb,
   case NF_IP_LOCAL_OUT:
     IPFI_STAT_INC(out_rcv);
     flow.direction = IPFI_OUTPUT;
+
+    /* 1. Evaluate firewall rules and update state based on ORIGINAL destination
+     */
+    ret = ipfi_response(state, skb, &flow);
+    if (ret != NF_ACCEPT)
+      return ret;
+
+    /* 2. Apply OUTPUT DNAT (which modifies the destination) */
     if (local_output_dnat(state, skb, &flow) == NF_DROP)
       return NF_DROP;
-    return ipfi_response(state, skb, &flow);
+
+    return NF_ACCEPT;
   case NF_IP_FORWARD:
     IPFI_STAT_INC(fwd_rcv);
     flow.direction = IPFI_FWD;
     return ipfi_response(state, skb, &flow);
   case NF_IP_POST_ROUTING:
-    IPFI_STAT_INC(post_rcv);
     if (no_nat)
       return NF_ACCEPT;
-
+    IPFI_STAT_INC(post_rcv);
     flow.direction = IPFI_OUTPUT_POST;
     return ipfi_post_process(skb, &flow);
   default:
@@ -696,6 +705,17 @@ int ipfi_pre_process(struct sk_buff *skb, const ipfi_flow *flow) {
   /* No more build_ipfire_info_from_skb or init_packet needed for translation
    * here. Translation functions now take skb and components directly.
    */
+
+  /* if it's an ICMP error for a NATed connection, handle it directly */
+  if (ip_hdr(skb)->protocol == IPPROTO_ICMP) {
+    if (icmp_nat_process(skb, NF_IP_PRE_ROUTING) == 1) {
+      /* The outer Dst IP changed (e.g. local .245 -> remote .25).
+       * The cached routing decision (LOCAL_IN) is now stale.
+       * Drop it so the kernel re-evaluates routing → FORWARD.
+       */
+      ret = 1;
+    }
+  }
 
   /* if a packet comes back from a dnatted connection,
    * i.e. has been forwarded, we must de dnat it. Dynamic
@@ -776,9 +796,20 @@ int ipfi_post_process(struct sk_buff *skb, const ipfi_flow *flow) {
   /* MASQUERADE and SNAT now take components directly. No
    * build_ipfire_info_from_skb needed here. */
 
-  if (get_dnatted_count() > 0) {
-    if ((snat_done = post_snat_dynamic(skb, flow, &resp, &flags)) >= 0)
+  /* if it's an ICMP error for a NATed connection, handle it directly */
+  if (ip_hdr(skb)->protocol == IPPROTO_ICMP) {
+    if (icmp_nat_process(skb, NF_IP_POST_ROUTING) == 1) {
+      /* Translation applied, accept packet immediately */
+      kstats.post_rcv++;
+      snat_done = 1;
       goto send_touser;
+    }
+  }
+
+  if (get_dnatted_count() > 0) {
+    if ((snat_done = post_snat_dynamic(skb, flow, &resp, &flags)) >= 0) {
+      goto send_touser;
+    }
 
     /* If NAT is enabled, there might be packets that have been destination
      * natted in pre routing phase. Those packets must be de-natted: source
@@ -813,15 +844,9 @@ int ipfi_post_process(struct sk_buff *skb, const ipfi_flow *flow) {
 send_touser:
 
   if ((snat_done >= 0) || (de_dnat_done >= 0)) {
-    /* No more init_packet or build_ipfire_info_from_skb needed here either.
-     * Netlink builder will build from components.
-     */
     flags.nat = 1U;
-
     if (snat_done >= 0)
       flags.snat = 1U;
-    // post_packet->flags.snat = 1;
-
     if ((userspace_data_pid) && (loguser_enabled) &&
         (is_to_send(skb, &fwopts, &resp, flow, &flags)))
       send_packet_to_userspace_and_update_counters(skb, flow, &resp, &flags);

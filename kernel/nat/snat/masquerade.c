@@ -1,12 +1,11 @@
 /* nat/snat/masquerade.c: Masquerade NAT logic for ipfire-wall */
 
-#include "globals.h"
-#include "ipfire.h"
-#include "ipfi_machine.h"
-#include "../../netlink/ipfi_netl.h"
 #include "../../filter/state/state_machine.h"
+#include "../../netlink/ipfi_netl.h"
 #include "../nat.h"
 #include "../nat_table.h"
+#include "globals.h"
+#include "ipfi_machine.h"
 #include "snat.h"
 #include <linux/ip.h>
 #include <linux/module.h>
@@ -14,6 +13,9 @@
 #include <linux/skbuff.h>
 #include <net/route.h>
 
+/* Main Masquerade entry point (POSTROUTING).
+ * Internally handles rcu_read_lock_bh() for rule list traversal.
+ */
 int masquerade_translation(struct sk_buff *skb, const ipfi_flow *flow,
                            struct response *resp, struct info_flags *flags) {
   ipfire_rule *transrule;
@@ -24,7 +26,7 @@ int masquerade_translation(struct sk_buff *skb, const ipfi_flow *flow,
   list_for_each_entry_rcu(transrule, &masquerade_post.list, list) {
     if (translation_rule_match(skb, flow, flags, transrule) > 0) {
       struct nat_table *snt;
-      masq_addr = get_ifaddr(skb);
+      masq_addr = get_ifaddr(skb, flow->out);
       fill_masquerade_rule_fields(transrule, masq_addr);
       if ((snt = add_snatted_entry(skb, flow, resp, flags, transrule)) !=
           NULL) {
@@ -39,11 +41,10 @@ int masquerade_translation(struct sk_buff *skb, const ipfi_flow *flow,
   return status;
 }
 
-__u32 get_ifaddr(const struct sk_buff *skb) {
+__u32 get_ifaddr(const struct sk_buff *skb, const struct net_device *dev) {
   __u32 newsaddr;
   __be32 dst = 0;
   struct rtable *rt = skb_rtable(skb);
-  struct net_device *dev = skb->dev;
   if (dev == NULL)
     return 0;
   if (rt) {

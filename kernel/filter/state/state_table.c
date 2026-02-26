@@ -1,5 +1,6 @@
 /* filter/state/state_table.c: State table management for ipfire-wall */
 
+#include "../../helpers/icmp_nat.h"
 #include "globals.h"
 #include "ipfi_machine.h"
 #include "ipfire.h"
@@ -131,14 +132,31 @@ int skb_matches_state_table(const struct sk_buff *skb,
 
   *reverse = -1;
 
-  if (iph->protocol != entry->protocol)
-    return -1;
-
-  /* Special protocols */
+  /* Handle ICMP/IGMP/GRE/PIM first, as they might match payloads of other
+   * protocols */
   if (iph->protocol == IPPROTO_ICMP || iph->protocol == IPPROTO_IGMP ||
       iph->protocol == IPPROTO_GRE || iph->protocol == IPPROTO_PIM) {
-    return l2l3match(skb, entry, reverse, flow);
+
+    /* First try standard protocol match if they are the same protocol */
+    if (iph->protocol == entry->protocol) {
+      int l2_ret = l2l3match(skb, entry, reverse, flow);
+      if (l2_ret > 0)
+        return l2_ret;
+    }
+
+    /* If it's an ICMP packet, check if it's an error for THIS entry's protocol
+     */
+    if (iph->protocol == IPPROTO_ICMP) {
+      if (match_icmp_error_payload(skb, entry, reverse) > 0) {
+        return 1;
+      }
+    }
+    return -1;
   }
+
+  /* For all other protocols, they must strictly match */
+  if (iph->protocol != entry->protocol)
+    return -1;
 
   /* Try direct 5-tuple match */
   if ((tr_match = direct_state_match(skb, entry, flow)) > 0) {
@@ -318,7 +336,7 @@ int add_state_table_to_list(struct state_table *newtable) {
     return -EBUSY;
   }
 
-  if (percpu_counter_read(&state_tables_counter) >= max_state_entries) {
+  if (percpu_counter_sum_positive(&state_tables_counter) >= max_state_entries) {
     spin_unlock_bh(&state_bucket_locks[bkt]);
     return -ENOMEM;
   }

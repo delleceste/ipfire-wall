@@ -2,10 +2,10 @@
 #define IPFI_NAT_H
 
 #include <common/ipfi_structures.h>
-#include <linux/timer.h>
 #include <linux/refcount.h>
-#include <linux/workqueue.h>
 #include <linux/slab.h>
+#include <linux/timer.h>
+#include <linux/workqueue.h>
 
 #define SO_IPFI_GETORIG_DST 200 /* a number */
 
@@ -70,10 +70,8 @@ inline int private_address(__u32 addr);
 int public_to_private_address(const struct sk_buff *skb,
                               const ipfire_rule *transrule);
 
-__u32 get_ifaddr(const struct sk_buff *skb);
-
 /* copies address in *address, looking for devices with name
  * equal to device name in skb. Returns 1 or -1 in case of failure  */
-int get_ifaddr_by_skb(const struct sk_buff *skb, __u32 *address);
+__u32 get_ifaddr(const struct sk_buff *skb, const struct net_device *dev);
 
 #endif /* IPFI_NAT_H */

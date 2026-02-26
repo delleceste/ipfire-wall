@@ -6,11 +6,11 @@
  * (C) 2005 Giacomo S.
  */
 
+#include <common/ipfi_structures.h>
 #include "globals.h"
 #include "helpers/ftp.h"
 #include "ipfire.h"
 #include "netlink/ipfi_netl.h"
-#include <common/ipfi_structures.h>
 #include <linux/hashtable.h>
 #include <linux/jhash.h>
 #include <linux/timer.h>

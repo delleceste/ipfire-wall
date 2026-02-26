@@ -1,12 +1,12 @@
 #ifndef IPFI_GLOBALS_H
 #define IPFI_GLOBALS_H
 
-#include "../nat/dnat/dnat.h"
-#include "../nat/nat.h"
-#include "../nat/snat/snat.h"
 #include "ipfi_machine.h"
 #include "ipfire.h"
 #include "logging/log.h"
+#include "nat/dnat/dnat.h"
+#include "nat/nat.h"
+#include "nat/snat/snat.h"
 #include <linux/percpu.h>
 #include <linux/spinlock.h>
 #include <linux/types.h>
@@ -78,7 +78,9 @@ extern struct hlist_head state_hashtable[1 << STATE_HASH_BITS];
 #ifndef NAT_HASH_BITS
 #define NAT_HASH_BITS 8 /* 256 buckets; override via make NAT_HASH_BITS=N */
 #endif
-extern struct hlist_head nat_hashtables[2][1 << NAT_HASH_BITS];
+extern struct hlist_head nat_hashtables[2][NAT_IDX_COUNT][1 << NAT_HASH_BITS];
+/* NAT locks (Type, Index, Bucket) */
+extern spinlock_t nat_bucket_locks[2][NAT_IDX_COUNT][1 << NAT_HASH_BITS];
 /* Counters shared between list and hash modes */
 extern struct percpu_counter nat_counters[2];
 

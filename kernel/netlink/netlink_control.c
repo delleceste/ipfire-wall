@@ -563,7 +563,7 @@ int send_tables(void) {
   int count = 0, i, max_entries;
 
   /* Phase 1: Pre-allocate array outside RCU (can sleep) */
-  max_entries = percpu_counter_read(&state_tables_counter);
+  max_entries = percpu_counter_sum_positive(&state_tables_counter);
   if (max_entries > 0) {
     entries = kmalloc_array(max_entries, sizeof(struct state_info), GFP_KERNEL);
     if (entries == NULL)
@@ -606,7 +606,7 @@ int send_dnat_tables(void) {
   int count = 0, i, max_entries;
 
   /* Phase 1: Pre-allocate array outside RCU (can sleep) */
-  max_entries = percpu_counter_read(&nat_counters[NAT_DNAT]);
+  max_entries = percpu_counter_sum_positive(&nat_counters[NAT_DNAT]);
   if (max_entries > 0) {
     entries = kmalloc_array(max_entries, sizeof(struct dnat_info), GFP_KERNEL);
     if (entries == NULL)
@@ -617,7 +617,8 @@ int send_dnat_tables(void) {
   rcu_read_lock();
   {
     unsigned int bkt;
-    hash_for_each_rcu(nat_hashtables[NAT_DNAT], bkt, dt, h.hnode) {
+    hash_for_each_rcu(nat_hashtables[NAT_DNAT][NAT_IDX_ORIG], bkt, dt,
+                      h.hnode) {
       if (count >= max_entries)
         break;
       fill_dnat_info(&entries[count], dt);
@@ -649,7 +650,7 @@ int send_snat_tables(void) {
   int count = 0, i, max_entries;
 
   /* Phase 1: Pre-allocate array outside RCU (can sleep) */
-  max_entries = percpu_counter_read(&nat_counters[NAT_SNAT]);
+  max_entries = percpu_counter_sum_positive(&nat_counters[NAT_SNAT]);
   if (max_entries > 0) {
     entries = kmalloc_array(max_entries, sizeof(struct snat_info), GFP_KERNEL);
     if (entries == NULL)
@@ -660,7 +661,8 @@ int send_snat_tables(void) {
   rcu_read_lock();
   {
     unsigned int bkt;
-    hash_for_each_rcu(nat_hashtables[NAT_SNAT], bkt, st, h.hnode) {
+    hash_for_each_rcu(nat_hashtables[NAT_SNAT][NAT_IDX_ORIG], bkt, st,
+                      h.hnode) {
       if (count >= max_entries)
         break;
       fill_snat_info(&entries[count], st);
@@ -694,10 +696,10 @@ int send_ktables_usage(void) {
       (struct ktables_usage *)kmalloc(sizeof(struct ktables_usage), GFP_KERNEL);
   if (ktu != NULL) {
     ktu->loguser = fwopts.loguser;
-    ktu->state_tables = percpu_counter_read(&state_tables_counter);
+    ktu->state_tables = percpu_counter_sum_positive(&state_tables_counter);
     ktu->snat_tables = get_snatted_count();
     ktu->dnat_tables = get_dnatted_count();
-    ktu->loginfo_tables = percpu_counter_read(&loginfo_entry_counter);
+    ktu->loginfo_tables = percpu_counter_sum_positive(&loginfo_entry_counter);
     ktu->state_lifetime = state_lifetime;
     skb_to_user = build_ktable_info_packet(ktu);
     if (skb_to_user != NULL)

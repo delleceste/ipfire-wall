@@ -8,6 +8,9 @@ SUBDIRS = common filter filter/state netlink nat nat/dnat nat/snat mangle loggin
 
 # First pass, kernel Makefile reads module objects
 ifneq ($(KERNELRELEASE),)
+ccflags-y += -I$(src)
+ccflags-y += -I$(src)/..
+ccflags-y += -I$(src)/../..
 
 
 
@@ -47,6 +50,7 @@ $(MODULE_NAME)-objs += mangle/mangle.o \
 # Logging, Helpers, Proc
 $(MODULE_NAME)-objs += logging/log.o \
                        helpers/ftp.o \
+                       helpers/icmp_nat.o \
                        proc/proc.o
 
 obj-m += $(MODULE_NAME).o
@@ -91,7 +95,6 @@ $(info   [ipfire])
 $(info   --------)
 $(info  )
 
-ccflags-y += -I$(src) -I$(src)/../..
 
 else
 KDIR	:= /lib/modules/$(shell uname -r)/build

@@ -67,6 +67,7 @@ int translation_rule_match(const struct sk_buff *skb, const ipfi_flow *flow,
 
 int manip_skb(struct sk_buff *skb, __u32 saddr, __u16 sport, __u32 daddr,
               __u16 dport, struct pkt_manip_info mi) {
+
   struct iphdr *ipheader;
   int csum_check;
   unsigned int l4hdroff;
@@ -77,20 +78,22 @@ int manip_skb(struct sk_buff *skb, __u32 saddr, __u16 sport, __u32 daddr,
   __u16 oldport = 0, newport = 0;
   bool check_csum = mi.direction < IPFI_OUTPUT ? true : false;
 
-  ipheader = ip_hdr(skb);
-  if (ipheader == NULL || skb == NULL)
+  if (!skb || !(skb))
     return -1;
-
-  l4hdroff = ipheader->ihl * 4;
+  ipheader = ip_hdr(skb);
+  if (ipheader == NULL)
+    return -1;
+  l4hdroff = ip_hdrlen(skb);
 
   if (check_csum) {
     if ((csum_check = check_checksums(skb)) < 0)
       return csum_error_message("manip_skb()", csum_check);
   }
 
-  if ((mi.sp ^ mi.dp) && ipheader->protocol == IPPROTO_TCP)
+  if ((mi.sa || mi.da || mi.sp || mi.dp) && ipheader->protocol == IPPROTO_TCP)
     writable_len = l4hdroff + sizeof(struct tcphdr);
-  else if ((mi.sp ^ mi.dp) && ipheader->protocol == IPPROTO_UDP)
+  else if ((mi.sa || mi.da || mi.sp || mi.dp) &&
+           ipheader->protocol == IPPROTO_UDP)
     writable_len = l4hdroff + sizeof(struct udphdr);
   else
     writable_len = l4hdroff;
@@ -98,18 +101,21 @@ int manip_skb(struct sk_buff *skb, __u32 saddr, __u16 sport, __u32 daddr,
   if (skb_ensure_writable(skb, writable_len))
     return -1;
 
+  if (!skb)
+    return -1;
   ipheader = ip_hdr(skb);
   if (ipheader == NULL)
     return -1;
+  l4hdroff = ip_hdrlen(skb);
 
   if (ipheader->protocol == IPPROTO_TCP) {
-    if (skb->len < l4hdroff + sizeof(struct tcphdr))
+    if (!pskb_may_pull(skb, l4hdroff + sizeof(struct tcphdr)))
       return -1;
-    ptcphead = (struct tcphdr *)(skb->data + l4hdroff);
+    ptcphead = tcp_hdr(skb);
   } else if (ipheader->protocol == IPPROTO_UDP) {
-    if (skb->len < l4hdroff + sizeof(struct udphdr))
+    if (!pskb_may_pull(skb, l4hdroff + sizeof(struct udphdr)))
       return -1;
-    pudphead = (struct udphdr *)(skb->data + l4hdroff);
+    pudphead = udp_hdr(skb);
   }
 
   if (mi.sa) {
@@ -122,25 +128,25 @@ int manip_skb(struct sk_buff *skb, __u32 saddr, __u16 sport, __u32 daddr,
     ipheader->daddr = daddr;
   }
 
-  if (mi.sp ^ mi.dp) {
+  if (mi.sp || mi.dp) {
     switch (ipheader->protocol) {
     case IPPROTO_TCP:
-      if (mi.sp) {
+      if (mi.sp && ptcphead) {
         oldport = ptcphead->source;
         newport = sport;
         ptcphead->source = newport;
-      } else if (mi.dp) {
+      } else if (mi.dp && ptcphead) {
         oldport = ptcphead->dest;
         newport = dport;
         ptcphead->dest = newport;
       }
       break;
     case IPPROTO_UDP:
-      if (mi.sp) {
+      if (mi.sp && pudphead) {
         oldport = pudphead->source;
         newport = sport;
         pudphead->source = newport;
-      } else if (mi.dp) {
+      } else if (mi.dp && pudphead) {
         oldport = pudphead->dest;
         newport = dport;
         pudphead->dest = newport;
@@ -149,7 +155,7 @@ int manip_skb(struct sk_buff *skb, __u32 saddr, __u16 sport, __u32 daddr,
     }
   }
 
-  if (mi.sa ^ mi.da) {
+  if (mi.sa || mi.da) {
     csum_replace4(&ipheader->check, oldaddr, newaddr);
     switch (ipheader->protocol) {
     case IPPROTO_TCP:
@@ -164,7 +170,7 @@ int manip_skb(struct sk_buff *skb, __u32 saddr, __u16 sport, __u32 daddr,
       break;
     }
   }
-  if (mi.sp ^ mi.dp) {
+  if (mi.sp || mi.dp) {
     switch (ipheader->protocol) {
     case IPPROTO_UDP:
       if (pudphead->check || skb->ip_summed == CHECKSUM_PARTIAL) {
@@ -178,6 +184,7 @@ int manip_skb(struct sk_buff *skb, __u32 saddr, __u16 sport, __u32 daddr,
       break;
     }
   }
+
   return 1;
 }
 
@@ -262,7 +269,13 @@ int lookup_dnat_table_and_getorigdst(const net_quadruplet *n4,
   rcu_read_lock_bh();
   {
     unsigned int bkt;
-    hash_for_each_rcu(nat_hashtables[NAT_DNAT], bkt, dntmp, h.hnode) {
+    u32 key = get_nat_tuple_hash(n4->saddr, n4->sport, n4->daddr, n4->dport,
+                                 IPPROTO_TCP);
+    bkt = key & ((1 << NAT_HASH_BITS) - 1);
+
+    hlist_for_each_entry_rcu(dntmp,
+                             &nat_hashtables[NAT_DNAT][NAT_IDX_REPLY][bkt],
+                             h_indices[NAT_IDX_REPLY - 1]) {
       if (get_orig_from_dnat_entry(dntmp, n4, sin) == 1) {
         rcu_read_unlock_bh();
         return 0;
@@ -298,20 +311,22 @@ inline int public_to_private_address(const struct sk_buff *skb,
 
 int csum_error_message(const char *origin, int enum_code) {
   IPFI_PRINTK("IPFIRE: %s: checksum error: %d\n", origin, enum_code);
-  return -1;
+  return BAD_CHECKSUM;
 }
 
 int check_checksums(const struct sk_buff *skb) {
-  __u16 check;
   int datalen;
   struct iphdr *iph = ip_hdr(skb);
   if (iph == NULL)
     return -1;
+  /* Skip verification for packets with offloaded checksums (e.g. veth,
+   * xen-vif). In virtual environments, the stack often avoids calculating
+   * checksums until the packet leaves the physical interface. Verifying them
+   * here would fail and drop legitimate packets. */
+  if (skb->ip_summed == CHECKSUM_PARTIAL)
+    return 0;
   datalen = skb->len - iph->ihl * 4;
-  check = iph->check;
-  iph->check = 0;
-  iph->check = ip_fast_csum((u8 *)iph, iph->ihl);
-  if (iph->check != check)
+  if (ip_fast_csum((u8 *)iph, iph->ihl) != 0)
     return -BAD_IP_CSUM;
   switch (iph->protocol) {
   case IPPROTO_TCP: {
@@ -347,9 +362,6 @@ static struct nf_sockopt_ops so_getoriginal_dst = {
 
 int init_translation(void) {
   init_nat_tables();
-  ipfire_wq = alloc_workqueue("ipfire_wq", WQ_MEM_RECLAIM, 0);
-  if (!ipfire_wq)
-    return -ENOMEM;
   return nf_register_sockopt(&so_getoriginal_dst);
 }
 
