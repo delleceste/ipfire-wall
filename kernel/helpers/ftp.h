@@ -55,4 +55,11 @@ inline int check_buf(const char *ftpcmd);
 
 int clean_ftp_command(char *cleaned, char *ftp_buffer);
 
+void rehash_ftp_expectation(struct state_table *entry, __be16 new_sport);
+
+struct state_table *lookup_ftp_expectation(const struct sk_buff *skb,
+                                           const struct iphdr *iph,
+                                           __be16 dport, short *reverse,
+                                           const ipfi_flow *flow);
+
 #endif

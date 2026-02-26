@@ -18,6 +18,7 @@ struct state_table;
 #include "netlink/ipfi_netl.h"
 #include "netlink/message_builder.h"
 #include "state/state_machine.h"
+#include "state/state_table.h"
 
 struct response ipfire_filter(const ipfire_rule *dropped,
                               const ipfire_rule *allowed,
@@ -319,6 +320,8 @@ int get_ifaddr_by_name(const char *ifname, __u32 *addr) {
 }
 
 int add_ftp_dynamic_rule(struct state_table *ftpt) {
+  int ret;
+
   if (percpu_counter_read(&state_tables_counter) >= max_state_entries) {
     IPFI_PRINTK("IPFIRE: reached maximum count for STATE entries "
                 "(adding FTP rule): %lld\n",
@@ -332,6 +335,11 @@ int add_ftp_dynamic_rule(struct state_table *ftpt) {
                 "FTP_DEFINED set!\n");
     return -1;
   }
-  add_state_table_to_list(ftpt);
+
+  ret = add_state_table_to_list(ftpt);
+  if (ret < 0) {
+    IPFI_PRINTK("IPFIRE FTP: add_state_table_to_list failed: %d\n", ret);
+    return -1;
+  }
   return 0;
 }

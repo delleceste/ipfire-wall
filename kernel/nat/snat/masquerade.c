@@ -26,13 +26,18 @@ int masquerade_translation(struct sk_buff *skb, const ipfi_flow *flow,
   list_for_each_entry_rcu(transrule, &masquerade_post.list, list) {
     if (translation_rule_match(skb, flow, flags, transrule) > 0) {
       struct nat_table *snt;
+      /*
+       * We must NOT modify the shared RCU-protected rule.
+       * Two CPUs matching the same masquerade rule simultaneously
+       * would race on transrule->newaddr. Use a stack-local copy.
+       */
+      ipfire_rule local_rule = *transrule;
       masq_addr = get_ifaddr(skb, flow->out);
-      fill_masquerade_rule_fields(transrule, masq_addr);
-      if ((snt = add_snatted_entry(skb, flow, resp, flags, transrule)) !=
+      fill_masquerade_rule_fields(&local_rule, masq_addr);
+      if ((snt = add_snatted_entry(skb, flow, resp, flags, &local_rule)) !=
           NULL) {
         status = masquerade_packet(skb, snt);
       }
-      clear_masquerade_rule_fields(transrule);
       rcu_read_unlock_bh();
       return status;
     }

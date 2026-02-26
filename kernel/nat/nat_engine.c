@@ -69,26 +69,25 @@ int manip_skb(struct sk_buff *skb, __u32 saddr, __u16 sport, __u32 daddr,
               __u16 dport, struct pkt_manip_info mi) {
 
   struct iphdr *ipheader;
-  int csum_check;
   unsigned int l4hdroff;
   struct tcphdr *ptcphead = NULL;
   struct udphdr *pudphead = NULL;
   unsigned int writable_len = 0;
   __u32 oldaddr = 0, newaddr = 0;
   __u16 oldport = 0, newport = 0;
-  bool check_csum = mi.direction < IPFI_OUTPUT ? true : false;
 
-  if (!skb || !(skb))
+  /*
+   * Checksum verification is NOT done here.
+   * Callers (dnat_translation, etc.) already call check_checksums()
+   * before invoking manip_skb, so verifying again would be double work.
+   */
+
+  if (!skb)
     return -1;
   ipheader = ip_hdr(skb);
   if (ipheader == NULL)
     return -1;
   l4hdroff = ip_hdrlen(skb);
-
-  if (check_csum) {
-    if ((csum_check = check_checksums(skb)) < 0)
-      return csum_error_message("manip_skb()", csum_check);
-  }
 
   if ((mi.sa || mi.da || mi.sp || mi.dp) && ipheader->protocol == IPPROTO_TCP)
     writable_len = l4hdroff + sizeof(struct tcphdr);
@@ -101,22 +100,18 @@ int manip_skb(struct sk_buff *skb, __u32 saddr, __u16 sport, __u32 daddr,
   if (skb_ensure_writable(skb, writable_len))
     return -1;
 
-  if (!skb)
-    return -1;
+  /* skb_ensure_writable may reallocate: refresh pointers.
+   * No need for pskb_may_pull — skb_ensure_writable already linearised
+   * and made writable up to writable_len which covers L4 headers. */
   ipheader = ip_hdr(skb);
   if (ipheader == NULL)
     return -1;
   l4hdroff = ip_hdrlen(skb);
 
-  if (ipheader->protocol == IPPROTO_TCP) {
-    if (!pskb_may_pull(skb, l4hdroff + sizeof(struct tcphdr)))
-      return -1;
+  if (ipheader->protocol == IPPROTO_TCP)
     ptcphead = tcp_hdr(skb);
-  } else if (ipheader->protocol == IPPROTO_UDP) {
-    if (!pskb_may_pull(skb, l4hdroff + sizeof(struct udphdr)))
-      return -1;
+  else if (ipheader->protocol == IPPROTO_UDP)
     pudphead = udp_hdr(skb);
-  }
 
   if (mi.sa) {
     oldaddr = ipheader->saddr;
@@ -325,13 +320,16 @@ int check_checksums(const struct sk_buff *skb) {
    * here would fail and drop legitimate packets. */
   if (skb->ip_summed == CHECKSUM_PARTIAL)
     return 0;
+  /* If the NIC/driver already verified the checksum, trust it.
+   * CHECKSUM_UNNECESSARY means hardware confirmed correctness. */
+  if (skb->ip_summed == CHECKSUM_UNNECESSARY)
+    return 0;
   datalen = skb->len - iph->ihl * 4;
   if (ip_fast_csum((u8 *)iph, iph->ihl) != 0)
     return -BAD_IP_CSUM;
   switch (iph->protocol) {
   case IPPROTO_TCP: {
-    if (skb->ip_summed != CHECKSUM_UNNECESSARY &&
-        csum_tcpudp_magic(iph->saddr, iph->daddr, datalen, IPPROTO_TCP,
+    if (csum_tcpudp_magic(iph->saddr, iph->daddr, datalen, IPPROTO_TCP,
                           skb->ip_summed == CHECKSUM_COMPLETE
                               ? skb->csum
                               : skb_checksum(skb, iph->ihl * 4, datalen, 0)))

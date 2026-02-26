@@ -2,6 +2,7 @@
 #include "ipfire.h"
 #include "build.h"
 #include "filter/defrag.h"
+#include "filter/state/state_machine.h"
 #include "globals.h"
 #include "helpers/icmp_nat.h"
 #include "ipfi_machine.h"
@@ -787,10 +788,8 @@ int ipfi_post_process(struct sk_buff *skb, const ipfi_flow *flow) {
    */
   int de_dnat_done = -1, snat_done = -1;
 
-  /* stats. Only one field is to be updated.
-   * So don't call update_kernel_stats().
-   */
-  kstats.post_rcv++;
+  /* stats — use per-CPU counters to avoid cache-line bouncing */
+  IPFI_STAT_INC(post_rcv);
   /* No more kmalloc for ipfire_info_t. */
 
   /* MASQUERADE and SNAT now take components directly. No
@@ -800,26 +799,47 @@ int ipfi_post_process(struct sk_buff *skb, const ipfi_flow *flow) {
   if (ip_hdr(skb)->protocol == IPPROTO_ICMP) {
     if (icmp_nat_process(skb, NF_IP_POST_ROUTING) == 1) {
       /* Translation applied, accept packet immediately */
-      kstats.post_rcv++;
+      IPFI_STAT_INC(post_rcv);
       snat_done = 1;
       goto send_touser;
     }
   }
 
   if (get_dnatted_count() > 0) {
-    if ((snat_done = post_snat_dynamic(skb, flow, &resp, &flags)) >= 0) {
-      goto send_touser;
-    }
-
-    /* If NAT is enabled, there might be packets that have been destination
-     * natted in pre routing phase. Those packets must be de-natted: source
-     * address must be put equal to the original destination address of the
-     * dnatted packet. We must check if packet has destination address _and_
-     * port equal to source address _and_ port of dnatted packet. This happens
-     * in the opposite flow with respect to the one that originated
-     * communication.
+    /*
+     * Consolidate: both post_snat_dynamic() and de_dnat_translation()
+     * do lookup_nat_idx(NAT_DNAT, NAT_IDX_POSTNAT, skb), which probes
+     * the exact same hash bucket. Do ONE lookup and handle both cases:
+     *   - dynamic masquerade (forward packet through DNAT entry)
+     *   - de-DNAT (reply packet returning from DNAT target)
      */
-    de_dnat_done = de_dnat_translation(skb, flow, &resp, &flags);
+    struct nat_table *dntmp = lookup_nat_idx(NAT_DNAT, NAT_IDX_POSTNAT, skb);
+    if (dntmp) {
+      /* Try dynamic masquerade first (forward direction) */
+      if (snat_dynamic_table_match(dntmp, skb) > 0) {
+        dntmp->state = state_machine(skb, dntmp->state, 0);
+        ipfi_entry_update_timer(&dntmp->h, dntmp->protocol, dntmp->state);
+        snat_done = snat_dynamic_translate(skb, dntmp, flow);
+
+        /* Update/Add Reply index with the new Masquerade address */
+        {
+          u32 reply_key = get_nat_tuple_hash(dntmp->new_addr, dntmp->new_port,
+                                             dntmp->our_ifaddr,
+                                             dntmp->old_sport, dntmp->protocol);
+          nat_add_index(dntmp, NAT_IDX_REPLY, reply_key);
+        }
+
+        nat_put(dntmp);
+        goto send_touser;
+      }
+      /* Try de-DNAT (reverse direction) */
+      if (de_dnat_table_match(dntmp, skb) > 0) {
+        dntmp->state = state_machine(skb, dntmp->state, 1);
+        ipfi_entry_update_timer(&dntmp->h, dntmp->protocol, dntmp->state);
+        de_dnat_done = de_dnat(skb, dntmp);
+      }
+      nat_put(dntmp);
+    }
   }
 
   /* check if we already have a translation for this session
@@ -851,7 +871,7 @@ send_touser:
         (is_to_send(skb, &fwopts, &resp, flow, &flags)))
       send_packet_to_userspace_and_update_counters(skb, flow, &resp, &flags);
     else /* not sent because of log level */
-      kstats.not_sent++;
+      IPFI_STAT_INC(not_sent);
   }
   /* Don't check for bad checksum on outgoing packets.
    * See netfilter ip_conntrack_proto_tcp.c comment */
@@ -911,11 +931,11 @@ int ipfi_response(const struct nf_hook_state *state, struct sk_buff *skb,
     }
 
   } else /* packets not sent because of log level */ {
-    kstats.not_sent++;
+    IPFI_STAT_INC(not_sent);
   }
 
   /* update the sum of the packets processed */
-  kstats.sum++;
+  IPFI_STAT_INC(sum);
 
   /* update statistics */
   update_kernel_stats(flow->direction, res.verdict);

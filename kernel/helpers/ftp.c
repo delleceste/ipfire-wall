@@ -20,6 +20,8 @@
 /* see ipfi.c for details */
 
 #include "helpers/ftp.h"
+#include "filter/state/state_table.h"
+#include "globals.h"
 #include "ipfi_machine.h"
 #include "ipfire.h"
 #include "netlink/ipfi_netl.h"
@@ -62,10 +64,20 @@ packet_contains_ftp_params(const struct sk_buff *skb,
   return newt;
 }
 
-/* just inspect if skb contains 227 command  ("Entering passive mode") */
+/* just inspect if skb contains 227 command  ("Entering passive mode").
+ * Handles multi-response segments: when FTP commands are pipelined (e.g.
+ * USER/PASS/PASV/QUIT sent at once), the server may reply with several
+ * response lines concatenated in a single TCP segment.  We must search for
+ * the "227" line anywhere in the payload, not just at byte 0.
+ *
+ * On success, ftp_buffer contains ONLY the "227 ...(A,B,C,D,p,q)\r\n" line
+ * (subsequent lines are stripped) so that check_buf / get_ftpaddr_and_port
+ * can parse it correctly.
+ */
 int data_start_with_227(const struct sk_buff *skb, char *ftp_buffer) {
   unsigned int dataoff, datalen;
   char *data_ptr;
+  char *p, *eol;
   struct tcphdr *th;
   struct iphdr *iph;
 
@@ -94,12 +106,31 @@ int data_start_with_227(const struct sk_buff *skb, char *ftp_buffer) {
 
   ftp_buffer[datalen] = '\0';
 
-  /* 227 ( ) A,B,C,D,p,q -> minimal string representing a 227 command*/
+  /* 227 ( ) A,B,C,D,p,q -> minimal string representing a 227 command */
   if (datalen < 16)
     return 0;
 
-  if (strncmp(ftp_buffer, "227", 3) == 0)
-    return 1;
+  /* Search for "227" at the start of any response line.
+   * FTP response lines are delimited by \r\n, so a mid-buffer 227 is
+   * always preceded by \n (or it is at position 0). */
+  p = ftp_buffer;
+  while ((p = strstr(p, "227")) != NULL) {
+    /* Accept if it's at position 0 or preceded by \n */
+    if (p == ftp_buffer || *(p - 1) == '\n') {
+      /* Isolate this single line: find the \n that ends it */
+      eol = strchr(p, '\n');
+      if (eol) {
+        *(eol + 1) = '\0'; /* keep the \n, remove whatever follows */
+      }
+      /* Now move the 227 line to the start of ftp_buffer */
+      if (p != ftp_buffer)
+        memmove(ftp_buffer, p, strlen(p) + 1);
+
+      IPFI_PRINTK("IPFIRE FTP: found 227 line: %s", ftp_buffer);
+      return 1;
+    }
+    p++; /* advance past this non-matching "227" occurrence */
+  }
   return 0;
 }
 
@@ -124,7 +155,7 @@ get_params_and_alloc_newentry(const struct state_table *orig,
     memset(newt, 0, sizeof(struct state_table));
     refcount_set(&newt->h.refcnt, 1);
     newt->saddr = orig->saddr;
-    newt->sport = orig->sport;
+    newt->sport = 0; /* Client data connection uses unknown ephemeral port */
     newt->direction = orig->direction;
     newt->notify = orig->notify;
     newt->admin = orig->admin;
@@ -148,9 +179,13 @@ get_params_and_alloc_newentry(const struct state_table *orig,
   return newt;
 }
 
-/* checks a bit of syntax in buffer related to 227 command */
+/* checks a bit of syntax in buffer related to 227 command.
+ * Note: some FTP servers append characters after ')' before \r\n, e.g.:
+ *   227 Entering Passive Mode (85,188,1,133,213,231).\r\n
+ * so we search backwards for ')' rather than requiring it at a fixed offset. */
 inline int check_buf(const char *ftpcmd) {
   int len = strlen(ftpcmd);
+  int j;
   unsigned i = 0;
   unsigned commas = 0, parenthesis = 0;
   if (len - 3 < 0 || len > FTPBUF)
@@ -159,7 +194,12 @@ inline int check_buf(const char *ftpcmd) {
     return -1;
   if (ftpcmd[len - 2] != '\r')
     return -1;
-  if (ftpcmd[len - 3] != ')')
+  /* Search backwards from \r for ')'; allow trailing chars like '.' */
+  for (j = len - 3; j >= 0; j--) {
+    if (ftpcmd[j] == ')')
+      break;
+  }
+  if (j < 0)
     return -1;
   for (i = 0; i < len && i < FTPBUF; i++) {
     if (ftpcmd[i] == ',')
@@ -220,8 +260,10 @@ ftp_info get_ftpaddr_and_port(char *ftp_buffer) {
   }
 
   if (sscanf(cleaned, "%hhu,%hhu,%hhu,%hhu,%hhu,%hhu", &a1, &a2, &a3, &a4, &p1,
-             &p2) != 6)
+             &p2) != 6) {
+    IPFI_PRINTK("IPFIRE: sscanf failed on cleaned buffer: %s\n", cleaned);
     return invalid_ftpinfo;
+  }
   /* compute address */
   ftpi.ftp_addr = a4;
   n = a1;
@@ -238,5 +280,115 @@ ftp_info get_ftpaddr_and_port(char *ftp_buffer) {
   ftpi.ftp_port = p2 + n;
   ftpi.ftp_port = htons(ftpi.ftp_port);
 
+  IPFI_PRINTK("IPFIRE FTP: Parsed PASV response: IP %pI4, Port %u\n",
+              &ftpi.ftp_addr, ntohs(ftpi.ftp_port));
+
   return ftpi;
+}
+
+/*
+ * rehash_ftp_expectation — one-shot optimisation for FTP passive data flows.
+ *
+ * When a passive-mode FTP 227 response is parsed, we create an expectation
+ * entry with sport=0 (wildcard) because the client's ephemeral data port is
+ * unknown at that point.  This entry is hashed into the sport=0 bucket.
+ *
+ * On the first data-connection packet, lookup_ftp_expectation() finds the
+ * entry via the sport=0 bucket (secondary lookup).  The caller may then
+ * invoke this function to:
+ *   1. Fill in the real client source port (new_sport).
+ *   2. Move the entry from the sport=0 bucket to the correct 5-tuple bucket.
+ *   3. Set ftp = FTP_ESTABLISHED so subsequent packets hit the normal O(1)
+ *      hash path and bypass the secondary lookup entirely.
+ *
+ * This is purely an optimisation — without it, every data packet would go
+ * through the secondary lookup, which is still correct but O(bucket_size)
+ * per packet.  For FTP traffic volumes, either approach is acceptable.
+ *
+ * Lock ordering: when two distinct buckets must be locked, the lower-numbered
+ * bucket is always locked first to prevent AB-BA deadlocks.
+ *
+ * NOT WIRED UP YET — call site needs to be added once the caller decides
+ * to use this optimisation.
+ */
+void rehash_ftp_expectation(struct state_table *entry, __be16 new_sport) {
+  __u32 old_key = get_state_hash(entry->saddr, entry->daddr, 0, entry->dport,
+                                 entry->protocol);
+  /* MUST use hash_min() — same function as
+   * hash_add_rcu/hash_for_each_possible_rcu */
+  unsigned int old_bkt = hash_min(old_key, STATE_HASH_BITS);
+
+  __u32 new_key = get_state_hash(entry->saddr, entry->daddr, new_sport,
+                                 entry->dport, entry->protocol);
+  unsigned int new_bkt = hash_min(new_key, STATE_HASH_BITS);
+
+  if (old_bkt == new_bkt) {
+    spin_lock_bh(&state_bucket_locks[old_bkt]);
+    entry->sport = new_sport;
+    entry->ftp = FTP_ESTABLISHED;
+    spin_unlock_bh(&state_bucket_locks[old_bkt]);
+  } else {
+    /* Lock ordering to prevent deadlocks */
+    if (old_bkt < new_bkt) {
+      spin_lock_bh(&state_bucket_locks[old_bkt]);
+      spin_lock_bh(&state_bucket_locks[new_bkt]);
+    } else {
+      spin_lock_bh(&state_bucket_locks[new_bkt]);
+      spin_lock_bh(&state_bucket_locks[old_bkt]);
+    }
+
+    hlist_del_rcu(&entry->h.hnode);
+    entry->sport = new_sport;
+    entry->ftp = FTP_ESTABLISHED;
+    hash_add_rcu(state_hashtable, &entry->h.hnode, new_key);
+
+    if (old_bkt < new_bkt) {
+      spin_unlock_bh(&state_bucket_locks[new_bkt]);
+      spin_unlock_bh(&state_bucket_locks[old_bkt]);
+    } else {
+      spin_unlock_bh(&state_bucket_locks[old_bkt]);
+      spin_unlock_bh(&state_bucket_locks[new_bkt]);
+    }
+  }
+}
+
+/*
+ * lookup_ftp_expectation — secondary hash lookup for FTP passive data flows.
+ *
+ * The FTP helper creates expectation entries with sport=0 (wildcard) because
+ * the client's ephemeral source port is unknown when parsing the 227 response.
+ * These entries live in the hash bucket keyed by:
+ *   get_state_hash(client_ip, server_data_ip, 0, server_data_port, TCP)
+ *
+ * For passive FTP, the client opens the data connection to the server:
+ *   src = client_ip : client_ephemeral   (sport of the outgoing SYN)
+ *   dst = server_data_ip : server_data_port  (dport of the outgoing SYN)
+ *
+ * So we probe the hash with dport (= server data port), which matches
+ * the expectation's stored dport.  The sport wildcard (0) is handled
+ * inside direct_state_match() when ftp == FTP_DEFINED.
+ *
+ * Must be called under rcu_read_lock_bh().
+ *
+ * Returns the matched state_table entry, or NULL if no expectation matches.
+ */
+struct state_table *lookup_ftp_expectation(const struct sk_buff *skb,
+                                           const struct iphdr *iph,
+                                           __be16 dport, short *reverse,
+                                           const ipfi_flow *flow) {
+  struct state_table *table_entry;
+  /* Probe with sport=0 (wildcard) and the server data port as dport.
+   * MUST use hash_for_each_possible_rcu — it internally applies hash_min()
+   * (golden-ratio multiplicative hash) to map the key to a bucket, which is
+   * the same function that hash_add_rcu used when storing the entry.
+   * A manual "key & mask" bitmask computes a DIFFERENT bucket! */
+  __u32 ftp_key = get_state_hash(iph->saddr, iph->daddr, 0, dport, IPPROTO_TCP);
+
+  hash_for_each_possible_rcu(state_hashtable, table_entry, h.hnode, ftp_key) {
+    if (table_entry->ftp == FTP_DEFINED) {
+      if (skb_matches_state_table(skb, table_entry, reverse, flow) > 0)
+        return table_entry;
+    }
+  }
+  return NULL;
 }
