@@ -19,7 +19,7 @@ Tracking the exact number of active state, NAT, and log entries is crucial for e
 
 ### The Performance Regression: `sum_positive` vs `read`
 During development, a severe performance regression (~40% drop in UDP throughput) was accidentally introduced while trying to fix count inaccuracies. 
-* **The Problem (`percpu_counter_sum_positive`)**: To guarantee limit enforcement, the code was updated to use `percpu_counter_sum_positive()` on the hot path (e.g., in `get_dnatted_count` ran for *every* packet). `sum_positive` iteratively iterates over and sums the local counter slots of *every* CPU in the system. This meant our O(1) check suddenly became an $O(\text{num\_cpus})$ blocking operation that forced the CPU to fetch remote memory cache lines for every forwarded packet.
+* **The Problem (`percpu_counter_sum_positive`)**: To guarantee limit enforcement, the code was updated to use `percpu_counter_sum_positive()` on the hot path (e.g., in `get_dnatted_count` ran for *every* packet). `sum_positive` iteratively iterates over and sums the local counter slots of *every* CPU in the system. This meant our O(1) check suddenly became an O(num_cpus) blocking operation that forced the CPU to fetch remote memory cache lines for every forwarded packet.
 * **The Original Fast Path (`percpu_counter_read`)**: `percpu_counter_read()` is lightning-fast and $O(1)$ because it just returns a cached global shadow variable. But standard implementations only synchronize the local CPU slot to the global shadow variable when the local slot exceeds a large predefined chunk size (creating read drift).
 * **The Solution (`_inc` vs `_add_batch`)**:
   Instead of using the default `percpu_counter_inc` (which allows drift) or checking the accurate but extraordinarily slow `sum_positive`, we modified the connection creation/teardown functions to use `percpu_counter_add_batch(&counter, value, 1)`. 
@@ -43,3 +43,79 @@ Several other optimizations act as multipliers for the IPFire-Wall's performance
 
 * **Early Flow Short-Circuiting**:
   Optimizations have been applied to filter protocol structures early. Any irrelevant traffic (unsupported Layer 4 protocols) is identified and bypassed at the very top of `filter_engine.c` before entering complex state tracking checks or deep header parsing, saving considerable CPU cycles.
+
+## 4. Hash Tables: A Deep Dive
+
+### What is a Hash Table?
+A hash table is a data structure optimized for lightning-fast lookups. Instead of a single long list, memory is divided into an array of smaller lists called **buckets**. Each bucket is identified by an **index** (a number from `0` to `NUM_BUCKETS - 1`).
+
+When a new connection (e.g., a packet with a specific Source/Dest IP and Port) arrives, its data (the "key") is fed into a mathematical **hash function**. This function quickly scrambles the key into a pseudo-random integer called a **hash number**. This hash number is then mapped to a specific bucket index (usually using a modulo operation or a bitmask, like `hash_number & (NUM_BUCKETS - 1)`).  
+
+To find the connection later, the kernel hashes the packet's fields again, jumps directly to the calculated bucket index, and only scans the tiny list of entries within that specific bucket.
+
+### State Tables vs. NAT Hashes
+
+While the internal Firewall `state` tracking uses a standard 1-dimensional hash table array (where the bucket index is simply derived from the packet's 5-tuple), the Network Address Translation (NAT) engine requires a much more robust **three-dimensional** indexing structure:
+
+```c
+struct hlist_head nat_hashtables[2][NAT_IDX_COUNT][1 << NAT_HASH_BITS];
+```
+
+Let's break down each dimension `[i][j][k]`:
+
+1. **`i` (Index 0 or 1): The NAT Type**
+   Separates `SNAT` (Source NAT) operations from `DNAT` (Destination NAT) operations to avoid collision during lookups.
+
+2. **`j` (Index `NAT_IDX_COUNT`): The Lookup Context**
+   A single NAT connection fundamentally requires different "keys" depending on which direction the packet is flowing. We store the exact same connection in multiple hash buckets simultaneously based on these contexts:
+   * `NAT_IDX_ORIG` (0): The key built from the Original packet's pre-translation 5-tuple. Used when a new packet matches an existing translation flow (e.g., a client sending another packet out).
+   * `NAT_IDX_POSTNAT` (1): The key built from the packet's *translated* 5-tuple. Used primarily when resolving overlaps or searching for newly formed, post-routing signatures.
+   * `NAT_IDX_REPLY` (2): The key built to match the expected *reply* traffic from the outside world. Used when an external server responds, allowing the firewall to reverse the translation (De-SNAT or De-DNAT) accurately.
+
+3. **`k` (Index `1 << NAT_HASH_BITS`): The Bucket**
+   The actual hash-mapped bucket array, functioning precisely like a standard hash table.
+
+### Mermaid Architecture
+
+```mermaid
+graph TD
+    A[Packet 5-tuple] -->|Hash Function| B(Hash Number)
+    B -->|Bitmask| C[Bucket Index 'k']
+    
+    subgraph NAT Hash Table: nat_hashtables[SNAT/DNAT][Context][k]
+        C --> D((Bucket k))
+        D --> E[Entry 1] --> F[Entry 2]
+    end
+```
+
+### Multi-Indexed Hash Linkage in NAT Tables
+
+Because a single NAT entry exists in multiple lookup contexts simultaneously (`ORIG`, `POSTNAT`, `REPLY`), it cannot be linked using just one standard list node. 
+
+In `struct ipfi_entry_head`, which forms the foundation of all tables, we have:
+```c
+  struct rcu_head rcuh;    /* Used by RCU callback to safely free memory after the grace period */
+  struct list_head lnode;  /* General List linkage (used by loginfo LRU queues) */
+  struct hlist_node hnode; /* Primary hash linkage (used exclusively for NAT_IDX_ORIG) */
+```
+
+However, `hnode` only provides linkage for *one* hash dimension. To connect the exact same NAT entry into the `POSTNAT` and `REPLY` hash buckets concurrently without duplicating the entire table payload, the NAT table structs (`struct snat_table` / `struct dnat_table`) must declare additional inline linkage pointers:
+
+```c
+  struct hlist_node h_indices[NAT_IDX_COUNT - 1]; /* Linkage for POSTNAT and REPLY */
+```
+
+```mermaid
+graph LR
+    subgraph Bucket Array [ORIG]
+       A1[Head] -->|hnode| Entry 
+    end
+    
+    subgraph Bucket Array [POSTNAT]
+       B1[Head] -->|h_indices[0]| Entry
+    end
+    
+    subgraph Bucket Array [REPLY]
+       C1[Head] -->|h_indices[1]| Entry
+    end
+```
