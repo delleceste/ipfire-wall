@@ -116,7 +116,9 @@ int create_semaphore(int init_color) {
   key_t semkey;
   key_t semid;
   char namefile[MAXFILENAMELEN];
-  snprintf(namefile, MAXFILENAMELEN, "%s/firehelp", SHARE_CFGDIR);
+  extern struct userspace_opts uops;
+
+  snprintf(namefile, MAXFILENAMELEN, "%s", uops.permission_filename);
   if ((semkey = ottieni_sem_key(namefile, 1)) < 0) {
     printf(RED "Error obtaining a key for semaphore!" NL);
     return -1;
