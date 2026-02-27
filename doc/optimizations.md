@@ -82,7 +82,7 @@ graph TD
     A[Packet 5-tuple] -->|Hash Function| B(Hash Number)
     B -->|Bitmask| C[Bucket Index 'k']
     
-    subgraph NAT Hash Table: nat_hashtables[SNAT/DNAT][Context][k]
+    subgraph NAT_Table ["NAT Hash Table: nat_hashtables[SNAT/DNAT][Context][k]"]
         C --> D((Bucket k))
         D --> E[Entry 1] --> F[Entry 2]
     end
@@ -107,15 +107,15 @@ However, `hnode` only provides linkage for *one* hash dimension. To connect the 
 
 ```mermaid
 graph LR
-    subgraph Bucket Array [ORIG]
-       A1[Head] -->|hnode| Entry 
+    subgraph BA1 ["Bucket Array [ORIG]"]
+       A1[Head] -->|"hnode"| Entry 
     end
     
-    subgraph Bucket Array [POSTNAT]
-       B1[Head] -->|h_indices[0]| Entry
+    subgraph BA2 ["Bucket Array [POSTNAT]"]
+       B1[Head] -->|"h_indices[0]"| Entry
     end
     
-    subgraph Bucket Array [REPLY]
-       C1[Head] -->|h_indices[1]| Entry
+    subgraph BA3 ["Bucket Array [REPLY]"]
+       C1[Head] -->|"h_indices[1]"| Entry
     end
 ```
