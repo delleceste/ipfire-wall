@@ -46,6 +46,8 @@ The application communicates with the kernel via Netlink sockets using the `IPFI
 | `-mailer <V> <U>` | Send email summaries every `<V>` units of `<U>` (sec, min, hour, days). |
 | `-user` | Allow normal unprivileged users to define their own rules and interact with the firewall (Root only). |
 | `-nouser` | Restrict all firewall operations to the Root user. |
+| `-no-nat` | Deactivate NAT on the fly, overriding the config file (Root only). |
+| `-no-masquerade` | Deactivate Masquerade on the fly, overriding the config file (Root only). |
 
 ## 4.2. Configuration Files
 The application behavior can be customized via config files. For the root user, these are located in `/etc/ipfire/`. For normal users, they are in `~/.IPFIRE/`.

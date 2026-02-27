@@ -1059,6 +1059,10 @@ void print_usage(const char *progname) {
   printf(TR("  -quiet               Do not print packets to console\n"));
   printf(TR("  -user                Run as user process (root only)\n"));
   printf(TR("  -nouser              Do not run as user process (root only)\n"));
+  printf(TR(
+      "  -no-nat              Deactivate NAT from command line (root only)\n"));
+  printf(TR("  -no-masquerade       Deactivate Masquerade from command line "
+            "(root only)\n"));
   printf(TR("  -daemon              Run as a daemon\n"));
   printf(TR("  -quiet_daemon        Run as a quiet daemon\n"));
   printf(TR(
@@ -1255,10 +1259,28 @@ int parse_cmdline(struct cmdopts *cmdo, struct userspace_opts *uo, command *cmd,
       } else
         PNL, PRED, printf(TR("You must be root to set all stateful option!")),
             PNL, PNL;
-    } else if ((!strcmp(argv[i], "-quiet")) || (!strcmp(argv[i], "/quiet")))
+    } else if ((!strcmp(argv[i], "-quiet")) || (!strcmp(argv[i], "/quiet"))) {
       cmdo->quiet = 1;
-
-    else if ((!strcmp(argv[i], "-user")) || (!strcmp(argv[i], "/user"))) {
+    } else if ((!strcmp(argv[i], "-no-nat")) || (!strcmp(argv[i], "/no-nat"))) {
+      if ((user = geteuid()) == 0) {
+        cmd->nat = 0;
+      } else {
+        PVIO,
+            printf(TR("Option \"%s\": warning: you are user %d."), argv[i],
+                   user),
+            printf(TR("You must be root to set this privilege.")), PNL;
+      }
+    } else if ((!strcmp(argv[i], "-no-masquerade")) ||
+               (!strcmp(argv[i], "/no-masquerade"))) {
+      if ((user = geteuid()) == 0) {
+        cmd->masquerade = 0;
+      } else {
+        PVIO,
+            printf(TR("Option \"%s\": warning: you are user %d."), argv[i],
+                   user),
+            printf(TR("You must be root to set this privilege.")), PNL;
+      }
+    } else if ((!strcmp(argv[i], "-user")) || (!strcmp(argv[i], "/user"))) {
       if ((user = geteuid()) == 0) {
         cmdo->user_allowed = 1;
         cmd->user_allowed = 1;

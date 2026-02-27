@@ -30,37 +30,34 @@ struct ipfi_entry_head {
 
 Every entry starts with `refcount = 1` (the **container reference**).
 
+```mermaid
+graph TD;
+    alloc["ALLOCATED (refcnt = 1)"] --> add["added to hash table + timer armed"]
+    add --> LIVE
+    LIVE -.-> timer["timer fires"]
+    LIVE -.-> evict["eviction (loginfo only)"]
+    
+    timer --> remove[/"ipfi_entry_remove(h, &counter)"/]
+    evict --> remove
+    
+    remove --> test["test_and_set_bit(REMOVED)"]
+    
+    test -- "LOSER (no-op)" --> noop["return"]
+    test -- "WINNER (proceeds)" --> del["hlist del_rcu"]
+    
+    del --> counter["counter--"]
+    counter --> put["ipfi_entry_put(h)"]
+    put --> check{"refcount == 0?"}
+    check -- Yes --> q["queue_work(ipfire_wq)"]
+    
+    q --> free["free_entry_work()"]
+    free --> tdsl["timer_delete_sync() (wait for timer)"]
+    free --> callrcu["call_rcu(free_entry_rcu) (wait for readers)"]
+    
+    callrcu --> rcu["RCU callback"]
+    rcu --> kfree["kfree(h) (object freed)"]
 ```
-ALLOCATED (refcnt = 1)
-    │
-    ▼  added to hash table + timer armed
-LIVE
-    │
-    ├─── timer fires ──────────────────────────────────────────┐
-    │                                                          │
-    └─── eviction (loginfo only, capacity-based) ─────────────┤
-                                                               │
-                                                               ▼
-                                               [under table spinlock]
-                                                ipfi_entry_remove(h, &counter)
-                                                  │
-                                                ├─ test_and_set_bit(REMOVED)
-                                                  │     WINNER proceeds ──────▶ hlist del_rcu
-                                                  │     LOSER returns (no-op)        counter−−
-                                                  │                                  ipfi_entry_put(h)
-                                                  │                                        │
-                                                  │                              refcount → 0
-                                                  │                                        │
-                                                  │                              queue_work(ipfire_wq)
-                                                  │
-                                                  ▼    [workqueue / process context]
-                                              free_entry_work()
-                                                  ├─ timer_delete_sync()      ← wait for timer
-                                                  └─ call_rcu(free_entry_rcu) ← wait for readers
-                                                              │
-                                                              ▼  [RCU callback]
-                                                          kfree(h)              ← object freed
-```
+
 
 ### Key invariants
 
@@ -156,7 +153,6 @@ hash_for_each_possible_rcu(ht, h, hnode, key) {
 ```
 
 By using `test_and_set_bit()`, we establish an atomic "winner" for the removal of the entry. If a timer callback is simultaneously trying to expire the same entry, only one will successfully set the bit and proceed to the deletion and `ipfi_entry_put()`. The loser safely skips the element.
-```
 
 > [!WARNING]
 > If steps 5 and 6 were swapped, or if step 6 were omitted, `kfree` could

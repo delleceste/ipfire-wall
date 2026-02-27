@@ -38,7 +38,7 @@ We must rewrite the **Outer Dst** and **all Inner Headers**. We DO NOT rewrite t
 
 ```mermaid
 flowchart TD
-    subgraph PRE_ROUTING (Ingress)
+    subgraph PRE_ROUTING ["PRE_ROUTING (Ingress)"]
         ID["Wire State"] --> |Outer IP| O1["Src = C, Dst = B'"]
         ID --> |Inner IP| I1["Src = B', Dst = C"]
         
@@ -54,7 +54,7 @@ Because the inner headers are already fully de-NATed to their original state (`S
 
 ```mermaid
 flowchart TD
-    subgraph POST_ROUTING (Egress)
+    subgraph POST_ROUTING ["POST_ROUTING (Egress)"]
         Routing --> |Outer IP| O2["Src = C, Dst = A"]
         Routing --> |Inner IP| I2["Src = A, Dst = B"]
         
@@ -78,7 +78,7 @@ This is handled entirely in `PRE_ROUTING`. Only the Source IPs need to be un-DNA
 
 ```mermaid
 flowchart TD
-    subgraph PRE_ROUTING (Ingress)
+    subgraph PRE_ROUTING ["PRE_ROUTING (Ingress)"]
         ID["Wire State"] --> |Outer IP| O1["Src = A, Dst = C"]
         ID --> |Inner IP| I1["Src = C, Dst = A"]
         
@@ -102,7 +102,7 @@ Handled entirely in `PRE_ROUTING`. We rewrite the Outer Dst and Inner Src back t
 
 ```mermaid
 flowchart TD
-    subgraph PRE_ROUTING (Ingress)
+    subgraph PRE_ROUTING ["PRE_ROUTING (Ingress)"]
         ID["Wire State"] --> |Outer IP| O1["Src = C, Dst = B'"]
         ID --> |Inner IP| I1["Src = B', Dst = C"]
         

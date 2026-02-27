@@ -22,6 +22,9 @@ The kernel packet filtering engine evaluates rules sequentially, stopping at the
 
 This guarantees that a localized user rule can never override or bypass an administrator's fundamental drop policy.
 
+### Command-Line Overrides (Root)
+Administrator capabilities extend to runtime overrides. A root user can bypass the configuration file (`/usr/local/etc/ipfire/options`) on the fly. For instance, passing `-no-nat` or `-no-masquerade` to the daemon immediately deactivates the respective NAT features, overriding the `NAT=YES` or `MASQUERADE=YES` configuration keys.
+
 ## Technical Concepts and Peculiarities
 
 Extensive architectural improvements ensure IPFire-Wall scales seamlessly on modern multi-core systems:

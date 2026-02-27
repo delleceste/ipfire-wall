@@ -1437,15 +1437,23 @@ void print_menu(short filter_enabled, short resolv_services) {
   extern int den_rules_num;
   extern int acc_rules_num;
   extern int transl_rules_num;
+  char version_string[64];
+  const char *dashes =
+      "*---------------------------------------------------------------*";
+  const char *header = " F1 : HELP  *  ?: INFO\t  * IPFIRE *";
+
+  snprintf(version_string, sizeof(version_string), "%s \"%s\"", VERSION,
+           CODENAME);
 
   /* NOTE: for translation: do not change menu keys! */
-  printf(NL GRAY " F1: HELP " DRED "*" GRAY " ?: INFO\t  " CLR " * " RED UNDERL
-                 "IPFIRE" CLR " *");
+  printf(NL GRAY " F1 : HELP " DRED " * " GRAY " ?: INFO\t " CLR
+                 " * " RED UNDERL "IPFIRE" CLR " *");
 
-  if (getuid() == 0)
-    printf(DRED "\t\t\tROOT" NL);
-  else
-    printf(GREEN "\t\t\t%s" NL, upper_username);
+  for (int i = 0;
+       i < strlen(dashes) - strlen(header) - strlen(version_string) - 1; i++)
+    printf(" ");
+  printf("%s ‹\e[38;2;100;180;255;3m%s\e[0m›\n", VERSION,
+         CODENAME); // soft summer sky
 
   build_loguser_enabled_command(&askforloguser, IS_LOGUSER_ENABLED);
 
@@ -1456,11 +1464,17 @@ void print_menu(short filter_enabled, short resolv_services) {
     printf(RED
            "Error reading from kernel the request for loguser enabled!" NL NL);
 
-  printf("*---------------------------------------------------------------*\n");
+  printf("%s\n", dashes);
   printf("| " GRAY "P." CLR);
   printf(TR("  PRINT YOUR RULES.   "));
   printf("\t| " GRAY "F/Z." CLR);
   printf(TR("SETUP/CLEAR A VIEW FILTER.|"));
+
+  if (getuid() == 0)
+    printf(" [" DRED "ROOT" CLR "]");
+  else
+    printf(" [" GREEN "%s" CLR "]", upper_username);
+
   PNL;
   printf("| " GRAY "F3." CLR);
   printf(TR(" PRINT RULES IN FIREWALL.  "));

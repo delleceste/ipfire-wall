@@ -17,7 +17,8 @@ CHAPTERS = 01_Refactoring_Optimization.md \
            13_Privileges_and_Policies.md \
            14_Port_Scanning_Tests.md \
            15_Sample_Scenarios.md \
-           16_ICMP_Error_NAT_Translation.md
+           16_ICMP_Error_NAT_Translation.md \
+           99_Appendix_Source_Code.md
 
 # Optionally add MASTER_MD back over here      ../test/README.md
 
@@ -107,7 +108,23 @@ pdf-html: $(REPORT)
 		exit 1; \
 	fi
 
-clean:
-	rm -f $(REPORT) $(PDF)
+# Alternative: PDF conversion using Node.js tools (md-to-pdf, mermaid-cli)
+pdf-node: $(REPORT)
+	@echo "Converting to PDF using Node.js (md-to-pdf + mmdc)..."
+	@if [ ! -d "node_modules" ]; then \
+		echo "Installing node dependencies..."; \
+		npm init -y >/dev/null 2>&1 || true; \
+		npm install @mermaid-js/mermaid-cli md-to-pdf; \
+	fi
+	@echo "Extracting Mermaid charts to SVGs..."
+	@./node_modules/.bin/mmdc -i $(REPORT) -o CONSOLIDATED_REPORT_MERMAID.md
+	@echo "Generating PDF..."
+	@./node_modules/.bin/md-to-pdf CONSOLIDATED_REPORT_MERMAID.md
+	@mv CONSOLIDATED_REPORT_MERMAID.pdf $(PDF)
+	@rm -f CONSOLIDATED_REPORT_MERMAID.md
+	@echo "PDF generated successfully: $(PDF)"
 
-.PHONY: all pdf pdf-html clean
+clean:
+	rm -f $(REPORT) $(PDF) CONSOLIDATED_REPORT_MERMAID*
+
+.PHONY: all pdf pdf-html pdf-node clean
