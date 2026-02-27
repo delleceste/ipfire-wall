@@ -68,9 +68,15 @@ Let's break down each dimension `[i][j][k]`:
 
 2. **`j` (Index `NAT_IDX_COUNT`): The Lookup Context**
    A single NAT connection fundamentally requires different "keys" depending on which direction the packet is flowing. We store the exact same connection in multiple hash buckets simultaneously based on these contexts:
-   * `NAT_IDX_ORIG` (0): The key built from the Original packet's pre-translation 5-tuple. Used when a new packet matches an existing translation flow (e.g., a client sending another packet out).
-   * `NAT_IDX_POSTNAT` (1): The key built from the packet's *translated* 5-tuple. Used primarily when resolving overlaps or searching for newly formed, post-routing signatures.
-   * `NAT_IDX_REPLY` (2): The key built to match the expected *reply* traffic from the outside world. Used when an external server responds, allowing the firewall to reverse the translation (De-SNAT or De-DNAT) accurately.
+
+   * **`NAT_IDX_ORIG` (0)**: The key built from the Original packet's pre-translation 5-tuple. 
+     * **Where it's used:** Direct flow routing. When a client sends a *new* packet that belongs to an already established NAT session, the `POST_ROUTING` (for SNAT) or `PRE_ROUTING` (for DNAT) hooks hash the original unchanged headers to look up the rule and apply the cached translation.
+
+   * **`NAT_IDX_POSTNAT` (1)**: The key built from the packet's *translated* 5-tuple. 
+     * **Where it's used:** Collision prevention and complex routing logic. It is queried when creating *new* dynamic connections (like Masquerade or FTP passive) to ensure the newly selected port/IP isn't already taken by another session.
+
+   * **`NAT_IDX_REPLY` (2)**: The key built to match the expected *reply* traffic from the outside world.
+     * **Where it's used:** Reverse flow routing. When an external server responds, the packet arrives with its source and destination flipped. The `PRE_ROUTING` hook (for De-SNAT) or the `POST_ROUTING` hook (for De-DNAT) hashes these incoming headers natively. Because we stored the translation entry under the expected "Reply" key, the firewall instantly finds it and reverses the IPs/ports back to the internal client.
 
 3. **`k` (Index `1 << NAT_HASH_BITS`): The Bucket**
    The actual hash-mapped bucket array, functioning precisely like a standard hash table.
