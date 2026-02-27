@@ -45,10 +45,6 @@ struct response ipfire_filter(const ipfire_rule *dropped,
     pass = response.verdict;
     if (pass > 0) {
       response.state = 1U;
-      if (response.state_related)
-        printk(
-            KERN_INFO
-            "IPFIRE: early return from ipfire_filter with state_related=1\n");
       return response;
     }
   }
