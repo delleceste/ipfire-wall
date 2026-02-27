@@ -1,6 +1,13 @@
-# IPFIRE-wall test set up
+# IPFIRE-wall Test Setup
 
-We will use iperf3 test tool with the firewall running on the client side.
+> [!IMPORTANT]
+> **Benchmarking Disclaimer**: The results reported in this document were obtained using a version of the software preceding the current one, specifically tagged as `2.0.0-alpha0`. 
+> 
+> These tests already incorporated key optimizations such as **per-bucket spin locks** and **per-CPU state table counters**. While later revisions have significantly enhanced code stability, the raw bitrate remains comparable—approximately **490 Mbits/sec** in the "UDP Apocalypse" small-packet storm test when run **WITHOUT NAT RULES** (bypassing the NAT engine entirely). 
+> 
+> Please note that the exact test conditions for some older reports (specifically whether NAT was active or skipped) may not be uniformly documented. Up-to-date, standardized benchmarks under controlled conditions (NAT vs. No-NAT) are planned and will be performed in future releases.
+
+We will use the iperf3 test tool with the firewall running on the client side.
 
 We will then set up *network namespaces* and *virtual interfaces* to simulate 
 proper `forwarding`.
