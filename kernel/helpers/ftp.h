@@ -59,7 +59,8 @@ void rehash_ftp_expectation(struct state_table *entry, __be16 new_sport);
 
 struct state_table *lookup_ftp_expectation(const struct sk_buff *skb,
                                            const struct iphdr *iph,
-                                           __be16 dport, short *reverse,
+                                           __be16 sport, __be16 dport,
+                                           short *reverse,
                                            const ipfi_flow *flow);
 
 #endif

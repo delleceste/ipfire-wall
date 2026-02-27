@@ -15,26 +15,24 @@
 struct kmem_cache *state_cache;
 
 int direct_state_match(const struct sk_buff *skb,
-                       const struct state_table *entry, const ipfi_flow *flow) {
-  const struct iphdr *iph = ip_hdr(skb);
+                       const struct state_table *entry, const struct iphdr *iph,
+                       __u16 sport, __u16 dport, const ipfi_flow *flow) {
   if (!iph || entry->protocol != iph->protocol)
     return -1;
   if (iph->saddr != entry->saddr || iph->daddr != entry->daddr)
     return -1;
   switch (iph->protocol) {
   case IPPROTO_TCP: {
-    struct tcphdr *th = (struct tcphdr *)((void *)iph + iph->ihl * 4);
     if (entry->ftp == FTP_DEFINED) { /* ftp support: discard source port */
-      if (th->dest == entry->dport)
+      if (dport == entry->dport)
         return 1;
     }
-    if (th->source != entry->sport || th->dest != entry->dport)
+    if (sport != entry->sport || dport != entry->dport)
       return -1;
     break;
   }
   case IPPROTO_UDP: {
-    struct udphdr *uh = (struct udphdr *)((void *)iph + iph->ihl * 4);
-    if (uh->source != entry->sport || uh->dest != entry->dport)
+    if (sport != entry->sport || dport != entry->dport)
       return -1;
   } break;
   }
@@ -44,22 +42,20 @@ int direct_state_match(const struct sk_buff *skb,
 
 int reverse_state_match(const struct sk_buff *skb,
                         const struct state_table *entry,
+                        const struct iphdr *iph, __u16 sport, __u16 dport,
                         const ipfi_flow *flow) {
-  const struct iphdr *iph = ip_hdr(skb);
   if (!iph || entry->protocol != iph->protocol)
     return -1;
   if (iph->saddr != entry->daddr || iph->daddr != entry->saddr)
     return -1;
   switch (iph->protocol) {
   case IPPROTO_TCP: {
-    struct tcphdr *th = (struct tcphdr *)((void *)iph + iph->ihl * 4);
-    if (th->source != entry->dport || th->dest != entry->sport)
+    if (sport != entry->dport || dport != entry->sport)
       return -1;
     break;
   }
   case IPPROTO_UDP: {
-    struct udphdr *uh = (struct udphdr *)((void *)iph + iph->ihl * 4);
-    if (uh->source != entry->dport || uh->dest != entry->sport)
+    if (sport != entry->dport || dport != entry->sport)
       return -1;
   } break;
   }
@@ -67,9 +63,8 @@ int reverse_state_match(const struct sk_buff *skb,
 }
 
 inline int l2l3match(const struct sk_buff *skb, const struct state_table *entry,
-                     short *reverse, const ipfi_flow *flow) {
-  const struct iphdr *iph = ip_hdr(skb);
-
+                     short *reverse, const struct iphdr *iph,
+                     const ipfi_flow *flow) {
   if (iph->protocol != entry->protocol)
     return -1;
   /* Direct Match */
@@ -126,8 +121,8 @@ inline int l2l3match(const struct sk_buff *skb, const struct state_table *entry,
  */
 int skb_matches_state_table(const struct sk_buff *skb,
                             const struct state_table *entry, short *reverse,
+                            const struct iphdr *iph, __u16 sport, __u16 dport,
                             const ipfi_flow *flow) {
-  const struct iphdr *iph = ip_hdr(skb);
   short tr_match = 0;
 
   *reverse = -1;
@@ -147,7 +142,7 @@ int skb_matches_state_table(const struct sk_buff *skb,
 
       /* First try standard protocol match if they are the same protocol */
       if (iph->protocol == entry->protocol) {
-        int l2_ret = l2l3match(skb, entry, reverse, flow);
+        int l2_ret = l2l3match(skb, entry, reverse, iph, flow);
         if (l2_ret > 0)
           return l2_ret;
       }
@@ -165,11 +160,13 @@ int skb_matches_state_table(const struct sk_buff *skb,
   }
 
   /* Try direct 5-tuple match */
-  if ((tr_match = direct_state_match(skb, entry, flow)) > 0) {
+  if ((tr_match = direct_state_match(skb, entry, iph, sport, dport, flow)) >
+      0) {
     *reverse = 0;
   }
   /* Try reverse 5-tuple match */
-  else if ((tr_match = reverse_state_match(skb, entry, flow)) > 0) {
+  else if ((tr_match =
+                reverse_state_match(skb, entry, iph, sport, dport, flow)) > 0) {
     *reverse = 1;
   } else {
     return -1;
@@ -333,7 +330,7 @@ int add_state_table_to_list(struct state_table *newtable) {
 
   key = get_state_hash(newtable->saddr, newtable->daddr, newtable->sport,
                        newtable->dport, newtable->protocol);
-  bkt = key & ((1 << STATE_HASH_BITS) - 1);
+  bkt = hash_min(key, STATE_HASH_BITS);
 
   spin_lock_bh(&state_bucket_locks[bkt]);
 
@@ -368,7 +365,7 @@ void handle_keep_state_timeout(struct timer_list *t) {
   struct ipfi_entry_head *h = &st->h;
   __u32 key =
       get_state_hash(st->saddr, st->daddr, st->sport, st->dport, st->protocol);
-  unsigned int bkt = key & ((1 << STATE_HASH_BITS) - 1);
+  unsigned int bkt = hash_min(key, STATE_HASH_BITS);
 
   spin_lock_bh(&state_bucket_locks[bkt]);
   ipfi_entry_remove(h, &state_tables_counter); /* puts internally if winner */

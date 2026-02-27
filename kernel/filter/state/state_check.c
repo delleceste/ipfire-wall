@@ -6,6 +6,7 @@
 #include "ipfi_machine.h"
 #include "ipfire.h"
 #include "state_machine.h"
+#include "state_table.h"
 #include <linux/icmp.h>
 #include <linux/ip.h>
 #include <linux/skbuff.h>
@@ -29,6 +30,7 @@ static struct response accept_state_match(struct sk_buff *skb,
   ret.st.reverse_relaxed = reverse > 1 ? 1U : 0;
   ret.st.state = set_state(skb, table_entry, reverse);
   ret.state = 1U;
+  ret.state_related = table_entry->related;
 
   if ((table_entry->ftp == FTP_LOOK_FOR) &&
       (table_entry->protocol == IPPROTO_TCP)) {
@@ -78,7 +80,7 @@ struct response check_state(struct sk_buff *skb, const ipfi_flow *flow,
   };
   short reverse = 0;
   struct iphdr *iph = ip_hdr(skb);
-
+  struct tcphdr *tcph = NULL;
   /*
    * Hash-mode: O(1) average lookup.
    *
@@ -93,9 +95,9 @@ struct response check_state(struct sk_buff *skb, const ipfi_flow *flow,
 
   switch (iph->protocol) {
   case IPPROTO_TCP: {
-    struct tcphdr *th = (struct tcphdr *)((void *)iph + iph->ihl * 4);
-    sport = th->source;
-    dport = th->dest;
+    tcph = (struct tcphdr *)((void *)iph + iph->ihl * 4);
+    sport = tcph->source;
+    dport = tcph->dest;
     break;
   }
   case IPPROTO_UDP: {
@@ -113,23 +115,34 @@ struct response check_state(struct sk_buff *skb, const ipfi_flow *flow,
 
   rcu_read_lock_bh();
 
-  /* Secondary lookup: FTP Passive Data Connections
-   * Must run under rcu_read_lock_bh() since it uses hlist_for_each_entry_rcu.
-   * The expectation entry stores dport = server data port (from the 227
-   * response). The outgoing data SYN has dport = server data port, so probe
-   * with that. The sport=0 wildcard is handled inside direct_state_match for
-   * FTP_DEFINED entries. */
-  if (iph->protocol == IPPROTO_TCP) {
-    table_entry = lookup_ftp_expectation(skb, iph, dport, &reverse, flow);
-    if (table_entry) {
+  hash_for_each_possible_rcu(state_hashtable, table_entry, h.hnode, key) {
+    if (skb_matches_state_table(skb, table_entry, &reverse, iph, sport, dport,
+                                flow) > 0) {
+      /* FUTURE PROOFING NOTE:
+       * We omit `state_hold_rcu()` here intentionally. While wrapping this
+       * block in hold/put protects against logic bugs caused by concurrent
+       * timer removal, hitting the atomic refcounter on the hot path causes
+       * severe cache-line bouncing across CPUs and halves routing throughput
+       * for fast flows. Safety is instead guaranteed organically: memory is
+       * held by rcu_read_lock, and downstream functions reliably check the
+       * `IPFI_ENTRY_REMOVED` flag.
+       */
       ret = accept_state_match(skb, table_entry, iph, reverse, ftp_state);
       rcu_read_unlock_bh();
       return ret;
     }
   }
 
-  hash_for_each_possible_rcu(state_hashtable, table_entry, h.hnode, key) {
-    if (skb_matches_state_table(skb, table_entry, &reverse, flow) > 0) {
+  /* Secondary lookup: FTP Passive Data Connections.
+   * Only tested on the initial SYN (th->syn && !th->ack); all subsequent
+   * data packets will hit the fast path above after rehashing to ESTABLISHED.
+   * Must run under rcu_read_lock_bh(). */
+  if (tcph && tcph->syn && !tcph->ack) {
+    table_entry =
+        lookup_ftp_expectation(skb, iph, sport, dport, &reverse, flow);
+    if (table_entry) {
+      /* See the FUTURE PROOFING NOTE in the direct lookup block above
+       * explaining why state_hold_rcu is omitted here for performance. */
       ret = accept_state_match(skb, table_entry, iph, reverse, ftp_state);
       rcu_read_unlock_bh();
       return ret;
@@ -167,7 +180,10 @@ struct response check_state(struct sk_buff *skb, const ipfi_flow *flow,
       hash_for_each_rcu(state_hashtable, bkt, table_entry, h.hnode) {
         reverse = -1;
         if (match_icmp_error_payload(skb, table_entry, &reverse) > 0) {
+          /* See the FUTURE PROOFING NOTE in the direct lookup block above
+           * explaining why state_hold_rcu is omitted here for performance. */
           ret = accept_state_match(skb, table_entry, iph, reverse, ftp_state);
+          ret.state_related = 1;
           rcu_read_unlock_bh();
           return ret;
         }

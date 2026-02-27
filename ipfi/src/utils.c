@@ -926,6 +926,12 @@ int print_packet(const ipfire_info_t *pack,
   if (filter != NULL) /* if we are here we have passed the filter */
     PCL, printf(" "), PVIO, PBOLD, printf("F" CLR);
 
+  if (pack->response.state_related) {
+    if (filter != NULL || pack->response.rule_id != 0)
+      printf(" ");
+    printf("{" CYAN "RELATED" CLR "}");
+  }
+
   printf(NL);
   return 0;
 }

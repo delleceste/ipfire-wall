@@ -20,7 +20,7 @@
 /* see ipfi.c for details */
 
 #include "helpers/ftp.h"
-#include "filter/state/state_table.h"
+#include "../filter/state/state_table.h"
 #include "globals.h"
 #include "ipfi_machine.h"
 #include "ipfire.h"
@@ -174,6 +174,7 @@ get_params_and_alloc_newentry(const struct state_table *orig,
     newt->dport = ftpi.ftp_port;
     newt->ftp = FTP_DEFINED;
     newt->rule_id = orig->rule_id;
+    newt->related = 1;
   }
   /* return the new allocated state table or NULL */
   return newt;
@@ -374,7 +375,8 @@ void rehash_ftp_expectation(struct state_table *entry, __be16 new_sport) {
  */
 struct state_table *lookup_ftp_expectation(const struct sk_buff *skb,
                                            const struct iphdr *iph,
-                                           __be16 dport, short *reverse,
+                                           __be16 sport, __be16 dport,
+                                           short *reverse,
                                            const ipfi_flow *flow) {
   struct state_table *table_entry;
   /* Probe with sport=0 (wildcard) and the server data port as dport.
@@ -386,7 +388,8 @@ struct state_table *lookup_ftp_expectation(const struct sk_buff *skb,
 
   hash_for_each_possible_rcu(state_hashtable, table_entry, h.hnode, ftp_key) {
     if (table_entry->ftp == FTP_DEFINED) {
-      if (skb_matches_state_table(skb, table_entry, reverse, flow) > 0)
+      if (skb_matches_state_table(skb, table_entry, reverse, iph, sport, dport,
+                                  flow) > 0)
         return table_entry;
     }
   }

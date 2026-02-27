@@ -296,7 +296,7 @@ struct state_t {
 
 struct response {
   struct state_t st;
-  int8_t notify : 1, state : 1, verdict : 5, nolog : 1;
+  int8_t notify : 1, state : 1, verdict : 4, state_related : 1, nolog : 1;
   uint32_t rule_id; /* 32-bit hash or unique ID */
 };
 

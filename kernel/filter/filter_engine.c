@@ -45,6 +45,10 @@ struct response ipfire_filter(const ipfire_rule *dropped,
     pass = response.verdict;
     if (pass > 0) {
       response.state = 1U;
+      if (response.state_related)
+        printk(
+            KERN_INFO
+            "IPFIRE: early return from ipfire_filter with state_related=1\n");
       return response;
     }
   }
@@ -213,6 +217,11 @@ struct state_table *keep_state(const struct sk_buff *skb,
   }
   struct state_table *state_t =
       (struct state_table *)kmem_cache_alloc(state_cache, GFP_ATOMIC);
+  if (!state_t) {
+    IPFI_PRINTK("IPFIRE: memory allocation error in keep_state "
+                "(kmem_cache_alloc failed)\n");
+    return NULL;
+  }
   memset(state_t, 0, sizeof(struct state_table));
   refcount_set(&state_t->h.refcnt, 1); // initial refcount
   if (fill_net_table_fields(state_t, skb, flow) < 0) {

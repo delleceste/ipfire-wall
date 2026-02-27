@@ -16,7 +16,7 @@ struct state_table {
   __u16 dport;
   __u8 direction : 3, ftp : 3, /* passive ftp support */
       notify : 1, admin : 1;
-  __u8 nolog : 1;
+  __u8 nolog : 1, related : 1, unused : 6;
   __u32 rule_id; /* ID of the rule that originated this state */
   __u8 protocol;
   char in_devname[IFNAMSIZ];
@@ -37,11 +37,15 @@ static inline void state_put(struct state_table *st) { ipfi_entry_put(&st->h); }
 
 /* Function Prototypes from state_table.c */
 int direct_state_match(const struct sk_buff *skb,
-                       const struct state_table *entry, const ipfi_flow *flow);
+                       const struct state_table *entry, const struct iphdr *iph,
+                       __u16 sport, __u16 dport, const ipfi_flow *flow);
 int reverse_state_match(const struct sk_buff *skb,
-                        const struct state_table *entry, const ipfi_flow *flow);
+                        const struct state_table *entry,
+                        const struct iphdr *iph, __u16 sport, __u16 dport,
+                        const ipfi_flow *flow);
 int skb_matches_state_table(const struct sk_buff *skb,
                             const struct state_table *entry, short *reverse,
+                            const struct iphdr *iph, __u16 sport, __u16 dport,
                             const ipfi_flow *flow);
 int fill_net_table_fields(struct state_table *state_t,
                           const struct sk_buff *skb, const ipfi_flow *flow);
