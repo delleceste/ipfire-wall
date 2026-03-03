@@ -123,11 +123,30 @@ void ipfi_entry_put(struct ipfi_entry_head *h) {
 }
 
 void ipfi_entry_update_timer(struct ipfi_entry_head *h, int proto, int state) {
+  unsigned int timeout;
+  unsigned long new_expires;
+
   if (unlikely(test_bit(IPFI_ENTRY_REMOVED, &h->status)))
     return;
 
-  if (time_after(jiffies, READ_ONCE(h->last_timer_update) + (5 * HZ))) {
-    unsigned int timeout;
+  timeout = get_timeout_by_state(proto, state);
+  new_expires = jiffies + HZ * timeout;
+
+  /*
+   * Bypass the 5-second throttle when the new timeout would shorten
+   * the timer (e.g. ESTABLISHED->FIN_WAIT demotion). Only throttle
+   * keep-alive refreshes where the deadline moves forward.
+   *
+   * time_before(a, b): true when a is before b (jiffies wrap-safe).
+   *   Here: true when the new deadline is earlier than the current one,
+   *   i.e. the state transitioned to a shorter-lived phase.
+   *
+   * time_after(a, b): true when a is after b (jiffies wrap-safe).
+   *   Here: true when enough time (5s) has elapsed since the last
+   *   update, allowing the normal keep-alive refresh to proceed.
+   */
+  if (time_before(new_expires, h->timer.expires) ||
+      time_after(jiffies, READ_ONCE(h->last_timer_update) + (5 * HZ))) {
 
     /* Safely get a reference while under RCU/pointer validity */
     if (!ipfi_entry_hold_rcu(h))
@@ -139,8 +158,7 @@ void ipfi_entry_update_timer(struct ipfi_entry_head *h, int proto, int state) {
       return;
     }
 
-    timeout = get_timeout_by_state(proto, state);
-    mod_timer(&h->timer, jiffies + HZ * timeout);
+    mod_timer(&h->timer, new_expires);
     WRITE_ONCE(h->last_timer_update, jiffies);
 
     ipfi_entry_put(h);
