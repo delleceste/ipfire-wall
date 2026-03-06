@@ -1,0 +1,27 @@
+make[1]: Entering directory '/usr/lib/modules/6.18.9-arch1-2/build'
+make[2]: Entering directory '/home/giacomo/devel/ipfire-wall/kernel/build'
+
+--------
+[ipfire]
+[ipfire] tables: hash — state=10b nat=8b log=7b (home / small office)
+[ipfire]
+--------
+
+  CC [M]  ipfire.o
+  LD [M]  ipfi.o
+
+--------
+[ipfire]
+[ipfire] tables: hash — state=10b nat=8b log=7b (home / small office)
+[ipfire]
+--------
+
+  MODPOST Module.symvers
+ERROR: modpost: "match_icmp_error_payload" [ipfi.ko] undefined!
+make[4]: *** [/usr/lib/modules/6.18.9-arch1-2/build/scripts/Makefile.modpost:147: Module.symvers] Error 1
+make[3]: *** [/usr/lib/modules/6.18.9-arch1-2/build/Makefile:1961: modpost] Error 2
+make[2]: *** [/usr/lib/modules/6.18.9-arch1-2/build/Makefile:248: __sub-make] Error 2
+make[2]: Leaving directory '/home/giacomo/devel/ipfire-wall/kernel/build'
+make[1]: *** [Makefile:248: __sub-make] Error 2
+make[1]: Leaving directory '/usr/lib/modules/6.18.9-arch1-2/build'
+make: *** [Makefile:119: all] Error 2

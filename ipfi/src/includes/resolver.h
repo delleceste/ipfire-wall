@@ -12,9 +12,7 @@
 #define MAXFILENAMELEN 60
 #define MAXLINELEN 			100
 
-#ifdef ENABLE_RULENAME
 #define RULENAMELEN		51
-#endif
 
 /* policy */
 #define DENIAL 	0

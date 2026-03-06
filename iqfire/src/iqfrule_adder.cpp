@@ -448,9 +448,7 @@ void IQFRuleAdder::setupForm()
 		
 		ipfire_rule r = item->ItemRule();
 		/* the rule name */
-#ifdef ENABLE_RULENAME
 		ui.lineEditRuleName->setText(r.rulename);
-#endif
 		struct in_addr addr;
 		switch(r.ip.protocol)
 		{

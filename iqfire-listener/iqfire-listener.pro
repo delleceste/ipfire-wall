@@ -17,7 +17,7 @@ SOURCES += iqlistener.cpp main.cpp
 
 LIBS += -L../ipfi -L/usr/local/lib -lipfire_common
 
-DEFINES += ENABLE_RULENAME 
+
 
 target.path = $$INSTALL_ROOT/usr/bin
 

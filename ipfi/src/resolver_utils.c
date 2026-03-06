@@ -277,7 +277,6 @@ int print_packet(const ipfire_info_t *pack,
 	}
 	else
 		printf("  ");
-	#ifdef ENABLE_RULENAME
 	/* finally, print rule name */
 	if(strlen(pack->rulename) > 0)
 	{
@@ -287,8 +286,7 @@ int print_packet(const ipfire_info_t *pack,
 			printf(RED "[" CLR "%s" RED "]", pack->rulename);
 		else
 			printf(MAROON "[" CLR "%s" MAROON "]", pack->rulename);
-	}	
-	#endif
+	}
 	if(filter != NULL) /* if we are here we have passed the filter */
 		 PCL, printf(" "),  PVIO, PBOLD, printf("F" CLR);
 
@@ -401,8 +399,7 @@ int log_packet(const ipfire_info_t *pack, int loglevel)
 	{
 		case IPPROTO_TCP:
 		flogpack(TCP);
-		snprintf(c, LOGLINELEN, "|%lu|%s|%d|%s|%d",
-			pack->packet_id,
+		snprintf(c, LOGLINELEN, "|%s|%d|%s|%d",
 			src_address, 		
 			ntohs(pack->transport_header.tcphead.source ),
 			dst_address,
@@ -443,8 +440,7 @@ int log_packet(const ipfire_info_t *pack, int loglevel)
 		break;
 		case IPPROTO_UDP:
 		flogpack(UDP);
-		snprintf(c, LOGLINELEN, "|%lu|%s|%d|%s|%d",
-			pack->packet_id,
+		snprintf(c, LOGLINELEN, "|%s|%d|%s|%d",
 			src_address, 		
 			ntohs(pack->transport_header.udphead.source ),
 			dst_address,
@@ -455,8 +451,7 @@ int log_packet(const ipfire_info_t *pack, int loglevel)
 		break;
 		case IPPROTO_ICMP:
 		flogpack(ICMP);
-		snprintf(c, LOGLINELEN, "|%lu|%s|0|%s|0",
-			pack->packet_id,
+		snprintf(c, LOGLINELEN, "|%s|0|%s|0",
 			src_address, 		
 			dst_address);	
 		flog(c);
@@ -465,12 +460,11 @@ int log_packet(const ipfire_info_t *pack, int loglevel)
 		break;
 		default:
 			flogpack(OTHER_PROTO);
-			snprintf(c, LOGLINELEN, "|%lu", pack->packet_id);
+			flog("|0");
                         flog(c);
 			flog("|0|0|0|0|0|0|0|0|0|0");
 		break;
 	}
-	#ifdef ENABLE_RULENAME
 	/* finally, log rule name */
 	if(strlen(pack->rulename) > 0)
 	{
@@ -479,7 +473,6 @@ int log_packet(const ipfire_info_t *pack, int loglevel)
 	}
 	else
 		flog("|x");
-	#endif
 	
 	flog("|\n");
 	return 0;

@@ -26,9 +26,7 @@
 #define MAXADDRLEN	300
 #define SERVICENAMELEN	15
 
-#ifdef ENABLE_RULENAME
 #define RULENAMELEN 51
-#endif
 
 #define SRC 0
 #define DEST 1
@@ -115,9 +113,7 @@ struct anpacket
 	unsigned short dport;
 	char sport_res[SERVICENAMELEN];
 	char dport_res[SERVICENAMELEN];
-#ifdef ENABLE_RULENAME
 	char rulename[RULENAMELEN];
-#endif
 	/* flags: */
 	short syn;
 	short ack;
