@@ -800,6 +800,11 @@ int send_back_command(const command *cmd) {
 }
 
 int send_back_fw_busy(pid_t pid) {
+  if (pid == 0) {
+    /* pid=0 is the kernel socket itself; sending to it would recurse into
+     * nl_receive_control and overflow the kernel stack. */
+    return -EINVAL;
+  }
   command *com;
   struct sk_buff *skb;
   int status = -1;

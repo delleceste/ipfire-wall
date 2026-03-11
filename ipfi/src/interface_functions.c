@@ -2778,7 +2778,6 @@ int print_my_rules(void) {
 
 /* listener prints statistics regarding netlink communication */
 void print_stats(struct netlink_stats *ns) {
-  struct kernel_stats firestats;
   unsigned long long total_us =
       ns->in_rcv + ns->out_rcv + ns->fwd_rcv + ns->pre_rcv + ns->post_rcv;
 
@@ -2803,16 +2802,6 @@ void print_stats(struct netlink_stats *ns) {
          "- POST ROUTING: %llu\n",
          ns->in_rcv, ns->out_rcv, ns->fwd_rcv, ns->pre_rcv, ns->post_rcv);
   printf("- TOTAL RECEIVED: %llu\n", total_us);
-
-  printf(GRAY
-         "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -" NL);
-
-  /* Now fetch and print kernel stats for a complete report */
-  if (request_kstats() < 0 || receive_kstats(&firestats) < 0) {
-    PRED, printf(TR("Failed to fetch kernel statistics for full report.")), PNL;
-  } else {
-    print_kstats(&firestats);
-  }
 }
 
 /* parent prints kernel statistics after a stats
